@@ -96,7 +96,7 @@ Una rama que acumula dos cambios sin relación no se puede revisar ni revertir p
 
 ### `/code-review` antes de cada push — obligatorio
 
-**Claude debe recordárselo a Jean Paul antes de cualquier `push`, siempre, aunque el cambio parezca trivial.** El orden es:
+**Claude debe recordárselo a Jean Paul antes de cualquier `push`, siempre, aunque el cambio parezca trivial** — pero **no bloquea**: Jean Paul decide cuándo correrlo. El orden recomendado es:
 
 1. `git diff --staged` revisando que no se cuele ningún dato financiero real ni secreto.
 2. **`/code-review`** sobre el cambio. Se leen los hallazgos y se decide qué se arregla.
@@ -262,6 +262,18 @@ Definidas en `next.config.ts` (`headers()`), no ruta por ruta:
 | `X-Frame-Options` / `frame-ancestors` | `DENY` | Clickjacking sobre una app de dinero |
 
 `Cache-Control` es aparte: estáticos con hash a `immutable`, HTML autenticado a `private, no-store` — **nunca** cachear una respuesta con datos financieros en un intermediario.
+
+### Jerarquía de encabezados (H1-H6)
+
+Un encabezado describe **estructura**, no tamaño. Es la regla que más se rompe.
+
+- **Un solo `<h1>` por página**, y dice de qué va la página. En el dashboard es el nombre de la pantalla, no el logo.
+- **No se salta ningún nivel.** De `h2` se baja a `h3`, nunca directo a `h4`. Un lector de pantalla navega saltando por encabezados: un nivel ausente es un índice con capítulos que faltan.
+- **El nivel NUNCA se elige por cómo se ve.** Si un `h2` se ve muy grande, se le aplica el token de tipografía que corresponda (`--text-heading`, `--text-title`…), no se cambia a `h4`. La etiqueta decide la estructura; el token decide el tamaño. En `docs/DESIGN_SYSTEM.md` §3.2 están los tokens precisamente para que nunca haya que elegir la etiqueta por su aspecto.
+- **Texto real**, nunca una imagen con texto dentro ni un `<div>` con estilo de título.
+- Nada de encabezados ocultos para meter palabras clave. Google lo trata como spam y no aporta nada.
+
+**Qué peso tiene en Google:** menos del que se cree. Los encabezados le ayudan a entender la estructura del documento, pero **no son una señal de ranking fuerte** — el contenido manda. Donde sí son críticos es en **accesibilidad**: para alguien con lector de pantalla, la jerarquía *es* la navegación de la página.
 
 ### Metadatos y compartido
 
