@@ -1,0 +1,6 @@
+# pnpm 11 does not run a dependency's postinstall script unless it is allowed
+# here. The default is supply-chain hardening, so the list stays explicit and
+# minimal: esbuild needs its script to place a platform binary, and drizzle-kit,
+# vitest and tsx all run through esbuild.
+allowBuilds:
+  esbuild: true
