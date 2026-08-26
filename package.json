@@ -21,6 +21,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@neon/config": "1.0.4",
+    "@neon/env": "1.1.4",
     "@neondatabase/serverless": "1.1.0",
     "drizzle-orm": "0.45.2",
     "drizzle-zod": "0.8.3",

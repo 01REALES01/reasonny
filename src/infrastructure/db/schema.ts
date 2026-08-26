@@ -12,10 +12,18 @@
  *    a JS number silently loses precision past 2^53 and cannot represent cents
  *    exactly. Arithmetic belongs in core/money.ts (B2), never here.
  *
- *  - User ids are TEXT, not UUID, because Better Auth / Neon Auth does not use
- *    UUIDs. There is no hard FK against neon_auth.users_sync either: that table
- *    is synchronised asynchronously, so a FK would reject rows for a user that
- *    exists but has not been mirrored yet.
+ *  - User ids are UUID, matching neon_auth.user.id, which Managed Better Auth
+ *    creates as a real table inside this same database. (The spec said TEXT and
+ *    described an async users_sync mirror; that was the older Stack Auth model
+ *    and does not exist here. Corrected in B3.)
+ *
+ *    There is still NO hard foreign key against neon_auth.user, even though the
+ *    table is local and a FK would now be possible. Two reasons: neon_auth is a
+ *    MANAGED schema that our migrations do not own, so a FK into it couples our
+ *    schema to something Neon can change underneath us; and an ON DELETE CASCADE
+ *    from there would erase a user's entire financial history the moment auth
+ *    dropped the row. In an app where even a single transaction is soft-deleted,
+ *    that is not an acceptable failure mode.
  */
 import { sql } from 'drizzle-orm';
 import {
@@ -53,7 +61,8 @@ const updatedAt = () => timestamp({ withTimezone: true }).notNull().defaultNow()
 
 // 1. Profiles ────────────────────────────────────────────────────────────────
 export const profiles = pgTable('profiles', {
-  id: text().primaryKey(),
+  // Supplied by Neon Auth, never generated here.
+  id: uuid().primaryKey(),
   email: text().notNull(),
   fullName: text('full_name'),
   baseCurrency: char('base_currency', { length: 3 }).notNull().default('COP'),
@@ -72,7 +81,7 @@ export const apiKeys = pgTable(
   'api_keys',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     name: varchar({ length: 60 }).notNull(),
@@ -94,7 +103,7 @@ export const accounts = pgTable(
   'accounts',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     name: varchar({ length: 100 }).notNull(),
@@ -124,7 +133,7 @@ export const categories = pgTable(
   'categories',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     name: varchar({ length: 80 }).notNull(),
@@ -149,7 +158,7 @@ export const budgets = pgTable(
   'budgets',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     categoryId: uuid('category_id')
@@ -171,7 +180,7 @@ export const transactions = pgTable(
   'transactions',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     // SET NULL, not CASCADE: deleting an account must never delete the money
@@ -266,7 +275,7 @@ export const categorizationRules = pgTable(
   'categorization_rules',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     categoryId: uuid('category_id')
@@ -293,7 +302,7 @@ export const achievements = pgTable(
   'achievements',
   {
     id: primaryId(),
-    userId: text('user_id')
+    userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     // 'streak_7d', 'reviewed_statement', 'adjusted_budget'
@@ -318,7 +327,7 @@ export const achievements = pgTable(
 // in the whole dataset far beyond the one row that was lost.
 export const ingestionFailures = pgTable('ingestion_failures', {
   id: primaryId(),
-  userId: text('user_id').references(() => profiles.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => profiles.id, { onDelete: 'cascade' }),
   source: varchar({ length: 30 }).notNull(),
   rawPayload: jsonb('raw_payload').notNull(),
   error: text().notNull(),
