@@ -234,6 +234,52 @@ Objetivos en **p75 de usuarios reales** (no Lighthouse de laboratorio):
 - JSON-LD `SoftwareApplication` en la landing.
 - Manifest completo: `name`, `short_name`, `start_url`, `display: standalone`, `background_color`, `theme_color`, icono ≥ **512×512**. Cualquier error rojo en DevTools → Application → Manifest bloquea la instalación en silencio.
 
+### Qué pesa de verdad en Google, y qué no
+
+Se confunden tres cosas distintas. Separarlas evita gastar esfuerzo donde no rinde:
+
+| | Ejemplos | Efecto real |
+| :--- | :--- | :--- |
+| **Señal de ranking** | HTTPS · Core Web Vitals (p75 de CrUX) · responsive · sin interstitials intrusivos | Mueve la posición, poco pero mueve |
+| **Indexabilidad** | `robots.txt` · `sitemap.xml` · `canonical` · ausencia de `noindex` accidental | Decide si **apareces**, no en qué puesto |
+| **Presentación** | JSON-LD → resultados enriquecidos · Open Graph → cómo se ve el enlace al compartirlo | Sube el CTR, no la posición |
+
+**Las cabeceras de seguridad (CSP, HSTS, etc.) NO son señal de ranking.** Se ponen porque son correctas, no por SEO. Y el factor que domina sobre todos los anteriores es que el contenido sirva para algo — ninguna cabecera compensa una landing vacía.
+
+Nota de alcance por **P8**: la superficie indexable es solo la landing pública. Todo lo de abajo aplica ahí; las rutas autenticadas llevan `noindex` y no se optimizan para buscadores.
+
+### Cabeceras HTTP — obligatorias en B8
+
+Definidas en `next.config.ts` (`headers()`), no ruta por ruta:
+
+| Cabecera | Valor | Por qué |
+| :--- | :--- | :--- |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Sin ella, la primera visita por HTTP es interceptable |
+| `Content-Security-Policy` | `default-src 'self'`, ajustada por origen | La defensa real contra XSS. Empezar en `Report-Only` y endurecer con datos |
+| `X-Content-Type-Options` | `nosniff` | Impide que el navegador ejecute como script algo servido como texto |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Una URL de la app puede llevar IDs; no se filtran a terceros |
+| `Permissions-Policy` | denegar `camera`, `microphone`, `geolocation` salvo lo que se use | Superficie que no se usa, se apaga |
+| `X-Frame-Options` / `frame-ancestors` | `DENY` | Clickjacking sobre una app de dinero |
+
+`Cache-Control` es aparte: estáticos con hash a `immutable`, HTML autenticado a `private, no-store` — **nunca** cachear una respuesta con datos financieros en un intermediario.
+
+### Metadatos y compartido
+
+- `title` y `meta description` únicos por página pública. Nada de plantillas repetidas.
+- **Open Graph y Twitter Card** en la landing, con imagen 1200×630. Sin esto, el enlace compartido sale como texto plano.
+- `lang` correcto en `<html>` y `hreflang` coherente con el catálogo de i18n.
+- Un `404` real que devuelva **404**, no un 200 con texto de error: un soft-404 confunde al rastreador.
+
+### Lo que rompe los Core Web Vitals en la práctica
+
+Las métricas de **P7** no se cumplen por buena voluntad; se rompen casi siempre por lo mismo:
+
+- **Imágenes sin `width`/`height`** → salto de layout → CLS. Siempre `next/image`, siempre con dimensiones. La imagen del LCP con `priority`, nunca `lazy`.
+- **Fuentes** con `next/font` (autoalojadas, sin petición a un tercero), `font-display: swap`, y solo los pesos que usa el sistema de diseño. Una fuente que carga tarde mueve el texto y cuenta como CLS.
+- **Tarea larga en el hilo principal** → INP. El riesgo concreto ya identificado es la tabla de revisión del OCR con 40 filas.
+
+Se verifica en CI con Lighthouse, y en campo con `web-vitals` reportando a `docs/METRICS.md`. **Lighthouse no sustituye al campo**: mide un laboratorio, y el ranking usa CrUX.
+
 ---
 
 ## Métricas (P6)
