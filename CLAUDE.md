@@ -264,7 +264,9 @@ Referencia rápida. Desarrollo completo en `docs/IMPLEMENTATION_PLAN.md` §3.
 
 ## Stack fijado
 
-Next.js 15 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth (magic link + Google + Apple) · Cloudflare R2 · Telegram Bot API · Gemini Flash · **Zod v4** · `node-re2` · Upstash · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
+Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth (magic link + Google + Apple) · Cloudflare R2 · Telegram Bot API · Gemini Flash · **Zod v4** · `node-re2` · Upstash · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
+
+**Next 16, no 15** (cambiado el 27-ago-2026). La versión fijada era 15 para que el plugin de Serwist funcionara sobre webpack en B8. Se cambió porque `@neondatabase/auth`, el cliente oficial de Neon Auth, exige `next >= 16` — y la autenticación no es sitio para salirse del camino soportado. **Consecuencia para B8:** Next 16 usa Turbopack por defecto y `@serwist/next` no lo soporta; hay que usar el *configurator mode* de Serwist (que sí lo soporta) o forzar `next build --webpack`. Decidir con una prueba, no de antemano.
 
 **Gestor de paquetes: `pnpm`.** Versiones **exactas**, sin rangos `^` — hay fricción conocida entre Zod v4, `drizzle-zod` y `@hookform/resolvers` (ver `docs/PROJECT_SPEC.md` §2).
 
