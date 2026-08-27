@@ -1,0 +1,182 @@
+/**
+ * RealMoney Design System (docs/DESIGN_SYSTEM.md)
+ *
+ * Dark theme only in v1. All tokens are derived from validated palettes.
+ *
+ * CRITICAL PERFORMANCE CONSTRAINTS (P7)
+ * --------------------------------------
+ * 1. Only animate transform and opacity.
+ * 2. Tabular figures on all numbers (tnum).
+ * 3. Respect prefers-reduced-motion.
+ */
+
+:root {
+  /* Surfaces (Dark theme primary) */
+  --surface-base: #09090b;
+  --surface-raised: #141417;
+  --surface-overlay: #1c1c21;
+  --surface-sunken: #050506;
+  --border-hairline: #26262b;
+  --border-strong: #35353c;
+
+  /* Inks */
+  --ink-primary: #fafafa;
+  --ink-secondary: #a1a1aa;
+  --ink-muted: #71717a;
+  --ink-inverse: #09090b;
+
+  /* Brand (Violet accent) */
+  --brand-500: #8172f2;
+  --brand-600: #6d5ae0;
+  --brand-400: #9d91f6;
+  --brand-tint: rgba(129, 114, 242, 0.14);
+
+  /* Semantic */
+  --positive: #34c77b;
+  --warning: #e0a32e;
+  --serious: #e8833a;
+  --critical: #e5484d;
+
+  /* Categorical (Validated against CVD) */
+  --cat-1: #8172f2;
+  --cat-2: #26a75f;
+  --cat-3: #3494b8;
+  --cat-4: #c97f18;
+  --cat-5: #d14487;
+  --cat-6: #77a024;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --text-hero: 44px;
+  --text-display: 32px;
+  --text-title: 20px;
+  --text-heading: 17px;
+  --text-body: 15px;
+  --text-label: 13px;
+  --text-caption: 11px;
+
+  /* Animation Durations */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 320ms;
+  --duration-deliberate: 600ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.48);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background-color: var(--surface-base);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Tabular figures for numbers and financial amounts */
+.money,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Decimal / fraction de-emphasis signature (DESIGN_SYSTEM.md 3.3) */
+.money__fraction {
+  font-size: 0.62em;
+  color: var(--ink-secondary);
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
+/* Base button styles */
+button {
+  font-family: inherit;
+  font-size: var(--text-label);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-instant) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Input fields */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: var(--ink-primary);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+  width: 100%;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--brand-500);
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
