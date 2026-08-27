@@ -264,7 +264,9 @@ Referencia rápida. Desarrollo completo en `docs/IMPLEMENTATION_PLAN.md` §3.
 
 ## Stack fijado
 
-Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth (magic link + Google + Apple) · Cloudflare R2 · Telegram Bot API · Gemini Flash · **Zod v4** · `node-re2` · Upstash · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
+Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth / Managed Better Auth (**OTP por correo** + Google; Apple diferido) · Cloudflare R2 · Telegram Bot API · Gemini Flash · **Zod v4** · `node-re2` · Upstash · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
+
+**Neon Auth no tiene magic link** (verificado el 27-ago-2026: `/sign-in/magic-link` responde 404, `/email-otp/*` está vivo). Lo passwordless es un **código de un solo uso por correo**, no un enlace. Se comporta igual y en móvil es mejor: no saca al usuario de la app y no lo consumen los escáneres de enlaces corporativos. Apple queda fuera hasta que la App Store esté sobre la mesa — cuesta $99/año por un requisito condicional.
 
 **Next 16, no 15** (cambiado el 27-ago-2026). La versión fijada era 15 para que el plugin de Serwist funcionara sobre webpack en B8. Se cambió porque `@neondatabase/auth`, el cliente oficial de Neon Auth, exige `next >= 16` — y la autenticación no es sitio para salirse del camino soportado. **Consecuencia para B8:** Next 16 usa Turbopack por defecto y `@serwist/next` no lo soporta; hay que usar el *configurator mode* de Serwist (que sí lo soporta) o forzar `next build --webpack`. Decidir con una prueba, no de antemano.
 
