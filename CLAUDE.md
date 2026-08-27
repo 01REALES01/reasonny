@@ -83,11 +83,11 @@ No adelantar bloques. No implementar fases futuras "de paso".
 
 ### Una rama por cambio — sin excepciones
 
-Nunca se commitea directo a `main`. **Cada cambio o feature nueva vive en su propia rama**, nombrada por lo que hace:
+Nunca se commitea directo a `main`. **Cada cambio o feature nueva vive en su propia rama**, nombrada de forma descriptiva por lo que hace (sin abreviaturas crípticas ni números de bloque como `b3`, `b4`; el nombre debe ser legible y autoexplicativo):
 
 | Tipo | Ejemplo |
 | :--- | :--- |
-| Bloque del plan | `feat/b3-auth`, `feat/b5-quick-add` |
+| Feature / Funcionalidad | `feat/auth-neon-cookies`, `feat/repository-isolation`, `feat/quick-add-transaction` |
 | Corrección | `fix/money-rounding`, `fix/tz-month-boundary` |
 | Documentación | `docs/update-metrics` |
 | Mantenimiento | `chore/bump-drizzle` |
