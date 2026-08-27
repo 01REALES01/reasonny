@@ -15,7 +15,7 @@ type Step = 'email' | 'code';
  * Styling is deliberately absent. The design system lands with the UI blocks;
  * inventing values here would mean rewriting them.
  */
-export function SignInForm({ baseUrl }: { baseUrl: string }): React.ReactElement {
+export function SignInForm(): React.ReactElement {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -27,7 +27,7 @@ export function SignInForm({ baseUrl }: { baseUrl: string }): React.ReactElement
     setBusy(true);
     setError(undefined);
     try {
-      const auth = getAuthClient(baseUrl);
+      const auth = getAuthClient();
       const result = await auth.emailOtp.sendVerificationOtp({ email, type: 'sign-in' });
       if (result.error) throw new Error(result.error.message ?? 'Could not send the code.');
       setStep('code');
@@ -43,7 +43,7 @@ export function SignInForm({ baseUrl }: { baseUrl: string }): React.ReactElement
     setBusy(true);
     setError(undefined);
     try {
-      const auth = getAuthClient(baseUrl);
+      const auth = getAuthClient();
       const result = await auth.signIn.emailOtp({ email, otp: code });
       if (result.error) throw new Error(result.error.message ?? 'That code did not work.');
       window.location.assign('/');

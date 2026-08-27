@@ -3,12 +3,17 @@
 import { createAuthClient, type VanillaBetterAuthClient } from '@neondatabase/auth';
 
 /**
- * Browser-side client for the Neon-hosted auth server.
+ * Browser-side client for authentication.
  *
- * The base URL arrives as a prop from a server component rather than through a
- * NEXT_PUBLIC_ variable. It is not a secret - the browser calls that host
- * anyway - but `neon config apply` writes exactly one variable for it, and
- * duplicating it under a second name is how the two drift apart.
+ * It is pointed at THIS app, not at Neon. The catch-all route at
+ * src/app/api/auth/[...path] forwards to Neon from the server, which is what
+ * makes the session cookie first-party - see src/lib/auth-server.ts for why
+ * that is not optional on iOS. Nothing here needs to know Neon's hostname, so
+ * NEON_AUTH_BASE_URL stays server-side and never reaches the bundle.
+ *
+ * The path must be absolute-with-a-path: Better Auth appends '/api/auth' to
+ * any base URL that has no path of its own, so passing the bare origin would
+ * silently work and passing '/api/auth/' would not.
  *
  * Typed as VanillaBetterAuthClient rather than ReturnType<typeof
  * createAuthClient>: for a generic function ReturnType resolves the parameter
@@ -18,9 +23,11 @@ import { createAuthClient, type VanillaBetterAuthClient } from '@neondatabase/au
  * Memoised so the session cache and cross-tab sync the client keeps alive
  * survive re-renders.
  */
+const AUTH_API_PATH = '/api/auth';
+
 let client: VanillaBetterAuthClient | undefined;
 
-export function getAuthClient(baseUrl: string): VanillaBetterAuthClient {
+export function getAuthClient(): VanillaBetterAuthClient {
   if (client === undefined) {
     // createAuthClient declares a default type parameter, but its return type
     // still widens to the union of every adapter (including the Supabase one),
@@ -28,7 +35,9 @@ export function getAuthClient(baseUrl: string): VanillaBetterAuthClient {
     // internal chunk under a mangled alias. One cast here is contained; without
     // it every call site loses the method types. Revisit when the package
     // leaves beta - it is 0.5.0-beta today.
-    client = createAuthClient(baseUrl) as VanillaBetterAuthClient;
+    client = createAuthClient(
+      `${window.location.origin}${AUTH_API_PATH}`,
+    ) as VanillaBetterAuthClient;
   }
   return client;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authBaseUrl, authJwksUrl } from './auth-env';
+import { authBaseUrl, authCookieSecret, authJwksUrl } from './auth-env';
 
 const BASE = 'https://ep-example-123456.us-east-1.aws.neon.tech/realmoney/auth';
 
@@ -24,5 +24,24 @@ describe('auth environment', () => {
     expect(() => authBaseUrl({ NEON_AUTH_BASE_URL: 'ep-example.neon.tech' })).toThrow(
       /not a valid URL/,
     );
+  });
+
+  // 32 characters is the SDK's floor, and it enforces it too. Checking here is
+  // about WHERE the error surfaces: a placeholder like "changeme" should name
+  // the variable at boot, not fail somewhere inside @neondatabase/auth.
+  it('rejects a cookie secret shorter than 32 characters', () => {
+    const short = 'a'.repeat(31);
+    expect(() => authCookieSecret({ NEON_AUTH_COOKIE_SECRET: short })).toThrow(
+      /at least 32 characters/,
+    );
+    expect(authCookieSecret({ NEON_AUTH_COOKIE_SECRET: `${short}a` })).toHaveLength(32);
+  });
+
+  // This one is NOT written by `neon config apply`, so the message must not
+  // send the reader off to run the CLI and wonder why nothing changed.
+  it('tells the reader how to generate the cookie secret', () => {
+    expect(() => authCookieSecret({})).toThrow(/NEON_AUTH_COOKIE_SECRET is not set/);
+    expect(() => authCookieSecret({})).toThrow(/openssl rand/);
+    expect(() => authCookieSecret({})).not.toThrow(/neon config apply/);
   });
 });

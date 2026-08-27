@@ -3,25 +3,24 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { authBaseUrl, authJwksUrl } from './auth-env';
 
 /**
- * Server-side verification of the session Neon Auth issued.
+ * Verification of a Neon Auth token that arrived on its own, not in a cookie.
  *
- * WHY A JWT AND NOT A DATABASE LOOKUP
- * -----------------------------------
- * The auth server is Neon's, not ours. Verifying a session by querying its
- * tables on every request would add a round trip to a schema we do not own.
- * Instead the token is signed, and we check the signature against the public
- * keys Neon publishes at the JWKS endpoint. No shared secret, no extra query.
+ * WHO USES THIS
+ * -------------
+ * Not the PWA. Browser sessions are cookies, read through
+ * `getCurrentUser()` in src/lib/session.ts. This is for the surfaces a third
+ * party calls: the iOS Shortcut hitting /api/v1/quick-add and the Telegram
+ * webhook, which present a token in an Authorization header and have no
+ * cookie jar at all.
  *
- * WHY THE TOKEN LIVES IN AN httpOnly COOKIE, NEVER IN localStorage
- * ---------------------------------------------------------------
- * Anything in localStorage is readable by any JavaScript on the page. One
- * compromised dependency - and a Next app has hundreds - reads the token and
- * the attacker has the session. An httpOnly cookie is not reachable from
- * JavaScript at all: the browser attaches it and script cannot read it, so the
- * same compromised dependency gets nothing. The trade is that cookies ride
- * along automatically, which is what CSRF exploits, and that is handled by
- * SameSite plus the origin checks below - a solved problem, unlike "an
- * attacker can read your token", which has no mitigation.
+ * WHY A SIGNATURE CHECK AND NOT A DATABASE LOOKUP
+ * ----------------------------------------------
+ * The auth server is Neon's, not ours. Verifying a token by querying its
+ * tables on every request would add a round trip to a schema we do not own -
+ * and these are the two paths with the tightest budget: the Shortcut times out
+ * at 30s and Neon cold-starts at up to ~2.6s p95. Instead the token is signed,
+ * and we check the signature against the public keys Neon publishes at the
+ * JWKS endpoint. No shared secret, no extra query.
  */
 
 // Cached across invocations: the key set is fetched once and refreshed on
