@@ -282,6 +282,23 @@ Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScr
 | Lighthouse CI (presupuesto P7) | Bloquea merge |
 | Migraciones | Se aplican **primero** a un branch de Neon creado desde producción |
 
+### Migraciones — nunca confiar en el código de salida
+
+`drizzle-kit migrate` puede **salir con código 1 sin imprimir el error**: el spinner se lo come. Un fallo silencioso en migraciones es cómo una base a medio migrar llega a producción.
+
+Por eso `pnpm db:migrate` **no llama a drizzle-kit directamente**, sino a `scripts/db-migrate.mts`, que:
+
+1. Lee del propio Postgres qué migraciones dice tener aplicadas.
+2. **Rechaza** cualquier migración con `SET DATA TYPE` sin `USING`, antes de tocar la base. Postgres no castea entre tipos por su cuenta, y ese es exactamente el `ALTER` que falló en B3.
+3. Corre la herramienta.
+4. **Vuelve a leer el registro** y comprueba que avanzó exactamente lo esperado. Si falta alguna, la nombra y sale con error.
+
+Nunca se da por buena una migración porque el comando "no dio error". Se comprueba contra la base.
+
+`pnpm db:migrate:raw` existe como escape, pero no se usa salvo para depurar.
+
+Y sigue vigente lo de arriba: **branch de Neon primero, `main` después.** Fue lo único que destapó este fallo.
+
 ---
 
 ## Diseño
