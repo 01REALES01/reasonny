@@ -20,7 +20,8 @@
     "db:inspect": "tsx scripts/db-inspect.mts",
     "test:coverage": "vitest run --coverage",
     "db:migrate:raw": "drizzle-kit migrate",
-    "metrics:report": "tsx scripts/metrics-report.mts"
+    "metrics:report": "tsx scripts/metrics-report.mts",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@neon/config": "1.0.4",
@@ -37,6 +38,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@lhci/cli": "0.15.1",
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

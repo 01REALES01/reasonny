@@ -8,6 +8,7 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 coverage/
+.lighthouseci/
 .DS_Store
 *.pem
 npm-debug.log*

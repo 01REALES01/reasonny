@@ -1,0 +1,109 @@
+# The gates CLAUDE.md already called merge-blocking.
+#
+# Until now they were merge-blocking in prose only: money.ts at 100%, the
+# architecture test, and the P7 performance budget were all things somebody had
+# to remember to run. A gate nobody runs is a comment.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant. Cancelling it
+# also stops a PR from queueing two identical runs of everything below.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Obviously-fake values so `next build` and `next start` can run without
+  # touching a real database or auth server. Nothing in CI reads or writes real
+  # data: every page Lighthouse visits is public, and the test suite mocks the
+  # database entirely. These are not secrets and must never be real ones - this
+  # repository is public.
+  DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci_not_a_real_database'
+  DATABASE_URL_UNPOOLED: 'postgresql://ci:ci@localhost:5432/ci_not_a_real_database'
+  NEON_AUTH_BASE_URL: 'https://auth.invalid'
+  NEON_AUTH_JWKS_URL: 'https://auth.invalid/.well-known/jwks.json'
+  NEON_AUTH_COOKIE_SECRET: 'ci-placeholder-value-not-a-real-secret-000'
+
+jobs:
+  quality:
+    name: Types, tests and coverage gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile makes the run fail if package.json and the lockfile
+      # disagree. That matters more here than in most projects: the version
+      # matrix between zod 4, drizzle-zod and the resolvers is known to be
+      # fragile, and the whole point of pinning exact versions is lost if CI
+      # quietly resolves something else.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Runs the whole suite, which includes tests/architecture.test.ts - the
+      # test that fails if any `db.` access appears outside core/repositories -
+      # and enforces the 100% threshold on src/core/money.ts declared in
+      # vitest.config.ts. Verified to exit 1 when that threshold is violated.
+      - name: Tests and coverage thresholds
+        run: pnpm test:coverage
+
+      - name: Production build
+        run: pnpm build
+
+  lighthouse:
+    name: Performance budget (P7)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # Started here rather than through lhci's startServerCommand so that a
+      # server which fails to boot shows its own output in the log instead of
+      # surfacing as an opaque Lighthouse timeout.
+      - name: Start the app
+        run: |
+          pnpm start &
+          npx --yes wait-on http://localhost:3000/sign-in --timeout 60000
+
+      # Only /sign-in is measured, because it is the only page that renders
+      # without a session. The authenticated screens are noindex and unreachable
+      # to a lab run; their real numbers come from the field, through the
+      # web-vitals instrumentation added in B9 - which is the measurement P7 is
+      # actually defined on (p75 of real users, not a lab run).
+      #
+      # INP has no lab equivalent: it needs a real person interacting. Total
+      # Blocking Time is asserted in its place at the same 200ms, as the
+      # standard lab proxy for main-thread work. The genuine INP figure comes
+      # from METRICS.md.
+      - name: Lighthouse CI
+        run: pnpm lighthouse
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci
+          retention-days: 14
