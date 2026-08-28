@@ -61,20 +61,43 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           </span>
         </div>
 
-        {data.uncategorizedCount > 0 && (
-          <span
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {data.uncategorizedCount > 0 && (
+            <span
+              style={{
+                backgroundColor: 'rgba(224, 163, 46, 0.14)',
+                color: 'var(--warning)',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--text-caption)',
+                fontWeight: 600,
+              }}
+            >
+              {data.uncategorizedCount} por revisar
+            </span>
+          )}
+
+          <a
+            href="/api/v1/export"
+            download
+            title="Exportar todas las transacciones a CSV"
             style={{
-              backgroundColor: 'rgba(224, 163, 46, 0.14)',
-              color: 'var(--warning)',
-              padding: '4px 10px',
+              backgroundColor: 'var(--surface-overlay)',
+              color: 'var(--ink-secondary)',
+              border: '1px solid var(--border-hairline)',
+              padding: '4px 12px',
               borderRadius: 'var(--radius-full)',
               fontSize: 'var(--text-caption)',
-              fontWeight: 600,
+              fontWeight: 500,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
             }}
           >
-            {data.uncategorizedCount} por revisar
-          </span>
-        )}
+            ↓ CSV
+          </a>
+        </div>
       </header>
 
       {/* 1. Hero Balance Card (DESIGN_SYSTEM.md 6.1) */}
