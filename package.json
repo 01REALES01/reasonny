@@ -19,7 +19,8 @@
     "db:check": "tsx scripts/db-check.ts",
     "db:inspect": "tsx scripts/db-inspect.mts",
     "test:coverage": "vitest run --coverage",
-    "db:migrate:raw": "drizzle-kit migrate"
+    "db:migrate:raw": "drizzle-kit migrate",
+    "metrics:report": "tsx scripts/metrics-report.mts"
   },
   "dependencies": {
     "@neon/config": "1.0.4",
@@ -32,6 +33,7 @@
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "web-vitals": "6.2.1",
     "zod": "4.4.3"
   },
   "devDependencies": {

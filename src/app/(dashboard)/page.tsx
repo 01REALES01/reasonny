@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 
 import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 import { HeroCard } from '@/components/dashboard/hero-card';
@@ -8,6 +9,7 @@ import { MonthlyCard } from '@/components/dashboard/monthly-card';
 import { TransactionItem } from '@/components/dashboard/transaction-item';
 import { getDashboardData } from '@/core/services/analytics.service';
 import { ensureProfile } from '@/core/repositories/profile.repository';
+import { recordMetric } from '@/core/services/telemetry.service';
 import { toUserId } from '@/core/types';
 import { getCurrentUser } from '@/lib/session';
 
@@ -25,7 +27,31 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
   const userId = toUserId(session.id);
   await ensureProfile(userId, session.email);
+
+  // Dashboard query latency (B9). Timed around the aggregation only, so the
+  // number answers "how slow is the data layer" and not "how slow is React".
+  // It deliberately includes Neon's cold start, which is documented at up to
+  // ~2.6s p95 and is the single largest contributor - a baseline that excluded
+  // it would describe a database nobody is actually using.
+  const queryStartedAt = performance.now();
   const data = await getDashboardData(userId);
+  const queryDurationMs = performance.now() - queryStartedAt;
+
+  // after() runs once the response has been streamed, so recording the
+  // measurement costs the user nothing. Writing it inline would add a round
+  // trip to the page whose latency is being measured, which would corrupt the
+  // next reading - the instrument would be measuring itself.
+  after(async () => {
+    try {
+      await recordMetric(userId, {
+        metric: 'dashboard_query_duration',
+        value: queryDurationMs,
+        route: '/',
+      });
+    } catch (error) {
+      console.error('[telemetry] failed to record dashboard latency:', error);
+    }
+  });
 
   return (
     <div

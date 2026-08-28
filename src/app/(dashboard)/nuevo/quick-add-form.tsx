@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
 
 import { createQuickTransactionAction } from '@/app/actions/transactions';
 import { Money } from '@/components/ui/money';
@@ -9,6 +9,7 @@ import { parseMoney } from '@/core/money';
 import type { AccountRow } from '@/core/repositories/account.repository';
 import type { CategoryRow } from '@/core/repositories/category.repository';
 import { t } from '@/lib/i18n';
+import { reportManualEntryDuration, startTiming } from '@/lib/telemetry';
 
 interface QuickAddFormProps {
   readonly accounts: AccountRow[];
@@ -33,6 +34,22 @@ export function QuickAddForm({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+
+  /**
+   * The phase-1 baseline (B9): how long a manual entry actually takes.
+   *
+   * The stopwatch starts when the form appears, not on first keystroke,
+   * because what phase 2 will be compared against is the whole cost of
+   * recording an expense by hand - including staring at the screen deciding
+   * what to call the merchant. A ref rather than state: this value changes
+   * without anything on screen depending on it, and putting it in state would
+   * re-render the form on every entry for no visible reason (P7).
+   */
+  const stopTimingRef = useRef<(() => number) | null>(null);
+
+  useEffect(() => {
+    stopTimingRef.current = startTiming();
+  }, []);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
@@ -74,6 +91,17 @@ export function QuickAddForm({
       if (!result.success) {
         setError(result.error ?? t('error_generic'));
       } else {
+        // Only a successful save counts. Timing an attempt that errored would
+        // mix "how long entry takes" with "how long a failure takes", and the
+        // baseline is meant to answer the first question.
+        const elapsedMs = stopTimingRef.current?.();
+        if (elapsedMs !== undefined) {
+          reportManualEntryDuration(elapsedMs);
+        }
+        // The form stays open for another entry, so the next one is timed from
+        // here rather than from the original mount.
+        stopTimingRef.current = startTiming();
+
         setSuccess(true);
         setAmountInput('');
         setMerchant('');

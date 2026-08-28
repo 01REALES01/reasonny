@@ -60,29 +60,63 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 
 ## Fase 1 — Líneas base
 
+> **Estado del instrumento (28-ago-2026).** La instrumentación existe y está
+> cableada: `src/lib/telemetry.ts` en el navegador, `POST /api/v1/telemetry`
+> como receptor, tabla `telemetry_events` con escala fija 1000. Los valores de
+> abajo siguen vacíos porque **todavía no hay uso real que medir** — y ese es
+> justamente el criterio §11.8 del plan. Se rellenan con:
+>
+> ```bash
+> pnpm metrics:report          # imprime p50/p75/p95 y n de todo lo de abajo
+> ```
+>
+> Ningún número se copia aquí sin el `n` que lo acompaña en esa salida (P6).
+
 ### [ pendiente ] Tiempo de registro manual
 
 - **p50 / p95:** — / —
 - **n:** —
-- **Método:** instrumentado en `src/lib/telemetry.ts`, ms desde apertura del formulario hasta submit exitoso
+- **Método:** cronómetro monótono (`performance.now()`) en `src/lib/telemetry.ts`,
+  arrancado al montar el formulario de `/nuevo` y detenido en el `submit`
+  **exitoso**. Los intentos fallidos no cuentan: medirían "cuánto tarda un
+  error", no cuánto cuesta registrar un gasto. Enviado inmediatamente, no al
+  cerrar la pestaña, porque el usuario suele quedarse en la app
 - **Línea base:** primera medición
-- **Conclusión:** es *la* referencia contra la que se medirán el OCR (Fase 2) y la automatización (Fase 4)
+- **Conclusión:** es *la* referencia contra la que se medirán el OCR (Fase 2) y
+  la automatización (Fase 4). Solo puede capturarse mientras la entrada siga
+  siendo 100% manual
 
 ### [ pendiente ] Core Web Vitals reales
 
 - **LCP p75:** — · **INP p75:** — · **CLS p75:** —
-- **Método:** librería `web-vitals` sobre uso real, no Lighthouse de laboratorio
+- **n:** —
+- **Método:** librería `web-vitals` 6.2.1 sobre uso real, enviada con
+  `navigator.sendBeacon` en `visibilitychange`/`pagehide` — el único momento en
+  que INP es definitivo. Sin `reportAllChanges`: se guarda el valor final, no
+  los intermedios. No es Lighthouse de laboratorio
 - **Objetivo (P7):** LCP <2.5s · INP <200ms · CLS <0.1
+- **Nota:** el veredicto se calcula sobre **p75**, no sobre p50. Un p50 que pasa
+  mientras el p75 falla no es un aprobado
 
 ### [ pendiente ] Latencia del dashboard
 
 - **p50 / p95:** — / —
-- **Método:** incluye cold start de Neon (300ms-2.6s p95 documentado)
+- **n:** —
+- **Método:** medido en servidor alrededor de `getDashboardData` y registrado
+  con `after()` de Next, ya enviada la respuesta, para que instrumentar no
+  cueste latencia. **Incluye el cold start de Neon** (300ms-2.6s p95
+  documentado): excluirlo describiría una base de datos que nadie usa
 
 ### [ pendiente ] Uso diario
 
 - **Valor:** días con ≥1 registro / días transcurridos
-- **Conclusión:** línea base de retención. El criterio de §1 exige ≥3 aperturas/semana en la semana 6
+- **n:** —
+- **Método:** `COUNT(DISTINCT)` sobre fechas **locales** de `transactions`
+  (`AT TIME ZONE`), no sobre `telemetry_events`: la evidencia de que la app se
+  usa es una transacción que el usuario decidió crear, no una visita de página.
+  Días transcurridos se cuentan desde el primer registro, inclusive
+- **Conclusión:** línea base de retención. El criterio de §1 exige ≥3
+  aperturas/semana en la semana 6
 
 ---
 

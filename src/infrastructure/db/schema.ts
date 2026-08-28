@@ -334,3 +334,66 @@ export const ingestionFailures = pgTable('ingestion_failures', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   createdAt: createdAt(),
 });
+
+// 10. Telemetry events ───────────────────────────────────────────────────────
+// B9. The table that makes every later performance claim checkable.
+//
+// WHY IN THIS DATABASE AND NOT IN AN ANALYTICS SERVICE
+// ---------------------------------------------------
+// Two of the four phase-1 baselines are JOINs against financial data: "days
+// with at least one entry / days elapsed" needs `transactions`, and dashboard
+// latency is only interpretable next to how many rows that dashboard had to
+// read. An external product would hold half of each answer and could not be
+// asked the question at all. It would also mean shipping behavioural data
+// about someone's spending to a third party, for one user, for free-tier
+// analytics nobody is reading yet.
+//
+// WHY value_scaled IS BIGINT AND NOT double precision
+// --------------------------------------------------
+// web-vitals reports LCP in fractional milliseconds and CLS as a unitless
+// ratio below 1. A float column would store both, at the cost of putting a
+// float in a schema whose first rule is that money never uses one - and then
+// every reader has to stop and work out whether this column is an exception or
+// a mistake. Same trick as core/money.ts instead: a fixed scale of 1000, so
+// 2431.7 ms is 2431700 and a CLS of 0.083 is 83. Exact, one type, no exception
+// to remember. TELEMETRY_SCALE in core/telemetry.ts is the only place
+// that number appears in code.
+export const telemetryEvents = pgTable(
+  'telemetry_events',
+  {
+    id: primaryId(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    metric: varchar({ length: 40 }).notNull(),
+    valueScaled: bigint('value_scaled', { mode: 'bigint' }).notNull(),
+    // web-vitals' own good/needs-improvement/poor verdict. Derivable from the
+    // value and the P7 thresholds, but stored because those thresholds are
+    // Google's and they move; a rating computed later against 2027 thresholds
+    // would silently rewrite what 2026 measured.
+    rating: varchar({ length: 20 }),
+    route: text(),
+    metadata: jsonb(),
+    // Server time on purpose. sendBeacon fires as the tab goes away and can
+    // arrive seconds late, but a client-supplied timestamp is a clock this app
+    // does not control, and a skewed one would land rows in the wrong day of
+    // the daily-usage baseline.
+    createdAt: createdAt(),
+  },
+  (t) => [
+    // The shape of every baseline query: one user, one metric, over a window.
+    index('idx_telemetry_user_metric_time').on(t.userId, t.metric, t.createdAt.desc()),
+    check(
+      'telemetry_metric_check',
+      sql`${t.metric} IN ('LCP','INP','CLS','FCP','TTFB','manual_entry_duration','dashboard_query_duration')`,
+    ),
+    // A negative duration means a broken clock, not a fast page. Rejecting it
+    // at the constraint keeps it out of the percentiles instead of making
+    // someone explain an impossible p50 months later.
+    check('telemetry_value_check', sql`${t.valueScaled} >= 0`),
+    check(
+      'telemetry_rating_check',
+      sql`${t.rating} IS NULL OR ${t.rating} IN ('good','needs-improvement','poor')`,
+    ),
+  ],
+);

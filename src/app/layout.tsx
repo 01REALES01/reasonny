@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register';
+import { WebVitalsReporter } from '@/components/telemetry/web-vitals-reporter';
 
 export const metadata: Metadata = {
   title: 'RealMoney',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <ServiceWorkerRegister />
+        <WebVitalsReporter />
         {children}
       </body>
     </html>
