@@ -7,6 +7,7 @@ import { HeroCard } from '@/components/dashboard/hero-card';
 import { MonthlyCard } from '@/components/dashboard/monthly-card';
 import { TransactionItem } from '@/components/dashboard/transaction-item';
 import { getDashboardData } from '@/core/services/analytics.service';
+import { ensureProfile } from '@/core/repositories/profile.repository';
 import { toUserId } from '@/core/types';
 import { getCurrentUser } from '@/lib/session';
 
@@ -23,6 +24,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   }
 
   const userId = toUserId(session.id);
+  await ensureProfile(userId, session.email);
   const data = await getDashboardData(userId);
 
   return (

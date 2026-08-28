@@ -8,7 +8,7 @@ import {
   createAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
-import { getProfile } from '@/core/repositories/profile.repository';
+import { ensureProfile, getProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { toAccountId, toCategoryId, toUserId } from '@/core/types';
 import { requireCurrentUser } from '@/lib/session';
@@ -52,8 +52,8 @@ export async function createQuickTransactionAction(
 
     const { amount, merchant, type, categoryId, accountId, note, transactionDate } = parsed.data;
 
-    // Resolve user profile for base currency
-    const profile = await getProfile(userId);
+    // Ensure user profile exists and resolve base currency
+    const profile = await ensureProfile(userId, session.email);
     const baseCurrency = profile?.baseCurrency ?? 'COP';
 
     // Parse amount to minor units

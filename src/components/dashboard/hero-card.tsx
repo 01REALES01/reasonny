@@ -27,34 +27,71 @@ export function HeroCard({
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        minHeight: '160px',
+        minHeight: '170px',
         position: 'relative',
+        boxShadow: '0 12px 32px rgba(194, 65, 12, 0.25)',
+        overflow: 'hidden',
       }}
     >
-      <div>
+      {/* Subtle decorative mesh circle */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-40px',
+          right: '-40px',
+          width: '140px',
+          height: '140px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.08)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
         <span
           style={{
             fontSize: 'var(--text-label)',
-            color: 'rgba(255, 255, 255, 0.76)',
-            fontWeight: 500,
+            color: 'rgba(255, 255, 255, 0.82)',
+            fontWeight: 600,
             textTransform: 'uppercase',
-            letterSpacing: '0.5px',
+            letterSpacing: '0.6px',
           }}
         >
           Saldo Total Disponible
         </span>
-        <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-hero)', fontWeight: 600 }}>
+        <div
+          style={{
+            marginTop: 'var(--space-2)',
+            fontSize: 'var(--text-hero)',
+            fontWeight: 700,
+            color: '#FFFFFF',
+            lineHeight: 1.1,
+          }}
+        >
           <Money amountMinor={totalBalanceMinor} currency={currency} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-3)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 'var(--space-4)',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        <span style={{ fontSize: 'var(--text-caption)', color: 'rgba(255, 255, 255, 0.75)' }}>
+          {currency} · Actualizado en tiempo real
+        </span>
+
         <Link
           href="/nuevo"
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.28)',
+            backgroundColor: 'rgba(0, 0, 0, 0.32)',
             color: '#FFFFFF',
-            padding: 'var(--space-2) var(--space-4)',
+            padding: '6px 14px',
             borderRadius: 'var(--radius-full)',
             fontSize: 'var(--text-label)',
             fontWeight: 600,
@@ -62,7 +99,7 @@ export function HeroCard({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            transition: 'background-color var(--duration-fast)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
         >
           + Nuevo Gasto

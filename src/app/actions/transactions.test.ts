@@ -6,6 +6,7 @@ vi.mock('@/lib/session', () => ({
 
 vi.mock('@/core/repositories/profile.repository', () => ({
   getProfile: vi.fn(),
+  ensureProfile: vi.fn(),
 }));
 
 vi.mock('@/core/repositories/account.repository', () => ({
@@ -25,7 +26,7 @@ import {
   createAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
-import { getProfile } from '@/core/repositories/profile.repository';
+import { ensureProfile, getProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { requireCurrentUser } from '@/lib/session';
 
@@ -43,6 +44,10 @@ describe('createQuickTransactionAction Server Action', () => {
       email: 'jean@example.com',
     });
     (getProfile as any).mockResolvedValue({
+      id: userId,
+      baseCurrency: 'COP',
+    });
+    (ensureProfile as any).mockResolvedValue({
       id: userId,
       baseCurrency: 'COP',
     });

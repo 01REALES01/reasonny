@@ -55,6 +55,22 @@ export async function upsertProfile(
   return row;
 }
 
+/**
+ * Ensures a profile row exists in the profiles table for this authenticated user.
+ * Neon Auth manages credentials in `neon_auth.user`; this ensures our domain
+ * profile row and FK targets exist.
+ */
+export async function ensureProfile(
+  userId: UserId,
+  email: string,
+): Promise<ProfileRow> {
+  const existing = await getProfile(userId);
+  if (existing) {
+    return existing;
+  }
+  return upsertProfile(userId, { email });
+}
+
 export async function updateTelegramChatId(
   userId: UserId,
   telegramChatId: bigint | null,

@@ -6,6 +6,7 @@ import {
   listCategories,
   seedDefaultCategories,
 } from '@/core/repositories/category.repository';
+import { ensureProfile } from '@/core/repositories/profile.repository';
 import { toUserId } from '@/core/types';
 import { getCurrentUser } from '@/lib/session';
 
@@ -24,6 +25,9 @@ export default async function QuickAddPage(): Promise<React.ReactElement> {
   }
 
   const userId = toUserId(session.id);
+
+  // Ensure profile row exists in database for foreign key integrity
+  await ensureProfile(userId, session.email);
 
   let [accounts, categories] = await Promise.all([
     listAccounts(userId),

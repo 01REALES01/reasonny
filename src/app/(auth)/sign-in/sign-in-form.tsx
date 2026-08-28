@@ -1,19 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 import { getAuthClient } from '@/lib/auth-client';
 
 type Step = 'email' | 'code';
 
 /**
- * Two steps, because Neon Auth has no magic link: a one-time code arrives by
- * email and is exchanged for a session. Same passwordless property as a link,
- * and on a phone it is better - no app switch, and no corporate link scanner
- * consuming the link before the user does.
+ * Two-step passwordless sign-in with email one-time code (OTP).
  *
- * Styling is deliberately absent. The design system lands with the UI blocks;
- * inventing values here would mean rewriting them.
+ * Implements high-polish dark mode styles matching DESIGN_SYSTEM.md tokens.
  */
 export function SignInForm(): React.ReactElement {
   const [step, setStep] = useState<Step>('email');
@@ -29,10 +25,10 @@ export function SignInForm(): React.ReactElement {
     try {
       const auth = getAuthClient();
       const result = await auth.emailOtp.sendVerificationOtp({ email, type: 'sign-in' });
-      if (result.error) throw new Error(result.error.message ?? 'Could not send the code.');
+      if (result.error) throw new Error(result.error.message ?? 'No se pudo enviar el código.');
       setStep('code');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not send the code.');
+      setError(cause instanceof Error ? cause.message : 'No se pudo enviar el código.');
     } finally {
       setBusy(false);
     }
@@ -45,10 +41,10 @@ export function SignInForm(): React.ReactElement {
     try {
       const auth = getAuthClient();
       const result = await auth.signIn.emailOtp({ email, otp: code });
-      if (result.error) throw new Error(result.error.message ?? 'That code did not work.');
+      if (result.error) throw new Error(result.error.message ?? 'El código ingresado es incorrecto.');
       window.location.assign('/');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'That code did not work.');
+      setError(cause instanceof Error ? cause.message : 'El código ingresado es incorrecto.');
     } finally {
       setBusy(false);
     }
@@ -56,45 +52,184 @@ export function SignInForm(): React.ReactElement {
 
   if (step === 'email') {
     return (
-      <form onSubmit={sendCode}>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          required
-          autoComplete="email"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button type="submit" disabled={busy}>
-          {busy ? 'Sending…' : 'Send code'}
+      <form
+        onSubmit={sendCode}
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <label
+            htmlFor="email"
+            style={{
+              fontSize: 'var(--text-label)',
+              color: 'var(--ink-secondary)',
+              fontWeight: 500,
+            }}
+          >
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            type="email"
+            placeholder="tu@correo.com"
+            value={email}
+            required
+            autoFocus
+            autoComplete="email"
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              fontSize: 'var(--text-body)',
+              padding: 'var(--space-3) var(--space-4)',
+              backgroundColor: 'var(--surface-sunken)',
+              border: '1px solid var(--border-hairline)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--ink-primary)',
+            }}
+          />
+        </div>
+
+        {error && (
+          <div
+            role="alert"
+            style={{
+              backgroundColor: 'rgba(229, 72, 77, 0.14)',
+              color: 'var(--critical)',
+              padding: 'var(--space-3)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--text-caption)',
+              fontWeight: 500,
+            }}
+          >
+            ⚠ {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy}
+          style={{
+            backgroundColor: 'var(--brand-500)',
+            color: '#FFFFFF',
+            padding: 'var(--space-3) var(--space-4)',
+            fontSize: 'var(--text-body)',
+            fontWeight: 600,
+            borderRadius: 'var(--radius-md)',
+            marginTop: 'var(--space-2)',
+            boxShadow: '0 4px 16px rgba(129, 114, 242, 0.3)',
+            height: '46px',
+          }}
+        >
+          {busy ? 'Enviando código…' : 'Continuar con correo'}
         </button>
-        {error ? <p role="alert">{error}</p> : null}
+
+        <p style={{ fontSize: 'var(--text-caption)', color: 'var(--ink-muted)', textAlign: 'center', marginTop: 'var(--space-2)' }}>
+          Te enviaremos un código de un solo uso. Sin contraseñas.
+        </p>
       </form>
     );
   }
 
   return (
-    <form onSubmit={verifyCode}>
-      <p>We sent a code to {email}.</p>
-      <label htmlFor="code">Code</label>
-      <input
-        id="code"
-        // One-time-code lets iOS and Android offer the code from the message
-        // itself, which is most of why this beats a link on a phone.
-        autoComplete="one-time-code"
-        inputMode="numeric"
-        value={code}
-        required
-        onChange={(e) => setCode(e.target.value)}
-      />
-      <button type="submit" disabled={busy}>
-        {busy ? 'Checking…' : 'Sign in'}
+    <form
+      onSubmit={verifyCode}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+    >
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+        <h2 style={{ fontSize: 'var(--text-heading)', fontWeight: 600, color: 'var(--ink-primary)' }}>
+          Verifica tu código
+        </h2>
+        <p style={{ fontSize: 'var(--text-label)', color: 'var(--ink-secondary)' }}>
+          Enviamos un código a <strong>{email}</strong>
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+        <label
+          htmlFor="code"
+          style={{
+            fontSize: 'var(--text-label)',
+            color: 'var(--ink-secondary)',
+            fontWeight: 500,
+            textAlign: 'center',
+          }}
+        >
+          Código de 6 dígitos
+        </label>
+        <input
+          id="code"
+          type="text"
+          autoFocus
+          autoComplete="one-time-code"
+          inputMode="numeric"
+          placeholder="••••••"
+          value={code}
+          required
+          onChange={(e) => setCode(e.target.value.trim())}
+          style={{
+            fontSize: '24px',
+            fontWeight: 700,
+            letterSpacing: '0.3em',
+            textAlign: 'center',
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--surface-sunken)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--ink-primary)',
+            fontFamily: 'monospace',
+          }}
+        />
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: 'rgba(229, 72, 77, 0.14)',
+            color: 'var(--critical)',
+            padding: 'var(--space-3)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--text-caption)',
+            fontWeight: 500,
+          }}
+        >
+          ⚠ {error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={busy}
+        style={{
+          backgroundColor: 'var(--brand-500)',
+          color: '#FFFFFF',
+          padding: 'var(--space-3) var(--space-4)',
+          fontSize: 'var(--text-body)',
+          fontWeight: 600,
+          borderRadius: 'var(--radius-md)',
+          marginTop: 'var(--space-2)',
+          boxShadow: '0 4px 16px rgba(129, 114, 242, 0.3)',
+          height: '46px',
+        }}
+      >
+        {busy ? 'Verificando…' : 'Ingresar a RealMoney'}
       </button>
-      <button type="button" onClick={() => setStep('email')} disabled={busy}>
-        Use a different email
+
+      <button
+        type="button"
+        onClick={() => {
+          setStep('email');
+          setError(undefined);
+        }}
+        disabled={busy}
+        style={{
+          backgroundColor: 'transparent',
+          color: 'var(--ink-secondary)',
+          fontSize: 'var(--text-label)',
+          fontWeight: 500,
+          padding: 'var(--space-2)',
+        }}
+      >
+        ← Usar un correo diferente
       </button>
-      {error ? <p role="alert">{error}</p> : null}
     </form>
   );
 }
