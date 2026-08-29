@@ -195,15 +195,3 @@ export function reportManualEntryDuration(durationMs: number, route?: string): v
   });
   flush();
 }
-
-/** Exposed for tests, which need a way to observe the buffer without a network. */
-export function __getQueueForTesting(): readonly TelemetrySample[] {
-  return queue;
-}
-
-/** Exposed for tests: resets module state between cases. */
-export function __resetForTesting(): void {
-  queue.length = 0;
-  initialised = false;
-  vitalsRoute = null;
-}
