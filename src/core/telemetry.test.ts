@@ -1,14 +1,15 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   computeDailyUsageRate,
   fromScaledValue,
   hasPerformanceBudget,
-  isTelemetryMetric,
-  isTelemetryRating,
   meetsPerformanceBudget,
   PERFORMANCE_BUDGET,
   TELEMETRY_METRICS,
+  TELEMETRY_RATINGS,
   TELEMETRY_SCALE,
   toScaledValue,
 } from './telemetry';
@@ -57,28 +58,40 @@ describe('Telemetry scaling', () => {
   });
 });
 
-describe('Telemetry metric guards', () => {
-  it('accepts every metric the schema CHECK allows', () => {
-    for (const metric of TELEMETRY_METRICS) {
-      expect(isTelemetryMetric(metric)).toBe(true);
-    }
+/**
+ * The tuples above and the CHECK constraints in the schema are two hand-written
+ * copies of the same list. Nothing in the type system connects them, so adding
+ * a metric in TypeScript and forgetting the migration is a write that passes
+ * Zod, passes the compiler, and is refused by Postgres inside a
+ * fire-and-forget beacon nobody is watching.
+ *
+ * This reads the constraint out of schema.ts rather than asserting a third
+ * hardcoded copy - a literal list here would drift alongside the other two.
+ */
+describe('Telemetry vocabulary matches the database CHECK constraints', () => {
+  const schemaSource = readFileSync(
+    new URL('../infrastructure/db/schema.ts', import.meta.url),
+    'utf-8',
+  );
+
+  function allowedValuesIn(constraintName: string): string[] {
+    const check = schemaSource.match(
+      new RegExp(`'${constraintName}',[\\s\\S]*?IN \\(([^)]*)\\)`),
+    );
+    if (!check?.[1]) throw new Error(`No IN(...) list found for ${constraintName}.`);
+    return [...check[1].matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+  }
+
+  it('allows exactly the metrics TELEMETRY_METRICS declares', () => {
+    expect(allowedValuesIn('telemetry_metric_check').sort()).toEqual(
+      [...TELEMETRY_METRICS].sort(),
+    );
   });
 
-  it('rejects a metric name the database would refuse', () => {
-    // The guard exists so a bad name fails at the API edge with a warning,
-    // rather than as a constraint violation inside a fire-and-forget write.
-    expect(isTelemetryMetric('FID')).toBe(false);
-    expect(isTelemetryMetric('')).toBe(false);
-    expect(isTelemetryMetric(42)).toBe(false);
-    expect(isTelemetryMetric(null)).toBe(false);
-  });
-
-  it('accepts only the three web-vitals ratings', () => {
-    expect(isTelemetryRating('good')).toBe(true);
-    expect(isTelemetryRating('needs-improvement')).toBe(true);
-    expect(isTelemetryRating('poor')).toBe(true);
-    expect(isTelemetryRating('bad')).toBe(false);
-    expect(isTelemetryRating(undefined)).toBe(false);
+  it('allows exactly the ratings TELEMETRY_RATINGS declares', () => {
+    expect(allowedValuesIn('telemetry_rating_check').sort()).toEqual(
+      [...TELEMETRY_RATINGS].sort(),
+    );
   });
 });
 

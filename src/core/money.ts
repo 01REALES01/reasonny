@@ -100,42 +100,6 @@ export function sum(amounts: readonly Money[], currency: string): Money {
   return amounts.reduce<Money>((acc, item) => add(acc, item), zero(currency));
 }
 
-/**
- * Splits an amount into `parts` pieces that add back up to exactly the original.
- *
- * The leftover cannot vanish. 100 minor units split three ways is 34/33/33, not
- * 33.33 three times: the spare unit is handed to the earliest parts, one each,
- * until it runs out. Dropping it would make the pieces sum to 99 and quietly
- * lose a cent on every split - which over a year is a balance that never
- * reconciles and no obvious culprit.
- *
- * Negative amounts distribute the same way, keeping the sign.
- */
-export function allocate(amount: Money, parts: number): Money[] {
-  if (!Number.isInteger(parts) || parts < 1) {
-    throw new Error(`Cannot split into ${parts} parts: expected a positive integer.`);
-  }
-
-  const divisor = BigInt(parts);
-  // bigint division truncates toward zero, so the remainder keeps the sign of
-  // the dividend and the two always add back to the original.
-  const base = amount.minor / divisor;
-  const remainder = amount.minor - base * divisor;
-  const step = remainder < 0n ? -1n : 1n;
-  let left = remainder < 0n ? -remainder : remainder;
-
-  const result: Money[] = [];
-  for (let index = 0; index < parts; index += 1) {
-    let extra = 0n;
-    if (left > 0n) {
-      extra = step;
-      left -= 1n;
-    }
-    result.push({ minor: base + extra, currency: amount.currency });
-  }
-  return result;
-}
-
 // ── Parsing ─────────────────────────────────────────────────────────────────
 
 /**

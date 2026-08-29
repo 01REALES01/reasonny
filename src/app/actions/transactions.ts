@@ -8,17 +8,20 @@ import {
   createAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
-import { ensureProfile, getProfile } from '@/core/repositories/profile.repository';
+import { ensureProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { toAccountId, toCategoryId, toUserId } from '@/core/types';
 import { requireCurrentUser } from '@/lib/session';
 
-export const QuickAddSchema = z.object({
+// Not exported: a 'use server' module may only export async functions, and
+// nothing outside this file reads the schema. z.uuid() rather than the
+// deprecated z.string().uuid().
+const QuickAddSchema = z.object({
   amount: z.string().min(1, 'Amount is required'),
   merchant: z.string().min(1, 'Merchant is required').max(255),
   type: z.enum(['expense', 'income']).default('expense'),
-  categoryId: z.string().uuid().optional().nullable(),
-  accountId: z.string().uuid().optional().nullable(),
+  categoryId: z.uuid().optional().nullable(),
+  accountId: z.uuid().optional().nullable(),
   note: z.string().max(1000).optional().nullable(),
   transactionDate: z.string().optional(),
 });

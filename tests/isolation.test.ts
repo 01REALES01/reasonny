@@ -146,7 +146,7 @@ suite('Tenant isolation against a real database', () => {
       [userA, 'a@example.com'],
       [userB, 'b@example.com'],
     ] as const) {
-      await repos.upsertProfile(types.toUserId(id), { email });
+      await repos.ensureProfile(types.toUserId(id), email);
     }
 
     const uid = types.toUserId(userB);
@@ -379,17 +379,15 @@ suite('Tenant isolation against a real database', () => {
     }, TIMEOUT);
   });
 
-  describe('the lookups that deliberately take no userId', () => {
-    it('resolve the owner instead of trusting a caller-supplied one', async () => {
-      // verifyAndTouchApiKey and getProfileByTelegramChatId are the two
-      // functions without a userId parameter, because they are the entry points
-      // that DISCOVER the tenant. They must return B's id from B's secret - and
-      // nothing at all from a wrong one.
+  describe('the lookup that deliberately takes no userId', () => {
+    it('resolves the owner instead of trusting a caller-supplied one', async () => {
+      // verifyAndTouchApiKey is the only function without a userId parameter,
+      // because it is the entry point that DISCOVERS the tenant. It must return
+      // B's id from B's secret - and nothing at all from a wrong one.
       const found = await repos.verifyAndTouchApiKey('b'.repeat(64));
       expect(found?.userId).toBe(userB);
 
       expect(await repos.verifyAndTouchApiKey('c'.repeat(64))).toBeNull();
-      expect(await repos.getProfileByTelegramChatId(999_999_999n)).toBeNull();
     }, TIMEOUT);
   });
 });

@@ -11,7 +11,7 @@ import { profiles } from '@/infrastructure/db/schema';
 
 export type ProfileRow = typeof profiles.$inferSelect;
 
-export interface UpsertProfileInput {
+interface UpsertProfileInput {
   readonly email: string;
   readonly fullName?: string | null;
   readonly baseCurrency?: string;
@@ -24,7 +24,9 @@ export async function getProfile(userId: UserId): Promise<ProfileRow | null> {
   return rows[0] ?? null;
 }
 
-export async function upsertProfile(
+// Not exported: ensureProfile below is the only caller, and it is the shape
+// callers actually want - "make sure this authenticated user has a row".
+async function upsertProfile(
   userId: UserId,
   input: UpsertProfileInput,
 ): Promise<ProfileRow> {
@@ -69,36 +71,4 @@ export async function ensureProfile(
     return existing;
   }
   return upsertProfile(userId, { email });
-}
-
-export async function updateTelegramChatId(
-  userId: UserId,
-  telegramChatId: bigint | null,
-): Promise<ProfileRow | null> {
-  const db = getDb();
-  const [row] = await db
-    .update(profiles)
-    .set({ telegramChatId })
-    .where(eq(profiles.id, userId))
-    .returning();
-  return row ?? null;
-}
-
-/**
- * Resolves a profile by Telegram chat ID.
- *
- * WHY THIS QUERY DOES NOT TAKE userId
- * -----------------------------------
- * Telegram webhooks receive external updates identified ONLY by the sender's
- * Telegram chat ID. This lookup is the entry point that authenticates and
- * discovers which UserId owns that chat.
- */
-export async function getProfileByTelegramChatId(chatId: bigint): Promise<ProfileRow | null> {
-  const db = getDb();
-  const rows = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.telegramChatId, chatId))
-    .limit(1);
-  return rows[0] ?? null;
 }

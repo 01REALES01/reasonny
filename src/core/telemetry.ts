@@ -25,9 +25,10 @@ export const TELEMETRY_SCALE = 1000n;
 
 /**
  * The complete set of metrics phase 1 records. Kept as a const tuple so the
- * union type, the runtime guard and the CHECK constraint in the schema cannot
- * drift apart: adding a metric in one place and forgetting the others is
- * exactly how a metric ends up silently rejected by Postgres in production.
+ * union type, the Zod enum at the API edge and the CHECK constraint in the
+ * schema all derive from one list: adding a metric here and forgetting the
+ * migration is exactly how a metric ends up silently rejected by Postgres in
+ * production. telemetry.test.ts asserts this tuple against that constraint.
  */
 export const TELEMETRY_METRICS = [
   'LCP',
@@ -44,20 +45,6 @@ export type TelemetryMetric = (typeof TELEMETRY_METRICS)[number];
 export const TELEMETRY_RATINGS = ['good', 'needs-improvement', 'poor'] as const;
 
 export type TelemetryRating = (typeof TELEMETRY_RATINGS)[number];
-
-export function isTelemetryMetric(value: unknown): value is TelemetryMetric {
-  return (
-    typeof value === 'string' &&
-    (TELEMETRY_METRICS as readonly string[]).includes(value)
-  );
-}
-
-export function isTelemetryRating(value: unknown): value is TelemetryRating {
-  return (
-    typeof value === 'string' &&
-    (TELEMETRY_RATINGS as readonly string[]).includes(value)
-  );
-}
 
 /**
  * Browser value -> stored integer.

@@ -22,10 +22,6 @@ export type AccountId = Brand<string, 'AccountId'>;
 export type CategoryId = Brand<string, 'CategoryId'>;
 export type TransactionId = Brand<string, 'TransactionId'>;
 export type ApiKeyId = Brand<string, 'ApiKeyId'>;
-export type BudgetId = Brand<string, 'BudgetId'>;
-export type RuleId = Brand<string, 'RuleId'>;
-export type AchievementId = Brand<string, 'AchievementId'>;
-export type IngestionFailureId = Brand<string, 'IngestionFailureId'>;
 
 /**
  * UUID validation regex (v4 and v7 compliant).
@@ -66,24 +62,4 @@ export function toTransactionId(id: string): TransactionId {
 export function toApiKeyId(id: string): ApiKeyId {
   assertUuid(id, 'ApiKeyId');
   return id as ApiKeyId;
-}
-
-export function toBudgetId(id: string): BudgetId {
-  assertUuid(id, 'BudgetId');
-  return id as BudgetId;
-}
-
-export function toRuleId(id: string): RuleId {
-  assertUuid(id, 'RuleId');
-  return id as RuleId;
-}
-
-export function toAchievementId(id: string): AchievementId {
-  assertUuid(id, 'AchievementId');
-  return id as AchievementId;
-}
-
-export function toIngestionFailureId(id: string): IngestionFailureId {
-  assertUuid(id, 'IngestionFailureId');
-  return id as IngestionFailureId;
 }

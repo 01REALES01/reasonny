@@ -6,7 +6,6 @@ import {
   getAccountBalance,
   listAccounts,
 } from './account.repository';
-import { grantAchievement, listAchievements } from './achievement.repository';
 import {
   createApiKey,
   listApiKeys,
@@ -14,47 +13,20 @@ import {
   verifyAndTouchApiKey,
 } from './api-key.repository';
 import {
-  deleteBudget,
-  listBudgetsForPeriod,
-  upsertBudget,
-} from './budget.repository';
-import {
-  createRule,
-  deleteRule,
-  incrementRuleHitCount,
-  listRules,
-  updateRule,
-} from './categorization-rule.repository';
-import {
   createCategory,
   getCategory,
   listCategories,
   seedDefaultCategories,
 } from './category.repository';
-import {
-  listIngestionFailures,
-  recordIngestionFailure,
-  resolveIngestionFailure,
-} from './ingestion-failure.repository';
-import {
-  getProfile,
-  getProfileByTelegramChatId,
-  updateTelegramChatId,
-  upsertProfile,
-} from './profile.repository';
+import { ensureProfile, getProfile } from './profile.repository';
 import {
   createTransaction,
   getUncategorizedTransactions,
-  listTransactions,
-  softDeleteTransaction,
 } from './transaction.repository';
 import {
   toAccountId,
   toApiKeyId,
-  toBudgetId,
   toCategoryId,
-  toIngestionFailureId,
-  toRuleId,
   toTransactionId,
   toUserId,
 } from '../types';
@@ -81,9 +53,6 @@ describe('Repository Layer Unit Tests', () => {
   const categoryId = toCategoryId('33333333-3333-3333-3333-333333333333');
   const transactionId = toTransactionId('44444444-4444-4444-4444-444444444444');
   const apiKeyId = toApiKeyId('55555555-5555-5555-5555-555555555555');
-  const budgetId = toBudgetId('66666666-6666-6666-6666-666666666666');
-  const ruleId = toRuleId('77777777-7777-7777-7777-777777777777');
-  const failureId = toIngestionFailureId('88888888-8888-8888-8888-888888888888');
 
   let mockDb: ReturnType<typeof getDb>;
 
@@ -106,40 +75,33 @@ describe('Repository Layer Unit Tests', () => {
       expect(mockDb.select).toHaveBeenCalled();
     });
 
-    it('upsertProfile performs insert with onConflictDoUpdate', async () => {
-      const mockChain = {
+    it('ensureProfile inserts only when the row is missing', async () => {
+      const selectChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([]),
+      };
+      (mockDb.select as any).mockReturnValue(selectChain);
+      const insertChain = {
         values: vi.fn().mockReturnThis(),
         onConflictDoUpdate: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: userId, email: 'user@example.com' }]),
       };
-      (mockDb.insert as any).mockReturnValue(mockChain);
+      (mockDb.insert as any).mockReturnValue(insertChain);
 
-      const result = await upsertProfile(userId, { email: 'user@example.com' });
-      expect(result.email).toBe('user@example.com');
-    });
+      const created = await ensureProfile(userId, 'user@example.com');
+      expect(created.email).toBe('user@example.com');
+      expect(mockDb.insert).toHaveBeenCalled();
 
-    it('updateTelegramChatId updates telegramChatId for user', async () => {
-      const mockChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: userId, telegramChatId: 123456n }]),
-      };
-      (mockDb.update as any).mockReturnValue(mockChain);
+      // Second call: the row now exists, so nothing is written. Signing in must
+      // not overwrite a profile the user has since edited.
+      vi.clearAllMocks();
+      selectChain.limit.mockResolvedValue([{ id: userId, email: 'renamed@example.com' }]);
+      (mockDb.select as any).mockReturnValue(selectChain);
 
-      const result = await updateTelegramChatId(userId, 123456n);
-      expect(result?.telegramChatId).toBe(123456n);
-    });
-
-    it('getProfileByTelegramChatId searches by chat ID without userId', async () => {
-      const mockChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([{ id: userId, telegramChatId: 123456n }]),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const result = await getProfileByTelegramChatId(123456n);
-      expect(result?.id).toBe(userId);
+      const existing = await ensureProfile(userId, 'user@example.com');
+      expect(existing.email).toBe('renamed@example.com');
+      expect(mockDb.insert).not.toHaveBeenCalled();
     });
   });
 
@@ -269,34 +231,6 @@ describe('Repository Layer Unit Tests', () => {
       expect(isDuplicate).toBe(false);
     });
 
-    it('listTransactions returns list with filters', async () => {
-      const mockResult = [{ id: transactionId }];
-      const mockChain: any = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockReturnThis(),
-        offset: vi.fn().mockReturnThis(),
-        then: (resolve: any) => resolve(mockResult),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const txs = await listTransactions(userId, { limit: 10, offset: 0 });
-      expect(txs).toHaveLength(1);
-    });
-
-    it('softDeleteTransaction sets deletedAt timestamp', async () => {
-      const mockChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: transactionId }]),
-      };
-      (mockDb.update as any).mockReturnValue(mockChain);
-
-      const success = await softDeleteTransaction(userId, transactionId);
-      expect(success).toBe(true);
-    });
-
     it('getUncategorizedTransactions fetches uncategorized transactions', async () => {
       const mockChain = {
         from: vi.fn().mockReturnThis(),
@@ -367,177 +301,6 @@ describe('Repository Layer Unit Tests', () => {
 
       const revoked = await revokeApiKey(userId, apiKeyId);
       expect(revoked).toBe(true);
-    });
-  });
-
-  describe('Budget Repository', () => {
-    it('listBudgetsForPeriod fetches budgets for month', async () => {
-      const mockChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([{ id: budgetId, periodStart: '2026-08-01' }]),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const budgets = await listBudgetsForPeriod(userId, '2026-08-01');
-      expect(budgets).toHaveLength(1);
-    });
-
-    it('upsertBudget inserts or updates budget amount', async () => {
-      const mockChain = {
-        values: vi.fn().mockReturnThis(),
-        onConflictDoUpdate: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: budgetId, amountMinor: 40000000n }]),
-      };
-      (mockDb.insert as any).mockReturnValue(mockChain);
-
-      const b = await upsertBudget(userId, {
-        categoryId,
-        periodStart: '2026-08-01',
-        amountMinor: 40000000n,
-      });
-      expect(b.amountMinor).toBe(40000000n);
-    });
-
-    it('deleteBudget removes budget for user', async () => {
-      const mockChain = {
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: budgetId }]),
-      };
-      (mockDb.delete as any).mockReturnValue(mockChain);
-
-      const deleted = await deleteBudget(userId, budgetId);
-      expect(deleted).toBe(true);
-    });
-  });
-
-  describe('Categorization Rule Repository', () => {
-    it('listRules fetches ordered rules', async () => {
-      const mockChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([{ id: ruleId, merchantPattern: 'Exito' }]),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const rules = await listRules(userId);
-      expect(rules).toHaveLength(1);
-    });
-
-    it('createRule creates rule with default priority', async () => {
-      const mockChain = {
-        values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: ruleId, merchantPattern: 'Exito' }]),
-      };
-      (mockDb.insert as any).mockReturnValue(mockChain);
-
-      const rule = await createRule(userId, {
-        categoryId,
-        merchantPattern: 'Exito',
-      });
-      expect(rule.merchantPattern).toBe('Exito');
-    });
-
-    it('updateRule modifies rule fields', async () => {
-      const mockChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: ruleId, merchantPattern: 'Exito Express' }]),
-      };
-      (mockDb.update as any).mockReturnValue(mockChain);
-
-      const updated = await updateRule(userId, ruleId, { merchantPattern: 'Exito Express' });
-      expect(updated?.merchantPattern).toBe('Exito Express');
-    });
-
-    it('deleteRule deletes rule for user', async () => {
-      const mockChain = {
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: ruleId }]),
-      };
-      (mockDb.delete as any).mockReturnValue(mockChain);
-
-      const deleted = await deleteRule(userId, ruleId);
-      expect(deleted).toBe(true);
-    });
-
-    it('incrementRuleHitCount increments hit_count', async () => {
-      const mockChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([]),
-      };
-      (mockDb.update as any).mockReturnValue(mockChain);
-
-      await incrementRuleHitCount(userId, ruleId);
-      expect(mockDb.update).toHaveBeenCalled();
-    });
-  });
-
-  describe('Achievement Repository', () => {
-    it('listAchievements fetches achievements ordered by earnedAt', async () => {
-      const mockChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([{ code: 'streak_7d' }]),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const achievements = await listAchievements(userId);
-      expect(achievements).toHaveLength(1);
-    });
-
-    it('grantAchievement grants achievement with onConflictDoNothing', async () => {
-      const mockChain = {
-        values: vi.fn().mockReturnThis(),
-        onConflictDoNothing: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ code: 'streak_7d' }]),
-      };
-      (mockDb.insert as any).mockReturnValue(mockChain);
-
-      const { achievement, newlyEarned } = await grantAchievement(userId, 'streak_7d');
-      expect(achievement?.code).toBe('streak_7d');
-      expect(newlyEarned).toBe(true);
-    });
-  });
-
-  describe('Ingestion Failure Repository', () => {
-    it('recordIngestionFailure records payload and error', async () => {
-      const mockChain = {
-        values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: failureId, source: 'shortcut' }]),
-      };
-      (mockDb.insert as any).mockReturnValue(mockChain);
-
-      const failure = await recordIngestionFailure({
-        userId,
-        source: 'shortcut',
-        rawPayload: { amount: 12000 },
-        error: 'Invalid format',
-      });
-      expect(failure.id).toBe(failureId);
-    });
-
-    it('listIngestionFailures returns failures for user', async () => {
-      const mockChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([{ id: failureId }]),
-      };
-      (mockDb.select as any).mockReturnValue(mockChain);
-
-      const failures = await listIngestionFailures(userId);
-      expect(failures).toHaveLength(1);
-    });
-
-    it('resolveIngestionFailure sets resolvedAt', async () => {
-      const mockChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: failureId }]),
-      };
-      (mockDb.update as any).mockReturnValue(mockChain);
-
-      const resolved = await resolveIngestionFailure(userId, failureId);
-      expect(resolved).toBe(true);
     });
   });
 });

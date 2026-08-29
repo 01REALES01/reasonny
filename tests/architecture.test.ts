@@ -4,12 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   toAccountId,
-  toAchievementId,
   toApiKeyId,
-  toBudgetId,
   toCategoryId,
-  toIngestionFailureId,
-  toRuleId,
   toTransactionId,
   toUserId,
 } from '@/core/types';
@@ -101,10 +97,6 @@ describe('Branded Types Validation', () => {
     expect(toCategoryId(validUuid)).toBe(validUuid);
     expect(toTransactionId(validUuid)).toBe(validUuid);
     expect(toApiKeyId(validUuid)).toBe(validUuid);
-    expect(toBudgetId(validUuid)).toBe(validUuid);
-    expect(toRuleId(validUuid)).toBe(validUuid);
-    expect(toAchievementId(validUuid)).toBe(validUuid);
-    expect(toIngestionFailureId(validUuid)).toBe(validUuid);
   });
 
   it('rejects invalid UUID strings with a descriptive error', () => {

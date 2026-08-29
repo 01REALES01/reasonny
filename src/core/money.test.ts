@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   SCALE,
   add,
-  allocate,
   compare,
   equals,
   formatMoney,
@@ -20,8 +19,6 @@ import {
 
 const cop = (minor: bigint): Money => money(minor, 'COP');
 const usd = (minor: bigint): Money => money(minor, 'USD');
-/** Sums a split back up, which is the only property allocate() must guarantee. */
-const total = (parts: readonly Money[]): bigint => parts.reduce((acc, p) => acc + p.minor, 0n);
 /**
  * Intl separates the symbol from the digits with a NARROW NO-BREAK SPACE, not a
  * regular one, so a hardcoded ' ' in an expectation fails against a string that
@@ -105,45 +102,6 @@ describe('arithmetic', () => {
   it('sums a list, including the empty one', () => {
     expect(sum([], 'COP')).toEqual(zero('COP'));
     expect(sum([cop(100n), cop(200n), cop(300n)], 'COP').minor).toBe(600n);
-  });
-});
-
-describe('allocate - where the spare cent goes', () => {
-  it('gives the remainder to the earliest parts, never to nobody', () => {
-    const parts = allocate(cop(100n), 3);
-    expect(parts.map((p) => p.minor)).toEqual([34n, 33n, 33n]);
-    // The property that actually matters.
-    expect(total(parts)).toBe(100n);
-  });
-
-  it('splits evenly when it divides', () => {
-    expect(allocate(cop(900n), 3).map((p) => p.minor)).toEqual([300n, 300n, 300n]);
-  });
-
-  it('handles a single part', () => {
-    expect(allocate(cop(101n), 1).map((p) => p.minor)).toEqual([101n]);
-  });
-
-  it('keeps the sign when the amount is negative', () => {
-    const parts = allocate(cop(-100n), 3);
-    expect(parts.map((p) => p.minor)).toEqual([-34n, -33n, -33n]);
-    expect(total(parts)).toBe(-100n);
-  });
-
-  it('never loses a unit, for any split up to 12', () => {
-    for (let n = 1; n <= 12; n += 1) {
-      for (const amount of [0n, 1n, 7n, 100n, 4_500_001n, -7n]) {
-        const parts = allocate(cop(amount), n);
-        expect(parts).toHaveLength(n);
-        expect(total(parts)).toBe(amount);
-      }
-    }
-  });
-
-  it('rejects a nonsensical number of parts', () => {
-    expect(() => allocate(cop(100n), 0)).toThrow(/positive integer/);
-    expect(() => allocate(cop(100n), -1)).toThrow(/positive integer/);
-    expect(() => allocate(cop(100n), 2.5)).toThrow(/positive integer/);
   });
 });
 
