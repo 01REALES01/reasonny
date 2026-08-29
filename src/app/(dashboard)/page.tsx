@@ -11,6 +11,7 @@ import { getDashboardData } from '@/core/services/analytics.service';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { recordMetric } from '@/core/services/telemetry.service';
 import { toUserId } from '@/core/types';
+import { t } from '@/lib/i18n';
 import { getCurrentUser } from '@/lib/session';
 
 // P8: Authenticated app is strictly noindex
@@ -101,14 +102,14 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                 fontWeight: 600,
               }}
             >
-              {data.uncategorizedCount} por revisar
+              {data.uncategorizedCount} {t('dashboard_pending_review')}
             </span>
           )}
 
           <a
             href="/api/v1/export"
             download
-            title="Exportar todas las transacciones a CSV"
+            title={t('dashboard_export_csv_title')}
             style={{
               backgroundColor: 'var(--surface-overlay)',
               color: 'var(--ink-secondary)',
@@ -123,7 +124,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               gap: '4px',
             }}
           >
-            ↓ CSV
+            ↓ {t('dashboard_export_csv')}
           </a>
         </div>
       </header>
@@ -173,7 +174,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               color: 'var(--ink-primary)',
             }}
           >
-            Últimos Movimientos
+            {t('dashboard_recent_title')}
           </h3>
           <Link
             href="/nuevo"
@@ -184,7 +185,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               fontWeight: 600,
             }}
           >
-            + Añadir
+            + {t('dashboard_add')}
           </Link>
         </div>
 
@@ -197,7 +198,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               fontSize: 'var(--text-body)',
             }}
           >
-            <p>Aún no hay transacciones registradas este mes.</p>
+            <p>{t('dashboard_empty')}</p>
             <Link
               href="/nuevo"
               style={{
@@ -208,7 +209,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                 marginTop: 'var(--space-2)',
               }}
             >
-              Registrar primer gasto →
+              {t('dashboard_empty_cta')} →
             </Link>
           </div>
         ) : (
@@ -252,7 +253,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           }}
         >
           <span>◈</span>
-          <span>Inicio</span>
+          <span>{t('nav_home')}</span>
         </Link>
         <Link
           href="/nuevo"
@@ -268,7 +269,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           }}
         >
           <span>+</span>
-          <span>Nuevo</span>
+          <span>{t('nav_new')}</span>
         </Link>
       </nav>
     </div>

@@ -101,11 +101,26 @@ function enqueue(sample: TelemetrySample): void {
  */
 export async function initWebVitals(): Promise<void> {
   if (typeof window === 'undefined' || initialised) return;
+  // Set before the await so two concurrent callers cannot both subscribe, and
+  // cleared again if the import fails - otherwise one flaky chunk load would
+  // disable measurement for the rest of the page's life with no way back.
   initialised = true;
 
   vitalsRoute = window.location.pathname;
 
-  const { onCLS, onFCP, onINP, onLCP, onTTFB } = await import('web-vitals');
+  let vitals: typeof import('web-vitals');
+  try {
+    vitals = await import('web-vitals');
+  } catch {
+    // Nothing to tell the user: they came here to record an expense, and the
+    // instrument failing to load is not their problem. Swallowed rather than
+    // rethrown so the caller's `void initWebVitals()` cannot become an
+    // unhandled rejection.
+    initialised = false;
+    return;
+  }
+
+  const { onCLS, onFCP, onINP, onLCP, onTTFB } = vitals;
 
   const handle = (metric: {
     name: string;

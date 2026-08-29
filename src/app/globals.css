@@ -31,6 +31,19 @@
   --brand-400: #9d91f6;
   --brand-tint: rgba(129, 114, 242, 0.14);
 
+  /* Hero balance card (DESIGN_SYSTEM.md 6.1)
+     The single gradient in the whole app. These live here rather than in the
+     component because "no colour literal in src/components/" is a rule that
+     blocks the merge - and because a second component reaching for the same
+     orange is exactly how one hero gradient becomes a system. */
+  --hero-gradient-from: #c2410c;
+  --hero-gradient-to: #ea580c;
+  --hero-ink: #ffffff;
+  --hero-ink-label: rgba(255, 255, 255, 0.72);
+  --hero-ink-caption: rgba(255, 255, 255, 0.75);
+  --hero-mesh: rgba(255, 255, 255, 0.08);
+  --hero-action-surface: rgba(0, 0, 0, 0.32);
+
   /* Semantic */
   --positive: #34c77b;
   --warning: #e0a32e;

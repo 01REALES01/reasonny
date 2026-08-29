@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { t } from '@/lib/i18n';
 import { Money } from '@/components/ui/money';
 import type { MonthlyTotals } from '@/core/repositories/transaction.repository';
 
@@ -30,7 +31,7 @@ export function MonthlyCard({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ fontSize: 'var(--text-heading)', fontWeight: 400, color: 'var(--ink-secondary)' }}>
-          Gasto en <strong>{monthLabel}</strong>
+          {t('monthly_spend_in')} <strong>{monthLabel}</strong>
         </h2>
         <span
           style={{
@@ -41,7 +42,7 @@ export function MonthlyCard({
             borderRadius: 'var(--radius-full)',
           }}
         >
-          {monthlyTotals.transactionCount} registros
+          {monthlyTotals.transactionCount} {t('monthly_records')}
         </span>
       </div>
 
@@ -59,7 +60,7 @@ export function MonthlyCard({
             color: 'var(--positive)',
           }}
         >
-          <span>↑ Ingresos:</span>
+          <span>↑ {t('monthly_income')}:</span>
           <Money
             amountMinor={monthlyTotals.totalIncomeMinor}
             currency={currency}

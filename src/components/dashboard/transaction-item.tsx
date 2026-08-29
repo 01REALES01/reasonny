@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Money } from '@/components/ui/money';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
-import { formatDate } from '@/lib/i18n';
+import { formatDate, t } from '@/lib/i18n';
 
 interface TransactionItemProps {
   readonly transaction: EnrichedTransactionRow;
@@ -19,7 +19,7 @@ export function TransactionItem({
   const isIncome = transaction.type === 'income';
   const isUncategorized = !transaction.category;
 
-  const categoryName = transaction.category?.name ?? 'Sin categorizar';
+  const categoryName = transaction.category?.name ?? t('uncategorized');
   const timeFormatted = formatDate(transaction.transactionDate, 'es', {
     month: 'short',
     day: 'numeric',
@@ -57,7 +57,7 @@ export function TransactionItem({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {isUncategorized && (
               <span
-                title="Sin categorizar"
+                title={t('uncategorized')}
                 style={{
                   width: '6px',
                   height: '6px',

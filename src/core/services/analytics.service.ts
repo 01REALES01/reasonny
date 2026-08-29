@@ -19,7 +19,7 @@ import {
   type EnrichedTransactionRow,
   type MonthlyTotals,
 } from '@/core/repositories/transaction.repository';
-import type { UserId } from '@/core/types';
+import { toAccountId, type UserId } from '@/core/types';
 
 export interface DashboardData {
   readonly baseCurrency: string;
@@ -123,8 +123,12 @@ export async function getDashboardData(
 
   // Compute total balance across all accounts
   let totalBalanceMinor = 0n;
+  // toAccountId, not `as any`. The cast defeated the branded type at exactly
+  // the boundary it exists to guard: `as any` would have let a userId, a
+  // categoryId or a malformed string through to a balance query without a
+  // word from the compiler. The constructor validates the uuid instead.
   const balancePromises = accounts.map((acc) =>
-    getAccountBalance(userId, acc.id as any),
+    getAccountBalance(userId, toAccountId(acc.id)),
   );
   const balances = await Promise.all(balancePromises);
 

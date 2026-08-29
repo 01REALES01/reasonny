@@ -138,13 +138,13 @@ export function QuickAddForm({
             borderRadius: 'var(--radius-full)',
           }}
         >
-          ← Volver
+          ← {t('back')}
         </Link>
 
         {/* Segmented Control (DESIGN_SYSTEM.md 6.4) */}
         <div
           role="group"
-          aria-label="Transaction Type"
+          aria-label={t('transaction_type')}
           style={{
             backgroundColor: 'var(--surface-sunken)',
             border: '1px solid var(--border-hairline)',
@@ -204,7 +204,7 @@ export function QuickAddForm({
         }}
       >
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 600, color: 'var(--ink-primary)' }}>
-          {type === 'expense' ? 'Registrar Gasto' : 'Registrar Ingreso'}
+          {type === 'expense' ? t('record_expense') : t('record_income')}
         </h1>
 
         {success && (
@@ -224,7 +224,7 @@ export function QuickAddForm({
           >
             <span>✓ {t('transaction_created_success')}</span>
             <Link href="/" style={{ color: 'var(--positive)', fontWeight: 600, textDecoration: 'underline' }}>
-              Ver en Inicio →
+              {t('view_on_home')} →
             </Link>
           </div>
         )}
@@ -302,7 +302,15 @@ export function QuickAddForm({
                     fontWeight: 500,
                   }}
                 >
-                  +${Number(val).toLocaleString('es-CO')}
+                  {/* Through <Money>, not toLocaleString: the chip and the
+                      figure it fills in must be formatted by the same rules,
+                      or the shortcut shows one number and the field another. */}
+                  +
+                  <Money
+                    amountMinor={parseMoney(val, 'COP').minor}
+                    currency="COP"
+                    showFractionDeEmphasis={false}
+                  />
                 </button>
               ))}
             </div>

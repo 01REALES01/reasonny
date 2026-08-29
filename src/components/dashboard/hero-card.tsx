@@ -2,6 +2,7 @@ import Link from 'next/link';
 import React from 'react';
 
 import { Money } from '@/components/ui/money';
+import { t } from '@/lib/i18n';
 
 interface HeroCardProps {
   readonly totalBalanceMinor: bigint;
@@ -11,7 +12,13 @@ interface HeroCardProps {
 /**
  * Hero balance card (DESIGN_SYSTEM.md 6.1).
  *
- * The ONLY element in the app allowed to carry a gradient surface.
+ * The ONLY element in the app allowed to carry a gradient surface. Its colours
+ * come from --hero-* tokens rather than literals, which is the rule that blocks
+ * the merge: a literal here is copyable, and the second component that copies
+ * it turns the one hero gradient into a system.
+ *
+ * Deliberately has no shadow and no border, per 6.1 - the gradient already
+ * separates it from the surface behind it.
  */
 export function HeroCard({
   totalBalanceMinor,
@@ -20,16 +27,16 @@ export function HeroCard({
   return (
     <div
       style={{
-        background: 'linear-gradient(135deg, #C2410C 0%, #EA580C 100%)',
+        background:
+          'linear-gradient(135deg, var(--hero-gradient-from) 0%, var(--hero-gradient-to) 100%)',
         borderRadius: 'var(--radius-xl)',
         padding: 'var(--space-5)',
-        color: '#FFFFFF',
+        color: 'var(--hero-ink)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         minHeight: '170px',
         position: 'relative',
-        boxShadow: '0 12px 32px rgba(194, 65, 12, 0.25)',
         overflow: 'hidden',
       }}
     >
@@ -42,7 +49,7 @@ export function HeroCard({
           width: '140px',
           height: '140px',
           borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.08)',
+          background: 'var(--hero-mesh)',
           pointerEvents: 'none',
         }}
       />
@@ -51,20 +58,20 @@ export function HeroCard({
         <span
           style={{
             fontSize: 'var(--text-label)',
-            color: 'rgba(255, 255, 255, 0.82)',
+            color: 'var(--hero-ink-label)',
             fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: '0.6px',
           }}
         >
-          Saldo Total Disponible
+          {t('hero_total_balance')}
         </span>
         <div
           style={{
             marginTop: 'var(--space-2)',
             fontSize: 'var(--text-hero)',
             fontWeight: 700,
-            color: '#FFFFFF',
+            color: 'var(--hero-ink)',
             lineHeight: 1.1,
           }}
         >
@@ -82,15 +89,17 @@ export function HeroCard({
           zIndex: 1,
         }}
       >
-        <span style={{ fontSize: 'var(--text-caption)', color: 'rgba(255, 255, 255, 0.75)' }}>
-          {currency} · Actualizado en tiempo real
+        <span
+          style={{ fontSize: 'var(--text-caption)', color: 'var(--hero-ink-caption)' }}
+        >
+          {currency} · {t('hero_realtime')}
         </span>
 
         <Link
           href="/nuevo"
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.32)',
-            color: '#FFFFFF',
+            backgroundColor: 'var(--hero-action-surface)',
+            color: 'var(--hero-ink)',
             padding: '6px 14px',
             borderRadius: 'var(--radius-full)',
             fontSize: 'var(--text-label)',
@@ -99,10 +108,9 @@ export function HeroCard({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
         >
-          + Nuevo Gasto
+          + {t('hero_new_expense')}
         </Link>
       </div>
     </div>

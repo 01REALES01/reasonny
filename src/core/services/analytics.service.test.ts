@@ -71,8 +71,8 @@ describe('Analytics Service & Timezone Boundaries', () => {
       });
 
       (listAccounts as any).mockResolvedValue([
-        { id: 'acc-1', name: 'Checking', currency: 'COP' },
-        { id: 'acc-2', name: 'Savings', currency: 'COP' },
+        { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', name: 'Checking', currency: 'COP' },
+        { id: 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', name: 'Savings', currency: 'COP' },
       ]);
 
       (getAccountBalance as any)
@@ -113,7 +113,7 @@ describe('Analytics Service & Timezone Boundaries', () => {
             icon: 'ShoppingCart',
             color: '#10B981',
           },
-          account: { id: 'acc-1', name: 'Checking', currency: 'COP' },
+          account: { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', name: 'Checking', currency: 'COP' },
         },
       ]);
 

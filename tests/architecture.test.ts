@@ -115,3 +115,74 @@ describe('Branded Types Validation', () => {
     expect(() => toApiKeyId(invalidUuid)).toThrow(/Invalid ApiKeyId/);
   });
 });
+
+/**
+ * The design-system rules CLAUDE.md calls merge-blocking.
+ *
+ * They were merge-blocking in prose only. Unlike the repository boundary above,
+ * nothing checked them - and both were already being violated when this was
+ * written: an orange gradient hardcoded in hero-card.tsx, and an amount
+ * rendered with toLocaleString in the entry form. A rule with no test is a
+ * preference.
+ */
+describe('Design System Rules (DESIGN_SYSTEM.md)', () => {
+  const srcRoot = join(process.cwd(), 'src');
+
+  /**
+   * Strips comments before matching. Without this the tests fail on their own
+   * explanations: the entry form carries a comment saying why it does NOT use
+   * toLocaleString, and that sentence contains the word.
+   */
+  function stripComments(source: string): string {
+    return source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  }
+
+  function filesUnder(dir: string): string[] {
+    return getAllSourceFiles(join(srcRoot, dir));
+  }
+
+  it('forbids colour literals in src/components - only CSS variables', () => {
+    // A literal here is copyable, and the copy is how one hero gradient
+    // becomes a system. Tokens live in app/globals.css.
+    const colourLiteral = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(/;
+    const violations: string[] = [];
+
+    for (const file of filesUnder('components')) {
+      const content = stripComments(readFileSync(file, 'utf-8'));
+      if (colourLiteral.test(content)) {
+        violations.push(relative(srcRoot, file));
+      }
+    }
+
+    expect(
+      violations,
+      `Colour literals found in: ${violations.join(', ')}. Use a CSS variable from globals.css.`,
+    ).toEqual([]);
+  });
+
+  it('forbids rendering money outside the <Money> component', () => {
+    // The decimal de-emphasis rule and tabular figures live in <Money>. An
+    // amount formatted anywhere else silently opts out of both, and two
+    // numbers on the same screen stop lining up.
+    const manualFormatting = /toLocaleString|Intl\.NumberFormat/;
+    const allowed = ['components/ui/money.tsx', 'lib/i18n.ts', 'core/money.ts'];
+    const violations: string[] = [];
+
+    for (const file of [...filesUnder('components'), ...filesUnder('app')]) {
+      const rel = relative(srcRoot, file);
+      if (allowed.includes(rel)) continue;
+
+      const content = stripComments(readFileSync(file, 'utf-8'));
+      if (manualFormatting.test(content)) {
+        violations.push(rel);
+      }
+    }
+
+    expect(
+      violations,
+      `Money formatted outside <Money> in: ${violations.join(', ')}.`,
+    ).toEqual([]);
+  });
+});

@@ -181,20 +181,25 @@ export async function getDailyUsage(
   const [result] = await db
     .select({
       daysWithEntry: sql<number>`COUNT(DISTINCT ${localDate})::int`,
-      // GREATEST(..., 1) because a transaction dated in the future makes
-      // "today minus the earliest entry" zero or negative, and the report would
-      // then print "1/0 days, rate 0.0%" - a division that reads as total
-      // disuse for a user who did record something. The entry form accepts a
-      // caller-supplied date, so this is reachable without anything being
-      // corrupt. COALESCE still returns 0 for the genuinely empty case.
+      // Two distinct cases, so an explicit CASE rather than COALESCE+GREATEST.
+      //
+      // Postgres GREATEST IGNORES nulls: GREATEST(NULL, 1) is 1, not NULL. So
+      // wrapping it in COALESCE(..., 0) never reaches the 0 - a user with no
+      // transactions at all would report "0/1 days, rate 0.0%" instead of the
+      // empty 0/0, and the retention baseline would open with a fabricated
+      // denominator.
+      //
+      // The floor of 1 is still needed for the non-empty case: the entry form
+      // accepts a caller-supplied date, so a transaction dated in the future
+      // makes "today minus the earliest entry" zero or negative.
       daysElapsed: sql<number>`
-        COALESCE(
-          GREATEST(
+        (CASE
+          WHEN MIN(${localDate}) IS NULL THEN 0
+          ELSE GREATEST(
             ((NOW() AT TIME ZONE ${timezone})::date - MIN(${localDate}) + 1),
             1
-          ),
-          0
-        )::int
+          )
+        END)::int
       `,
     })
     .from(transactions)

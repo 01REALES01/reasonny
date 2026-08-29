@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { t } from '@/lib/i18n';
 import { Money } from '@/components/ui/money';
 import type { CategorySpendingBreakdown } from '@/core/repositories/transaction.repository';
 
@@ -44,7 +45,7 @@ export function CategoryBreakdown({
       }}
     >
       <h3 style={{ fontSize: 'var(--text-heading)', fontWeight: 600, color: 'var(--ink-primary)' }}>
-        Distribución por Categoría
+        {t('breakdown_title')}
       </h3>
 
       {/* Segmented bar */}
