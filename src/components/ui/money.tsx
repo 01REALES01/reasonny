@@ -3,12 +3,10 @@ import React from 'react';
 import { formatMoney } from '@/core/money';
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
-export interface MoneyProps {
+interface MoneyProps {
   readonly amountMinor: bigint;
   readonly currency?: string;
   readonly locale?: Locale;
-  readonly className?: string;
-  readonly size?: 'hero' | 'display' | 'title' | 'heading' | 'body' | 'caption';
   readonly showFractionDeEmphasis?: boolean;
 }
 
@@ -57,28 +55,22 @@ export function Money({
   amountMinor,
   currency = 'COP',
   locale = DEFAULT_LOCALE,
-  className = '',
-  size,
   showFractionDeEmphasis = true,
 }: MoneyProps): React.ReactElement {
   const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
   const formatted = formatMoney({ minor: amountMinor, currency }, localeTag);
 
-  const sizeClass = size ? `money--${size}` : '';
-
-  if (!showFractionDeEmphasis) {
-    return <span className={`money ${sizeClass} ${className}`.trim()}>{formatted}</span>;
-  }
-
-  const { integerPart, fractionPart } = splitMoneyParts(formatted, currency);
+  const { integerPart, fractionPart } = showFractionDeEmphasis
+    ? splitMoneyParts(formatted, currency)
+    : { integerPart: formatted, fractionPart: '' };
 
   if (!fractionPart) {
-    return <span className={`money ${sizeClass} ${className}`.trim()}>{formatted}</span>;
+    return <span className="money">{formatted}</span>;
   }
 
   return (
-    <span className={`money ${sizeClass} ${className}`.trim()}>
-      <span className="money__integer">{integerPart}</span>
+    <span className="money">
+      {integerPart}
       <span className="money__fraction">{fractionPart}</span>
     </span>
   );

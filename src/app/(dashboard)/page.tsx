@@ -46,73 +46,22 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   });
 
   return (
-    <div
-      className="desktop-dashboard-container animate-entrance-fade"
-      style={{
-        maxWidth: '560px',
-        margin: '0 auto',
-        padding: 'var(--space-4) var(--space-4) calc(var(--space-12) + 32px)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-6)',
-        minHeight: '100vh',
-      }}
-    >
+    <div className="dash desktop-dashboard-container animate-entrance-fade">
       {/* Top Navigation Header */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingTop: 'var(--space-2)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, var(--brand-500) 0%, #6366F1 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px',
-              color: '#FFFFFF',
-              boxShadow: '0 4px 14px var(--brand-tint)',
-            }}
-          >
+      <header className="dash-header">
+        <div className="dash-identity">
+          <div className="dash-mark" aria-hidden="true">
             ◈
           </div>
           <div>
-            <h1
-              style={{
-                fontSize: 'var(--text-title)',
-                fontWeight: 600,
-                color: 'var(--ink-primary)',
-                lineHeight: 1.2,
-              }}
-            >
-              RealMoney
-            </h1>
-            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--ink-muted)' }}>
-              {session.email}
-            </span>
+            <h1 className="dash-title">RealMoney</h1>
+            <span className="dash-email">{session.email}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <div className="dash-actions">
           {data.uncategorizedCount > 0 && (
-            <span
-              style={{
-                backgroundColor: 'rgba(224, 163, 46, 0.14)',
-                color: 'var(--warning)',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 600,
-              }}
-            >
+            <span className="dash-badge">
               {data.uncategorizedCount} {t('dashboard_pending_review')}
             </span>
           )}
@@ -121,55 +70,21 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
             href="/api/v1/export"
             download
             title={t('dashboard_export_csv_title')}
-            style={{
-              backgroundColor: 'var(--surface-overlay)',
-              color: 'var(--ink-secondary)',
-              border: '1px solid var(--border-hairline)',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: 'var(--text-caption)',
-              fontWeight: 500,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
+            className="dash-action dash-action--secondary"
           >
             ↓ {t('dashboard_export_csv')}
           </a>
 
-          <Link
-            href="/nuevo"
-            style={{
-              backgroundColor: 'var(--brand-500)',
-              color: '#FFFFFF',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: 'var(--text-caption)',
-              fontWeight: 600,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              boxShadow: '0 2px 8px var(--brand-tint)',
-            }}
-          >
+          <Link href="/nuevo" className="dash-action dash-action--primary">
             + {t('dashboard_add')}
           </Link>
         </div>
       </header>
 
       {/* Main Responsive Grid (1 Column on Mobile, 2 Columns on Desktop) */}
-      <div
-        className="desktop-dashboard-grid"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-5)',
-        }}
-      >
+      <div className="dash-grid desktop-dashboard-grid">
         {/* Left Column (Overview & Cards) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <div className="dash-column">
           {/* 1. Hero Balance Card (DESIGN_SYSTEM.md 6.1) */}
           <HeroCard
             totalBalanceMinor={data.totalBalanceMinor}
@@ -192,69 +107,25 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         </div>
 
         {/* Right Column (Transactions Ledger) */}
-        <section
-          style={{
-            backgroundColor: 'var(--surface-raised)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-5)',
-            border: '1px solid var(--border-hairline)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-4)',
-            height: 'fit-content',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 'var(--text-heading)',
-                fontWeight: 600,
-                color: 'var(--ink-primary)',
-              }}
-            >
-              {t('dashboard_recent_title')}
-            </h3>
-            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--ink-muted)' }}>
-              {/* transactionCount, no recentTransactions.length: la lista
-                  viene limitada a 20 por getRecentEnrichedTransactions, así que
-                  a partir de la transacción 21 el rótulo se congelaba en "20"
-                  para siempre. En una app de dinero un número que miente es
-                  peor que no mostrarlo. */}
+        <section className="dash-ledger">
+          <div className="dash-ledger-header">
+            <h3 className="dash-ledger-title">{t('dashboard_recent_title')}</h3>
+            <span className="dash-ledger-count">
+              {/* transactionCount, not recentTransactions.length: the list is
+                  capped at 20 by getRecentEnrichedTransactions, so from the
+                  21st transaction on, the label froze at "20" forever. In a
+                  money app a number that lies is worse than no number. */}
               {data.monthlyTotals.transactionCount} {t('monthly_records')}
             </span>
           </div>
 
           {data.recentTransactions.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: 'var(--space-10) 0',
-                color: 'var(--ink-muted)',
-                fontSize: 'var(--text-body)',
-              }}
-            >
+            <div className="dash-empty">
               <p>{t('dashboard_empty')}</p>
-              <Link
-                href="/nuevo"
-                style={{
-                  color: 'var(--brand-400)',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  display: 'inline-block',
-                  marginTop: 'var(--space-2)',
-                }}
-              >
-                {t('dashboard_empty_cta')} →
-              </Link>
+              <Link href="/nuevo">{t('dashboard_empty_cta')} →</Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+            <div className="dash-list">
               {data.recentTransactions.map((tx) => (
                 <TransactionItem key={tx.id} transaction={tx} />
               ))}
@@ -264,54 +135,13 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       </div>
 
       {/* Fixed Bottom Navigation for Mobile Only */}
-      <nav
-        className="desktop-hide-bottom-nav"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: 'rgba(20, 20, 23, 0.88)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid var(--border-hairline)',
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          padding: 'var(--space-3) 0 max(var(--space-3), env(safe-area-inset-bottom))',
-          zIndex: 50,
-        }}
-      >
-        <Link
-          href="/"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2px',
-            color: 'var(--brand-400)',
-            textDecoration: 'none',
-            fontSize: 'var(--text-caption)',
-            fontWeight: 600,
-          }}
-        >
-          <span>◈</span>
+      <nav className="dash-nav desktop-hide-bottom-nav">
+        <Link href="/" aria-current="page">
+          <span aria-hidden="true">◈</span>
           <span>{t('nav_home')}</span>
         </Link>
-        <Link
-          href="/nuevo"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2px',
-            color: 'var(--ink-secondary)',
-            textDecoration: 'none',
-            fontSize: 'var(--text-caption)',
-            fontWeight: 500,
-          }}
-        >
-          <span>+</span>
+        <Link href="/nuevo">
+          <span aria-hidden="true">+</span>
           <span>{t('nav_new')}</span>
         </Link>
       </nav>

@@ -135,16 +135,31 @@ describe('Design System Rules (DESIGN_SYSTEM.md)', () => {
     return getAllSourceFiles(join(srcRoot, dir));
   }
 
-  it('forbids colour literals in src/components - only CSS variables', () => {
+  /**
+   * app/ as well as components/, and that is the whole point of this change.
+   *
+   * The rule was only ever checked under components/, so every violation had
+   * accumulated on the other side of the line: 46 hardcoded colours across the
+   * sign-in form, the dashboard and the entry form, on a suite that was green.
+   * layout.tsx and manifest.ts are exempt because their colours are read by
+   * the browser chrome and the OS installer, before and outside any
+   * stylesheet - a var() there resolves to nothing. The test below pins them
+   * to the token instead.
+   */
+  it('forbids colour literals in src/components and src/app - only CSS variables', () => {
     // A literal here is copyable, and the copy is how one hero gradient
     // becomes a system. Tokens live in app/globals.css.
     const colourLiteral = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(/;
+    const exempt = ['app/layout.tsx', 'app/manifest.ts'];
     const violations: string[] = [];
 
-    for (const file of filesUnder('components')) {
+    for (const file of [...filesUnder('components'), ...filesUnder('app')]) {
+      const rel = relative(srcRoot, file);
+      if (exempt.includes(rel)) continue;
+
       const content = stripComments(readFileSync(file, 'utf-8'));
       if (colourLiteral.test(content)) {
-        violations.push(relative(srcRoot, file));
+        violations.push(rel);
       }
     }
 
@@ -152,6 +167,31 @@ describe('Design System Rules (DESIGN_SYSTEM.md)', () => {
       violations,
       `Colour literals found in: ${violations.join(', ')}. Use a CSS variable from globals.css.`,
     ).toEqual([]);
+  });
+
+  /**
+   * The two files exempted above still have to agree with the palette.
+   *
+   * They are the first colour the user sees: theme_color paints the iOS status
+   * bar and background_color paints the PWA splash screen, both before the app
+   * renders a pixel. A drift from --surface-base is a visible flash of the
+   * wrong background on every cold launch, and nothing else in the suite would
+   * notice.
+   */
+  it('pins the manifest and viewport colours to the --surface-base token', () => {
+    const css = readFileSync(join(srcRoot, 'app/globals.css'), 'utf-8');
+    const surfaceBase = css.match(/--surface-base:\s*(#[0-9a-fA-F]{3,8})/)?.[1];
+    expect(surfaceBase, '--surface-base is not declared in globals.css').toBeDefined();
+
+    for (const file of ['app/layout.tsx', 'app/manifest.ts']) {
+      const source = stripComments(readFileSync(join(srcRoot, file), 'utf-8'));
+      for (const literal of source.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []) {
+        expect(
+          literal.toLowerCase(),
+          `${file} uses ${literal}, which is not --surface-base (${surfaceBase}).`,
+        ).toBe(surfaceBase!.toLowerCase());
+      }
+    }
   });
 
   it('forbids rendering money outside the <Money> component', () => {

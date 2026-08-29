@@ -12,6 +12,10 @@ interface TransactionItemProps {
  * Transaction row item (DESIGN_SYSTEM.md 6.3).
  *
  * Touch target >= 44px, tabular numbers, and uncategorized warning dot.
+ *
+ * Styled by class rather than inline, unlike the static cards beside it: this
+ * is the row the list repeats, so every style object here was ten fresh objects
+ * per transaction on a screen whose whole budget is INP.
  */
 export function TransactionItem({
   transaction,
@@ -26,74 +30,38 @@ export function TransactionItem({
   });
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: '48px',
-        padding: 'var(--space-2) 0',
-      }}
-    >
+    <div className="tx">
       {/* Icon + Details */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div className="tx-lead">
         <div
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--surface-overlay)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-            color: transaction.category?.color ?? 'var(--ink-secondary)',
-          }}
+          className="tx-icon"
+          aria-hidden="true"
+          // Per-row value from the database, so it cannot be a class. Same
+          // custom-property handoff as the category chips in the entry form.
+          style={
+            (transaction.category?.color
+              ? { '--tx-icon-ink': transaction.category.color }
+              : {}) as React.CSSProperties
+          }
         >
           {isIncome ? '↓' : '☕'}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {isUncategorized && (
-              <span
-                title={t('uncategorized')}
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--warning)',
-                  display: 'inline-block',
-                }}
-              />
-            )}
-            <span
-              style={{
-                fontSize: 'var(--text-body)',
-                fontWeight: 500,
-                color: 'var(--ink-primary)',
-              }}
-            >
-              {transaction.merchant}
-            </span>
+        <div className="tx-detail">
+          <div className="tx-merchant">
+            {isUncategorized && <span className="tx-flag" title={t('uncategorized')} />}
+            <span className="tx-name">{transaction.merchant}</span>
           </div>
 
-          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--ink-muted)' }}>
+          <span className="tx-meta">
             {categoryName} · {timeFormatted}
           </span>
         </div>
       </div>
 
       {/* Amount */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          color: isIncome ? 'var(--positive)' : 'var(--ink-primary)',
-        }}
-      >
-        <span style={{ fontWeight: 600 }}>
+      <div className={`tx-amount${isIncome ? ' tx-amount--income' : ''}`}>
+        <span>
           {isIncome ? '+' : ''}
           <Money
             amountMinor={transaction.amountMinor}

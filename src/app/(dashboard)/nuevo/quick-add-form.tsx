@@ -111,79 +111,37 @@ export function QuickAddForm({
     });
   }
 
+  const isIncome = type === 'income';
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-4)',
-        width: '100%',
-      }}
-    >
+    <div className="entry">
       {/* Top navigation bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Link
-          href="/"
-          style={{
-            color: 'var(--ink-secondary)',
-            fontSize: 'var(--text-label)',
-            fontWeight: 500,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            backgroundColor: 'var(--surface-raised)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-full)',
-          }}
-        >
+      <div className="entry-bar">
+        <Link href="/" className="entry-back">
           ← {t('back')}
         </Link>
 
         {/* Segmented Control (DESIGN_SYSTEM.md 6.4) */}
-        <div
-          role="group"
-          aria-label={t('transaction_type')}
-          style={{
-            backgroundColor: 'var(--surface-sunken)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-full)',
-            padding: '3px',
-            display: 'inline-flex',
-          }}
-        >
+        <div role="group" aria-label={t('transaction_type')} className="entry-segmented">
           <button
             type="button"
+            aria-pressed={!isIncome}
             onClick={() => {
               setType('expense');
               setSelectedCategoryId(null);
             }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: type === 'expense' ? 'var(--ink-primary)' : 'transparent',
-              color: type === 'expense' ? 'var(--ink-inverse)' : 'var(--ink-secondary)',
-              fontSize: 'var(--text-label)',
-              fontWeight: 600,
-            }}
+            className="entry-segment"
           >
             {t('field_type_expense')}
           </button>
           <button
             type="button"
+            aria-pressed={isIncome}
             onClick={() => {
               setType('income');
               setSelectedCategoryId(null);
             }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: type === 'income' ? 'var(--positive)' : 'transparent',
-              color: type === 'income' ? '#FFFFFF' : 'var(--ink-secondary)',
-              fontSize: 'var(--text-label)',
-              fontWeight: 600,
-            }}
+            className="entry-segment entry-segment--income"
           >
             {t('field_type_income')}
           </button>
@@ -191,117 +149,51 @@ export function QuickAddForm({
       </div>
 
       {/* Main card */}
-      <div
-        className="step-slide"
-        style={{
-          backgroundColor: 'var(--surface-raised)',
-          border: '1px solid var(--border-hairline)',
-          borderRadius: 'var(--radius-xl)',
-          padding: 'var(--space-6)',
-          boxShadow: 'var(--shadow-overlay)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-5)',
-        }}
-      >
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 600, color: 'var(--ink-primary)' }}>
-          {type === 'expense' ? t('record_expense') : t('record_income')}
+      <div className="step-slide entry-card">
+        <h1 className="entry-heading">
+          {isIncome ? t('record_income') : t('record_expense')}
         </h1>
 
         {success && (
-          <div
-            role="status"
-            style={{
-              backgroundColor: 'rgba(52, 199, 123, 0.14)',
-              color: 'var(--positive)',
-              padding: 'var(--space-3) var(--space-4)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 'var(--text-label)',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
+          <div role="status" className="entry-banner entry-banner--success">
             <span>✓ {t('transaction_created_success')}</span>
-            <Link href="/" style={{ color: 'var(--positive)', fontWeight: 600, textDecoration: 'underline' }}>
-              {t('view_on_home')} →
-            </Link>
+            <Link href="/">{t('view_on_home')} →</Link>
           </div>
         )}
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              backgroundColor: 'rgba(229, 72, 77, 0.14)',
-              color: 'var(--critical)',
-              padding: 'var(--space-3) var(--space-4)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 'var(--text-label)',
-              fontWeight: 500,
-            }}
-          >
+          <div role="alert" className="entry-banner entry-banner--error">
             ⚠ {error}
           </div>
         )}
 
-        <form
-          onSubmit={handleQuickSubmit}
-          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}
-        >
+        <form onSubmit={handleQuickSubmit} className="entry-form">
           {/* Field 1: Amount with Display & Quick Suggestions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label
-              htmlFor="amount"
-              style={{
-                fontSize: 'var(--text-label)',
-                color: 'var(--ink-secondary)',
-                fontWeight: 500,
-              }}
-            >
+          <div className="entry-field">
+            <label htmlFor="amount" className="entry-label">
               {t('field_amount')} (COP)
             </label>
 
-            <div style={{ position: 'relative' }}>
-              <input
-                id="amount"
-                name="amount"
-                type="text"
-                inputMode="numeric"
-                autoFocus
-                placeholder="0"
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
-                style={{
-                  fontSize: 'var(--text-display)',
-                  fontWeight: 700,
-                  textAlign: 'left',
-                  padding: 'var(--space-4)',
-                  backgroundColor: 'var(--surface-sunken)',
-                  border: '1px solid var(--border-hairline)',
-                  borderRadius: 'var(--radius-lg)',
-                  color: type === 'income' ? 'var(--positive)' : 'var(--ink-primary)',
-                }}
-              />
-            </div>
+            <input
+              id="amount"
+              name="amount"
+              type="text"
+              inputMode="numeric"
+              autoFocus
+              placeholder="0"
+              value={amountInput}
+              onChange={(e) => setAmountInput(e.target.value)}
+              className={`entry-amount${isIncome ? ' entry-amount--income' : ''}`}
+            />
 
             {/* Quick Amount Chips */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-1)' }}>
+            <div className="entry-chips">
               {QUICK_AMOUNTS.map((val) => (
                 <button
                   key={val}
                   type="button"
                   onClick={() => setAmountInput(val)}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: 'var(--surface-overlay)',
-                    border: '1px solid var(--border-hairline)',
-                    color: 'var(--ink-secondary)',
-                    fontSize: 'var(--text-caption)',
-                    fontWeight: 500,
-                  }}
+                  className="entry-chip"
                 >
                   {/* Through <Money>, not toLocaleString: the chip and the
                       figure it fills in must be formatted by the same rules,
@@ -317,9 +209,9 @@ export function QuickAddForm({
             </div>
 
             {previewMinor > 0n && (
-              <div style={{ color: 'var(--ink-secondary)', fontSize: 'var(--text-label)', marginTop: 'var(--space-1)' }}>
-                Vista previa:{' '}
-                <strong style={{ color: type === 'income' ? 'var(--positive)' : 'var(--ink-primary)' }}>
+              <div className={`entry-preview${isIncome ? ' entry-preview--income' : ''}`}>
+                {t('field_amount_preview')}{' '}
+                <strong>
                   <Money amountMinor={previewMinor} currency="COP" />
                 </strong>
               </div>
@@ -327,15 +219,8 @@ export function QuickAddForm({
           </div>
 
           {/* Field 2: Merchant / Concept */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label
-              htmlFor="merchant"
-              style={{
-                fontSize: 'var(--text-label)',
-                color: 'var(--ink-secondary)',
-                fontWeight: 500,
-              }}
-            >
+          <div className="entry-field">
+            <label htmlFor="merchant" className="entry-label">
               {t('field_merchant')}
             </label>
             <input
@@ -346,67 +231,39 @@ export function QuickAddForm({
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               required
-              style={{
-                fontSize: 'var(--text-body)',
-                backgroundColor: 'var(--surface-sunken)',
-                padding: 'var(--space-3) var(--space-4)',
-              }}
+              className="entry-input"
             />
           </div>
 
           {/* Field 3: Category Chips */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label
-              style={{
-                fontSize: 'var(--text-label)',
-                color: 'var(--ink-secondary)',
-                fontWeight: 500,
-              }}
-            >
-              {t('field_category')}
-            </label>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 'var(--space-2)',
-                maxHeight: '160px',
-                overflowY: 'auto',
-                padding: '2px',
-              }}
-            >
+          <div className="entry-field">
+            <label className="entry-label">{t('field_category')}</label>
+            <div className="entry-categories">
               {filteredCategories.map((cat) => {
                 const isSelected = selectedCategoryId === cat.id;
                 return (
                   <button
                     key={cat.id}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedCategoryId(isSelected ? null : cat.id)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 'var(--radius-full)',
-                      backgroundColor: isSelected
-                        ? 'var(--brand-500)'
-                        : 'var(--surface-overlay)',
-                      color: isSelected ? '#FFFFFF' : 'var(--ink-secondary)',
-                      border: '1px solid',
-                      borderColor: isSelected ? 'var(--brand-400)' : 'var(--border-hairline)',
-                      boxShadow: isSelected ? '0 2px 8px rgba(129, 114, 242, 0.35)' : 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: 'var(--text-label)',
-                      fontWeight: 500,
-                    }}
+                    className="entry-category"
                   >
+                    {/* The one inline style left in this file, and the reason
+                        the rule allows it: cat.color is a per-row value from
+                        the database, so it cannot be a class. It rides in as a
+                        custom property the stylesheet reads, which keeps the
+                        colour a token substitution rather than a second styling
+                        mechanism. */}
                     <span
-                      style={{
-                        display: 'inline-block',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: cat.color || 'var(--brand-400)',
-                      }}
+                      className="entry-category-dot"
+                      style={
+                        // Omitted rather than set empty when the row has no
+                        // colour: var(--dot, ...) only reaches its fallback if
+                        // the property is absent, so an empty string would
+                        // paint nothing instead of the brand default.
+                        (cat.color ? { '--dot': cat.color } : {}) as React.CSSProperties
+                      }
                     />
                     {cat.name}
                   </button>
@@ -417,22 +274,15 @@ export function QuickAddForm({
 
           {/* Account Selector (if multiple accounts) */}
           {accounts.length > 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              <label
-                htmlFor="account"
-                style={{
-                  fontSize: 'var(--text-label)',
-                  color: 'var(--ink-secondary)',
-                  fontWeight: 500,
-                }}
-              >
+            <div className="entry-field">
+              <label htmlFor="account" className="entry-label">
                 {t('field_account')}
               </label>
               <select
                 id="account"
                 value={selectedAccountId}
                 onChange={(e) => setSelectedAccountId(e.target.value)}
-                style={{ backgroundColor: 'var(--surface-sunken)', padding: 'var(--space-3)' }}
+                className="entry-select"
               >
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
@@ -444,15 +294,8 @@ export function QuickAddForm({
           )}
 
           {/* Optional Note */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label
-              htmlFor="note"
-              style={{
-                fontSize: 'var(--text-label)',
-                color: 'var(--ink-secondary)',
-                fontWeight: 500,
-              }}
-            >
+          <div className="entry-field">
+            <label htmlFor="note" className="entry-label">
               {t('field_note')}
             </label>
             <input
@@ -462,10 +305,7 @@ export function QuickAddForm({
               placeholder={t('field_note_placeholder')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              style={{
-                fontSize: 'var(--text-body)',
-                backgroundColor: 'var(--surface-sunken)',
-              }}
+              className="entry-input"
             />
           </div>
 
@@ -473,18 +313,7 @@ export function QuickAddForm({
           <button
             type="submit"
             disabled={isPending}
-            style={{
-              backgroundColor: type === 'income' ? 'var(--positive)' : 'var(--brand-500)',
-              color: '#FFFFFF',
-              padding: 'var(--space-4)',
-              fontSize: 'var(--text-body)',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-lg)',
-              marginTop: 'var(--space-2)',
-              width: '100%',
-              boxShadow: type === 'income' ? '0 4px 16px rgba(52, 199, 123, 0.3)' : '0 4px 16px rgba(129, 114, 242, 0.3)',
-              height: '52px',
-            }}
+            className={`entry-submit${isIncome ? ' entry-submit--income' : ''}`}
           >
             {isPending ? t('saving') : t('btn_submit_transaction')}
           </button>
