@@ -21,7 +21,8 @@
     "test:coverage": "vitest run --coverage",
     "db:migrate:raw": "drizzle-kit migrate",
     "metrics:report": "tsx scripts/metrics-report.mts",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "lhci autorun",
+    "test:isolation": "vitest run tests/isolation.test.ts"
   },
   "dependencies": {
     "@neon/config": "1.0.4",

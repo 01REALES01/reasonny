@@ -62,6 +62,40 @@ jobs:
       - name: Production build
         run: pnpm build
 
+  isolation:
+    name: Tenant isolation (section 11.3)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Runs the repositories against a real Postgres with two real users,
+      # which the mocked suite cannot do: it asserts a WHERE clause was built,
+      # not that it filters anything.
+      #
+      # TEST_DATABASE_URL must be the POOLED connection string of a throwaway
+      # Neon branch with the migrations already applied. The suite refuses to
+      # run if it addresses the same host and database as DATABASE_URL.
+      #
+      # Absent the secret this reports a warning rather than passing quietly.
+      # A security gate that silently does not run is worse than none, because
+      # the green tick says otherwise.
+      - name: Tenant isolation
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: |
+          if [ -z "$TEST_DATABASE_URL" ]; then
+            echo "::warning title=Isolation gate skipped::TEST_DATABASE_URL is not configured, so the tenant-isolation suite did NOT run."
+            exit 0
+          fi
+          pnpm test:isolation
+
   lighthouse:
     name: Performance budget (P7)
     runs-on: ubuntu-latest
