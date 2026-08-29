@@ -334,7 +334,7 @@ textarea:focus-visible {
 }
 
 .animate-entrance-1 {
-  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 /* Same entrance, opacity only, for any container that HOLDS a position:fixed
@@ -354,22 +354,27 @@ textarea:focus-visible {
 }
 
 .animate-entrance-fade {
-  animation: entranceFade 600ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: entranceFade 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+/* `both`, and NO base opacity: 0.
+   Declaring opacity: 0 on the element and relying on the animation to undo it
+   makes the animation load-bearing - if it never runs, the content is simply
+   invisible and the page is blank. That is not hypothetical: Lighthouse
+   reported NO_FCP ("the page did not paint any content") both locally and in
+   CI on this page. animation-fill-mode: both applies the from-state during the
+   delay instead, so the fade still starts hidden, while an element whose
+   animation never runs stays at its natural opacity: visible. */
 .animate-entrance-2 {
-  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
-  opacity: 0;
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
 }
 
 .animate-entrance-3 {
-  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 220ms forwards;
-  opacity: 0;
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 220ms both;
 }
 
 .animate-entrance-4 {
-  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 320ms forwards;
-  opacity: 0;
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 320ms both;
 }
 
 /* Arrow slide transition on pill buttons */
