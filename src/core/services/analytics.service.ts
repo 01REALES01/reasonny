@@ -11,10 +11,10 @@ import {
 } from '@/core/repositories/account.repository';
 import { getProfile } from '@/core/repositories/profile.repository';
 import {
+  countUncategorizedTransactions,
   getCategorySpendingBreakdown,
   getMonthlyTotals,
   getRecentEnrichedTransactions,
-  getUncategorizedTransactions,
   type CategorySpendingBreakdown,
   type EnrichedTransactionRow,
   type MonthlyTotals,
@@ -34,6 +34,15 @@ export interface DashboardData {
 
 /**
  * Computes the ISO local date bounds 'YYYY-MM-01 00:00:00' for a given month and timezone.
+ *
+ * The year and month come from Intl because the calendar day depends on the
+ * user's timezone (CLAUDE.md rule 4), but the December-to-January rollover is
+ * left to Date.UTC, which already normalises an out-of-range month into the
+ * next year. The hand-written `if (nextMonth > 12)` it replaces was correct;
+ * it was just a reimplementation of something with no edge cases left in it.
+ *
+ * 'en-CA' gives an ISO-ordered YYYY-MM-DD, so the date part needs no padding
+ * or reassembly by hand.
  */
 export function getMonthDateBounds(
   date: Date,
@@ -44,42 +53,32 @@ export function getMonthDateBounds(
   monthName: string;
   year: number;
 } {
-  // Format current date in target timezone to extract local year and month
-  const formatter = new Intl.DateTimeFormat('en-US', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
     month: 'numeric',
-  });
+  }).formatToParts(date);
 
-  const parts = formatter.formatToParts(date);
-  const yearStr = parts.find((p) => p.type === 'year')?.value ?? '2026';
-  const monthStr = parts.find((p) => p.type === 'month')?.value ?? '8';
+  // No `?? '2026'` defaults here any more. Those branches were unreachable -
+  // formatToParts always emits the parts it was asked for - and had they ever
+  // fired, they would have silently reported a hardcoded month's totals as if
+  // they were this one's.
+  const year = Number(parts.find((p) => p.type === 'year')!.value);
+  const month = Number(parts.find((p) => p.type === 'month')!.value);
 
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-
-  const startMonthPadded = month.toString().padStart(2, '0');
-  const startOfMonthIso = `${year}-${startMonthPadded}-01 00:00:00`;
-
-  let nextYear = year;
-  let nextMonth = month + 1;
-  if (nextMonth > 12) {
-    nextMonth = 1;
-    nextYear += 1;
-  }
-  const nextMonthPadded = nextMonth.toString().padStart(2, '0');
-  const startOfNextMonthIso = `${nextYear}-${nextMonthPadded}-01 00:00:00`;
-
-  const monthNameFormatter = new Intl.DateTimeFormat('es-CO', {
-    timeZone: timezone,
-    month: 'long',
-  });
-  const monthName = monthNameFormatter.format(date);
+  const isoDay = (y: number, monthIndex: number): string =>
+    `${new Date(Date.UTC(y, monthIndex, 1)).toISOString().slice(0, 10)} 00:00:00`;
 
   return {
-    startOfMonthIso,
-    startOfNextMonthIso,
-    monthName,
+    startOfMonthIso: isoDay(year, month - 1),
+    // month, not month + 1: the index is already zero-based, so passing the
+    // one-based number lands on the following month, and December rolls into
+    // January of year + 1 on its own.
+    startOfNextMonthIso: isoDay(year, month),
+    monthName: new Intl.DateTimeFormat('es-CO', {
+      timeZone: timezone,
+      month: 'long',
+    }).format(date),
     year,
   };
 }
@@ -102,7 +101,7 @@ export async function getDashboardData(
     monthlyTotals,
     categoryBreakdown,
     recentTransactions,
-    uncategorized,
+    uncategorizedCount,
   ] = await Promise.all([
     listAccounts(userId),
     getMonthlyTotals(
@@ -118,25 +117,20 @@ export async function getDashboardData(
       bounds.startOfNextMonthIso,
     ),
     getRecentEnrichedTransactions(userId, 20),
-    getUncategorizedTransactions(userId, 100),
+    countUncategorizedTransactions(userId),
   ]);
 
-  // Compute total balance across all accounts
-  let totalBalanceMinor = 0n;
   // toAccountId, not `as any`. The cast defeated the branded type at exactly
   // the boundary it exists to guard: `as any` would have let a userId, a
   // categoryId or a malformed string through to a balance query without a
   // word from the compiler. The constructor validates the uuid instead.
-  const balancePromises = accounts.map((acc) =>
-    getAccountBalance(userId, toAccountId(acc.id)),
+  const balances = await Promise.all(
+    accounts.map((acc) => getAccountBalance(userId, toAccountId(acc.id))),
   );
-  const balances = await Promise.all(balancePromises);
-
-  for (const b of balances) {
-    if (b) {
-      totalBalanceMinor += b.balanceMinor;
-    }
-  }
+  const totalBalanceMinor = balances.reduce(
+    (total, balance) => total + (balance?.balanceMinor ?? 0n),
+    0n,
+  );
 
   const capitalizedMonth =
     bounds.monthName.charAt(0).toUpperCase() + bounds.monthName.slice(1);
@@ -148,7 +142,7 @@ export async function getDashboardData(
     monthlyTotals,
     categoryBreakdown,
     recentTransactions,
-    uncategorizedCount: uncategorized.length,
+    uncategorizedCount,
     currentMonthLabel: `${capitalizedMonth} ${bounds.year}`,
   };
 }

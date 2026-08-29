@@ -192,8 +192,13 @@ export function parseMoney(input: string, currency: string): Money {
  * Builds the exact decimal string for an amount, without ever going through a
  * float. Intl.NumberFormat accepts a string, so precision survives all the way
  * to the rendered characters - a number would round above 2^53.
+ *
+ * Exported for the CSV export, which needs the plain decimal without any locale
+ * formatting. It had its own copy of this arithmetic; two implementations of
+ * "minor units to a decimal string" is exactly what rule 3 forbids, and the
+ * duplicate would only be found the day the two disagreed.
  */
-function toDecimalString(minor: bigint): Intl.StringNumericLiteral {
+export function toDecimalString(minor: bigint): Intl.StringNumericLiteral {
   const negative = minor < 0n;
   const absolute = negative ? -minor : minor;
   const units = absolute / SCALE;

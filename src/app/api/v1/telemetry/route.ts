@@ -76,7 +76,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   try {
-    const { rejected } = await recordMetrics(
+    await recordMetrics(
       toUserId(session.id),
       parsed.data.samples.map((sample) => ({
         metric: sample.metric,
@@ -85,10 +85,6 @@ export async function POST(request: NextRequest): Promise<Response> {
         route: sample.route ?? null,
       })),
     );
-
-    if (rejected.length > 0) {
-      console.warn('[telemetry] some samples were not recorded:', rejected);
-    }
   } catch (error) {
     // Losing a measurement must never surface to the user, and must never be
     // silent to us: this is the one place that distinction can be made.

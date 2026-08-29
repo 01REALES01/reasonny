@@ -41,6 +41,7 @@ export const DICTIONARY = {
     validation_merchant_required: 'El nombre del comercio es obligatorio.',
     no_categories_available: 'Sin categorías disponibles',
     no_accounts_available: 'Cuenta principal (predeterminada)',
+    account_cash: 'Efectivo',
 
     // Dashboard
     hero_total_balance: 'Saldo total disponible',
@@ -122,6 +123,7 @@ export const DICTIONARY = {
     validation_merchant_required: 'Merchant name is required.',
     no_categories_available: 'No categories available',
     no_accounts_available: 'Main Account (Default)',
+    account_cash: 'Cash',
 
     // Dashboard
     hero_total_balance: 'Total available balance',

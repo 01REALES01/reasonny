@@ -5,10 +5,11 @@
  * CSV/Formula injection (OWASP).
  */
 
-import { SCALE } from '@/core/money';
+import { toDecimalString } from '@/core/money';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
+import { t } from '@/lib/i18n';
 
-export const CSV_HEADERS = [
+const CSV_HEADERS = [
   'id',
   'date',
   'merchant',
@@ -49,30 +50,24 @@ export function sanitizeCsvField(value: string | number | null | undefined): str
 }
 
 /**
- * Converts minor units (BIGINT scale 100) to standard decimal notation without float precision loss.
- */
-export function minorUnitsToDecimalString(minor: bigint): string {
-  const isNegative = minor < 0n;
-  const abs = isNegative ? -minor : minor;
-  const whole = abs / SCALE;
-  const cents = abs % SCALE;
-
-  return `${isNegative ? '-' : ''}${whole}.${cents.toString().padStart(2, '0')}`;
-}
-
-/**
  * Formats an enriched transaction row into a CSV row.
+ *
+ * The amount goes through core/money's toDecimalString rather than a local
+ * copy: an export whose arithmetic drifts from the app's is a spreadsheet that
+ * disagrees with the screen, and no one would know which was right.
  */
 export function formatTransactionToCsvRow(tx: EnrichedTransactionRow): string {
   const fields = [
     sanitizeCsvField(tx.id),
     sanitizeCsvField(tx.transactionDate.toISOString().split('T')[0]),
     sanitizeCsvField(tx.merchant),
-    minorUnitsToDecimalString(tx.amountMinor),
+    toDecimalString(tx.amountMinor),
     sanitizeCsvField(tx.currency),
     sanitizeCsvField(tx.type),
-    sanitizeCsvField(tx.category?.name ?? 'Sin categorizar'),
-    sanitizeCsvField(tx.account?.name ?? 'Efectivo'),
+    // Through the catalog, not a Spanish literal: the same two words are
+    // already keys, and an export is a document the user keeps.
+    sanitizeCsvField(tx.category?.name ?? t('uncategorized')),
+    sanitizeCsvField(tx.account?.name ?? t('account_cash')),
     sanitizeCsvField(tx.status),
     sanitizeCsvField(tx.categorizedBy ?? 'manual'),
     sanitizeCsvField(tx.note ?? ''),
@@ -81,9 +76,5 @@ export function formatTransactionToCsvRow(tx: EnrichedTransactionRow): string {
   return fields.join(',');
 }
 
-/**
- * Generates the full CSV header line.
- */
-export function getCsvHeaderLine(): string {
-  return `${CSV_HEADERS.join(',')}\r\n`;
-}
+/** A value, not a function: the headers never change between calls. */
+export const CSV_HEADER_LINE = `${CSV_HEADERS.join(',')}\r\n`;

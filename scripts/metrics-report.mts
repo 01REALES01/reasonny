@@ -10,14 +10,14 @@
  *   pnpm metrics:report jean@mail.com   # a specific profile by email
  *   pnpm metrics:report --since 2026-08-01
  */
-import { config } from 'dotenv';
-
-config({ path: '.env.local' });
-
 const { Pool, neonConfig } = await import('@neondatabase/serverless');
-const { resolveConnectionString } = await import('../src/infrastructure/db/env');
+const { loadEnvFiles, resolveConnectionString } = await import(
+  '../src/infrastructure/db/env'
+);
 const { getPhase1Baselines } = await import('../src/core/services/telemetry.service');
 const { toUserId } = await import('../src/core/types');
+
+loadEnvFiles();
 
 neonConfig.webSocketConstructor ??= globalThis.WebSocket;
 

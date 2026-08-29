@@ -18,13 +18,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { config } from 'dotenv';
-
-config({ path: '.env.local' });
-config({ path: '.env' });
-
 const { Pool, neonConfig } = await import('@neondatabase/serverless');
-const { resolveConnectionString } = await import('../src/infrastructure/db/env');
+const { loadEnvFiles, resolveConnectionString } = await import(
+  '../src/infrastructure/db/env'
+);
+
+loadEnvFiles();
 
 neonConfig.webSocketConstructor ??= globalThis.WebSocket;
 

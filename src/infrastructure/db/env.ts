@@ -13,9 +13,32 @@
  *   different backend, so the lock silently protects nothing.
  */
 
-export type ConnectionKind = 'runtime' | 'migration';
+type ConnectionKind = 'runtime' | 'migration';
 
 type Env = Record<string, string | undefined>;
+
+/**
+ * Loads .env.local, then .env, for the tools that run outside Next.
+ *
+ * process.loadEnvFile is Node's own since 20.12, so this replaces the dotenv
+ * dependency that four scripts and drizzle.config.ts each imported separately.
+ *
+ * Order matters and matches what dotenv did: loadEnvFile does not overwrite a
+ * variable that is already set, so .env.local wins over .env - which is where
+ * `neon init` writes by default. A missing file throws rather than returning a
+ * flag, and that is not an error here: having only one of the two is the normal
+ * case, and having neither is caught downstream by resolveConnectionString with
+ * a message that names the variable.
+ */
+export function loadEnvFiles(): void {
+  for (const file of ['.env.local', '.env']) {
+    try {
+      process.loadEnvFile(file);
+    } catch {
+      // Absent file. See above.
+    }
+  }
+}
 
 const VARIABLE_BY_KIND = {
   runtime: 'DATABASE_URL',

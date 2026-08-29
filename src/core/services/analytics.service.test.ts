@@ -13,7 +13,7 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   getMonthlyTotals: vi.fn(),
   getCategorySpendingBreakdown: vi.fn(),
   getRecentEnrichedTransactions: vi.fn(),
-  getUncategorizedTransactions: vi.fn(),
+  countUncategorizedTransactions: vi.fn(),
 }));
 
 import {
@@ -25,7 +25,7 @@ import {
   getCategorySpendingBreakdown,
   getMonthlyTotals,
   getRecentEnrichedTransactions,
-  getUncategorizedTransactions,
+  countUncategorizedTransactions,
 } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
 
@@ -117,7 +117,7 @@ describe('Analytics Service & Timezone Boundaries', () => {
         },
       ]);
 
-      (getUncategorizedTransactions as any).mockResolvedValue([]);
+      (countUncategorizedTransactions as any).mockResolvedValue(0);
 
       const data = await getDashboardData(userId, new Date('2026-08-27T12:00:00Z'));
 

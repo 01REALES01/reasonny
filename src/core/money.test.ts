@@ -13,6 +13,7 @@ import {
   parseMoney,
   subtract,
   sum,
+  toDecimalString,
   zero,
   type Money,
 } from './money';
@@ -172,6 +173,28 @@ describe('parseMoney - what a human types', () => {
   it('round-trips through formatting', () => {
     const original = cop(1_847_300n);
     expect(parseMoney(formatMoney(original, 'es-CO'), 'COP')).toEqual(original);
+  });
+});
+
+describe('toDecimalString - the plain decimal, no locale', () => {
+  // Moved here with the function, which the CSV export used to duplicate. The
+  // export is the one consumer that must NOT go through Intl: a spreadsheet
+  // needs 45000.00, not "$ 45.000".
+  it('always emits exactly two decimals', () => {
+    expect(toDecimalString(4_500_000n)).toBe('45000.00');
+    expect(toDecimalString(1250n)).toBe('12.50');
+    expect(toDecimalString(5n)).toBe('0.05');
+    expect(toDecimalString(0n)).toBe('0.00');
+  });
+
+  it('keeps the sign on the whole amount, not on the cents', () => {
+    expect(toDecimalString(-4_500_000n)).toBe('-45000.00');
+    expect(toDecimalString(-50n)).toBe('-0.50');
+  });
+
+  it('stays exact past the range a double can represent', () => {
+    // 2^53 minor units is about 90 billion pesos. A number would round here.
+    expect(toDecimalString(9_007_199_254_740_993n)).toBe('90071992547409.93');
   });
 });
 

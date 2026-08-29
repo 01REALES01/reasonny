@@ -20,8 +20,8 @@ import {
 } from './category.repository';
 import { ensureProfile, getProfile } from './profile.repository';
 import {
+  countUncategorizedTransactions,
   createTransaction,
-  getUncategorizedTransactions,
 } from './transaction.repository';
 import {
   toAccountId,
@@ -231,17 +231,24 @@ describe('Repository Layer Unit Tests', () => {
       expect(isDuplicate).toBe(false);
     });
 
-    it('getUncategorizedTransactions fetches uncategorized transactions', async () => {
+    it('countUncategorizedTransactions returns the count, not a row list', async () => {
       const mockChain = {
         from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([{ id: transactionId, categoryId: null }]),
+        where: vi.fn().mockResolvedValue([{ count: 7 }]),
       };
       (mockDb.select as any).mockReturnValue(mockChain);
 
-      const txs = await getUncategorizedTransactions(userId);
-      expect(txs).toHaveLength(1);
+      expect(await countUncategorizedTransactions(userId)).toBe(7);
+    });
+
+    it('countUncategorizedTransactions reports zero when the query returns nothing', async () => {
+      const mockChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      };
+      (mockDb.select as any).mockReturnValue(mockChain);
+
+      expect(await countUncategorizedTransactions(userId)).toBe(0);
     });
   });
 

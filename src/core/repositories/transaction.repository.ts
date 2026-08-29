@@ -125,15 +125,20 @@ export async function createTransaction(
 }
 
 /**
- * Lists uncategorized transactions for Level-2 interactive classification.
+ * How many transactions are still waiting to be categorised.
+ *
+ * A count, not a list. This used to select up to a hundred full rows so the
+ * dashboard could read .length off the array - every column of every row over
+ * the wire, on the page whose LCP budget has to absorb a Neon cold start, to
+ * render one number. It also silently capped: a user with 140 uncategorised
+ * rows was told they had 100.
+ *
+ * The list version comes back in phase 2 with the review screen that needs it.
  */
-export async function getUncategorizedTransactions(
-  userId: UserId,
-  limit = 50,
-): Promise<TransactionRow[]> {
+export async function countUncategorizedTransactions(userId: UserId): Promise<number> {
   const db = getDb();
-  return db
-    .select()
+  const [row] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(transactions)
     .where(
       and(
@@ -141,9 +146,8 @@ export async function getUncategorizedTransactions(
         isNull(transactions.categoryId),
         isNull(transactions.deletedAt),
       ),
-    )
-    .orderBy(desc(transactions.createdAt))
-    .limit(limit);
+    );
+  return row?.count ?? 0;
 }
 
 export interface MonthlyTotals {

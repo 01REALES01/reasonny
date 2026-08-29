@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifyAndTouchApiKey } from '@/core/repositories/api-key.repository';
 import { getRecentEnrichedTransactions } from '@/core/repositories/transaction.repository';
 import {
+  CSV_HEADER_LINE,
   formatTransactionToCsvRow,
-  getCsvHeaderLine,
 } from '@/core/services/csv-export.service';
 import { toUserId, type UserId } from '@/core/types';
 import { getCurrentUser } from '@/lib/session';
@@ -39,13 +39,26 @@ async function authenticateRequest(request: NextRequest): Promise<UserId | null>
 }
 
 /**
- * Streams the user's financial transactions as an RFC 4180 CSV export.
+ * Serves the user's financial transactions as an RFC 4180 CSV export.
  *
- * WHY STREAMING (CLAUDE.md / IMPLEMENTATION_PLAN.md B7)
- * ----------------------------------------------------
- * Buffering thousands of transaction strings in memory risks Node serverless OOM
- * and inflates TTFB. Streaming writes lines directly to the wire in constant O(1) memory.
+ * WHY THIS IS NOT A ReadableStream
+ * --------------------------------
+ * It used to be one, under a comment promising "constant O(1) memory". It was
+ * not: the line above it loads every row into an array first, and the stream's
+ * start() then enqueued all of them synchronously before returning - the whole
+ * dataset in memory, plus a second copy sitting in the stream's queue. The
+ * ceremony bought nothing and hid the actual bound, which is the 50 000 row
+ * limit on the query.
+ *
+ * Real streaming means a cursor in the repository handing rows out in batches,
+ * which is a change to the data layer, not to this handler. Until an export is
+ * big enough to need it, the honest version is the short one.
+ *
+ * ponytail: whole result set in memory, bounded by EXPORT_ROW_LIMIT. Move to a
+ * cursor in transaction.repository if a real export ever approaches it.
  */
+const EXPORT_ROW_LIMIT = 50_000;
+
 export async function GET(request: NextRequest): Promise<Response> {
   const userId = await authenticateRequest(request);
 
@@ -56,26 +69,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     );
   }
 
-  // Fetch all active transactions for this user
-  const transactions = await getRecentEnrichedTransactions(userId, 50000);
-
+  const transactions = await getRecentEnrichedTransactions(userId, EXPORT_ROW_LIMIT);
   const todayIso = new Date().toISOString().split('T')[0];
-  const encoder = new TextEncoder();
 
-  const stream = new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(getCsvHeaderLine()));
+  const body =
+    CSV_HEADER_LINE +
+    transactions.map((tx) => `${formatTransactionToCsvRow(tx)}\r\n`).join('');
 
-      for (const tx of transactions) {
-        const line = `${formatTransactionToCsvRow(tx)}\r\n`;
-        controller.enqueue(encoder.encode(line));
-      }
-
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
+  return new Response(body, {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',

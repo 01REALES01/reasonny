@@ -1,17 +1,12 @@
-import { config } from 'dotenv';
 import { defineConfig } from 'drizzle-kit';
 
-import { resolveConnectionString } from './src/infrastructure/db/env';
+import { loadEnvFiles, resolveConnectionString } from './src/infrastructure/db/env';
 
-// drizzle-kit runs outside Next, so nothing has loaded the env files yet.
-// .env.local first: dotenv does not overwrite what is already set, so a value
-// there wins over .env (where `neon init` writes by default).
-//
-// These run before defineConfig() is called, and resolveConnectionString reads
+// drizzle-kit runs outside Next, so nothing has loaded the env files yet. This
+// runs before defineConfig() is called, and resolveConnectionString reads
 // process.env at call time, so a static import is enough - and drizzle-kit
 // transpiles this config to CJS, where a top-level await would not compile.
-config({ path: '.env.local' });
-config({ path: '.env' });
+loadEnvFiles();
 
 export default defineConfig({
   dialect: 'postgresql',

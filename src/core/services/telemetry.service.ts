@@ -54,41 +54,27 @@ export async function recordMetric(
 }
 
 /**
- * Records a batch, and does not let one bad sample discard the good ones.
+ * Records a batch.
  *
- * A beacon carries every metric the page collected. If a single value arrives
- * as NaN because some browser reported an entry we do not understand,
- * rejecting the whole payload would lose the other four - and it would lose
- * them silently, on the client, at unload, where nobody is watching. Each
- * sample is therefore recorded independently and the failures are returned for
- * the caller to log.
+ * WHY NOT Promise.allSettled WITH PER-SAMPLE REJECTION REPORTING
+ * -------------------------------------------------------------
+ * It used to be that, on the reasoning that one NaN should not discard the
+ * other four samples in a beacon. But the only caller is the telemetry route,
+ * and by the time a sample reaches here it has passed
+ * `z.number().finite().min(0).max(86_400_000)` and a `z.enum` over the metric
+ * names - which is every input toScaledValue rejects. The machinery guarded a
+ * case its own caller had already made impossible, and the shape it returned
+ * meant the route had to branch on failures that could not occur.
+ *
+ * What is left that CAN fail is the database, and that fails for the whole
+ * batch or not at all. Promise.all says exactly that, and the route already
+ * catches and logs it.
  */
 export async function recordMetrics(
   userId: UserId,
   inputs: readonly RecordMetricInput[],
-): Promise<{ recorded: number; rejected: { metric: string; reason: string }[] }> {
-  const results = await Promise.allSettled(
-    inputs.map((input) => recordMetric(userId, input)),
-  );
-
-  const rejected: { metric: string; reason: string }[] = [];
-  let recorded = 0;
-
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') {
-      recorded += 1;
-    } else {
-      rejected.push({
-        metric: inputs[index]?.metric ?? 'unknown',
-        reason:
-          result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason),
-      });
-    }
-  });
-
-  return { recorded, rejected };
+): Promise<void> {
+  await Promise.all(inputs.map((input) => recordMetric(userId, input)));
 }
 
 export interface MetricSummary {

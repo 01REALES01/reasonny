@@ -62,6 +62,16 @@ jobs:
       - name: Production build
         run: pnpm build
 
+      # Handed to the lighthouse job so it measures this exact build instead of
+      # compiling its own.
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          retention-days: 1
+          include-hidden-files: true
+
   isolation:
     name: Tenant isolation (section 11.3)
     runs-on: ubuntu-latest
@@ -112,7 +122,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
+      # The .next directory built by the quality job, rather than a second
+      # `pnpm build`. Two jobs compiling the same commit is two chances for
+      # them to differ, and Lighthouse would then be measuring a build nothing
+      # else in this run verified.
+      - name: Restore the build from the quality job
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .next
 
       # Started here rather than through lhci's startServerCommand so that a
       # server which fails to boot shows its own output in the log instead of

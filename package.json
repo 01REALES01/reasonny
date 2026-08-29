@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.mts",
-    "db:check": "tsx scripts/db-check.ts",
+    "db:check": "tsx scripts/db-check.mts",
     "test:coverage": "vitest run --coverage",
     "db:migrate:raw": "drizzle-kit migrate",
     "metrics:report": "tsx scripts/metrics-report.mts",

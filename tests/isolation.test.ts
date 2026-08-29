@@ -49,10 +49,17 @@ function databaseIdentity(url: string): string {
 /**
  * The app's own database, from the environment or from .env.local.
  *
- * Parsed rather than loaded: dotenv's config() would inject DATABASE_URL into
- * process.env, and this file then overwrites that variable to point the
- * repositories at the test database. Reading without injecting keeps those two
- * concerns from touching.
+ * WHY dotenv IS STILL A DEPENDENCY FOR THIS ONE CALL
+ * --------------------------------------------------
+ * Everywhere else it was replaced by Node's own process.loadEnvFile. Not here:
+ * loadEnvFile always INJECTS into process.env, and this file goes on to
+ * overwrite DATABASE_URL to point the repositories at the test branch. dotenv's
+ * parse() reads the file without injecting, which keeps those two concerns from
+ * touching - and if the guard below throws, it throws without having put the
+ * app's production connection string into the environment on the way.
+ *
+ * That is worth one devDependency. This function is half of the check that
+ * stopped this suite writing into the production database.
  */
 function appDatabaseUrl(): string | null {
   const fromEnv = process.env.DATABASE_URL?.trim();
@@ -120,18 +127,32 @@ const suite = enabled ? describe : describe.skip;
 const TIMEOUT = 60_000;
 
 suite('Tenant isolation against a real database', () => {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  let repos: any;
-  let types: any;
-  let db: any;
-  let schema: any;
+  /**
+   * Typed, not `any`.
+   *
+   * These were `any` so the dynamic imports below would not need annotating,
+   * and the cost showed up the first time the repository surface shrank: this
+   * file kept calling four functions that no longer existed, tsc said nothing,
+   * and the breakage was invisible because the suite skips without
+   * TEST_DATABASE_URL. A security gate that can rot silently between runs is
+   * the one place `any` is least affordable.
+   */
+  let repos: typeof import('@/core/repositories');
+  let types: typeof import('@/core/types');
+  let schema: typeof import('@/infrastructure/db/schema');
+  let db: ReturnType<typeof import('@/infrastructure/db/client').getDb>;
 
   const userA = '1a1a1a1a-1111-4111-8111-1a1a1a1a1a1a';
   const userB = '2b2b2b2b-2222-4222-8222-2b2b2b2b2b2b';
 
   // Everything user B owns, captured at setup so each assertion can ask the
   // pointed question: "can A reach THIS row?"
-  const owned: Record<string, any> = {};
+  const owned = {} as {
+    account: Awaited<ReturnType<typeof repos.createAccount>>;
+    category: Awaited<ReturnType<typeof repos.createCategory>>;
+    transaction: Awaited<ReturnType<typeof repos.createTransaction>>['transaction'];
+    apiKey: Awaited<ReturnType<typeof repos.createApiKey>>;
+  };
 
   beforeAll(async () => {
     repos = await import('@/core/repositories');
@@ -170,26 +191,10 @@ suite('Tenant isolation against a real database', () => {
         categorizedBy: 'manual',
       })
     ).transaction;
-    owned.budget = await repos.upsertBudget(uid, {
-      categoryId: types.toCategoryId(owned.category.id),
-      periodStart: '2026-08-01',
-      amountMinor: 500_000n,
-    });
-    owned.rule = await repos.createRule(uid, {
-      categoryId: types.toCategoryId(owned.category.id),
-      merchantPattern: 'b-merchant',
-    });
     owned.apiKey = await repos.createApiKey(uid, {
       name: 'B key',
       keyHash: 'b'.repeat(64),
       keyPrefix: 'rm_bbbb',
-    });
-    owned.achievement = (await repos.grantAchievement(uid, 'streak_7d', '2026-08')).achievement;
-    owned.failure = await repos.recordIngestionFailure({
-      userId: uid,
-      source: 'manual',
-      rawPayload: { secret: 'B payload' },
-      error: 'B error',
     });
   }, TIMEOUT);
 
@@ -214,14 +219,9 @@ suite('Tenant isolation against a real database', () => {
 
       expect(await repos.listAccounts(a)).toEqual([]);
       expect(await repos.listCategories(a)).toEqual([]);
-      expect(await repos.listTransactions(a)).toEqual([]);
-      expect(await repos.listBudgetsForPeriod(a, '2026-08-01')).toEqual([]);
-      expect(await repos.listRules(a)).toEqual([]);
       expect(await repos.listApiKeys(a)).toEqual([]);
-      expect(await repos.listAchievements(a)).toEqual([]);
-      expect(await repos.listIngestionFailures(a)).toEqual([]);
-      expect(await repos.getUncategorizedTransactions(a)).toEqual([]);
       expect(await repos.getRecentEnrichedTransactions(a, 50)).toEqual([]);
+      expect(await repos.countUncategorizedTransactions(a)).toBe(0);
     }, TIMEOUT);
 
     it('get-by-id returns null for a row owned by the other user', async () => {
@@ -231,9 +231,6 @@ suite('Tenant isolation against a real database', () => {
 
       expect(await repos.getAccount(a, types.toAccountId(owned.account.id))).toBeNull();
       expect(await repos.getCategory(a, types.toCategoryId(owned.category.id))).toBeNull();
-      expect(
-        await repos.getTransaction(a, types.toTransactionId(owned.transaction.id)),
-      ).toBeNull();
       expect(
         await repos.getAccountBalance(a, types.toAccountId(owned.account.id)),
       ).toBeNull();
@@ -305,53 +302,24 @@ suite('Tenant isolation against a real database', () => {
           name: 'hijacked',
         }),
       ).toBeNull();
-      expect(
-        await repos.updateTransaction(a, types.toTransactionId(owned.transaction.id), {
-          amountMinor: 1n,
-        }),
-      ).toBeNull();
-      expect(
-        await repos.updateRule(a, types.toRuleId(owned.rule.id), {
-          merchantPattern: 'hijacked',
-        }),
-      ).toBeNull();
 
       // And the rows are genuinely untouched, not merely reported as such.
       const b = types.toUserId(userB);
-      expect((await repos.getAccount(b, types.toAccountId(owned.account.id))).name).toBe(
+      expect((await repos.getAccount(b, types.toAccountId(owned.account.id)))?.name).toBe(
         'B checking',
       );
-      expect(
-        (await repos.getTransaction(b, types.toTransactionId(owned.transaction.id)))
-          .amountMinor,
-      ).toBe(4_500_000n);
+      const bTransactions = await repos.getRecentEnrichedTransactions(b, 50);
+      expect(bTransactions[0]?.amountMinor).toBe(4_500_000n);
     }, TIMEOUT);
 
     it('deletes addressed at the other user’s rows delete nothing', async () => {
       const a = types.toUserId(userA);
 
-      expect(await repos.deleteBudget(a, types.toBudgetId(owned.budget.id))).toBe(false);
-      expect(await repos.deleteRule(a, types.toRuleId(owned.rule.id))).toBe(false);
       expect(await repos.revokeApiKey(a, types.toApiKeyId(owned.apiKey.id))).toBe(false);
-      expect(
-        await repos.resolveIngestionFailure(
-          a,
-          types.toIngestionFailureId(owned.failure.id),
-        ),
-      ).toBe(false);
-      expect(
-        await repos.softDeleteTransaction(
-          a,
-          types.toTransactionId(owned.transaction.id),
-        ),
-      ).toBe(false);
 
       const b = types.toUserId(userB);
-      expect(await repos.listBudgetsForPeriod(b, '2026-08-01')).toHaveLength(1);
-      expect(await repos.listRules(b)).toHaveLength(1);
       expect(await repos.listApiKeys(b)).toHaveLength(1);
-      expect(await repos.listIngestionFailures(b)).toHaveLength(1);
-      expect(await repos.listTransactions(b)).toHaveLength(1);
+      expect(await repos.getRecentEnrichedTransactions(b, 50)).toHaveLength(1);
     }, TIMEOUT);
   });
 
@@ -363,8 +331,8 @@ suite('Tenant isolation against a real database', () => {
 
       expect(await repos.listAccounts(b)).toHaveLength(1);
       expect(await repos.listCategories(b)).toHaveLength(1);
-      expect(await repos.listTransactions(b)).toHaveLength(1);
-      expect(await repos.listAchievements(b)).toHaveLength(1);
+      expect(await repos.listApiKeys(b)).toHaveLength(1);
+      expect(await repos.getRecentEnrichedTransactions(b, 50)).toHaveLength(1);
       expect(
         await repos.getAccount(b, types.toAccountId(owned.account.id)),
       ).not.toBeNull();

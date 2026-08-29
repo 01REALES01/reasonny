@@ -6,13 +6,12 @@
  * Shortcut and the answerCallbackQuery-before-write ordering in the Telegram
  * handler. Worth seeing on your own instance rather than trusting the docs.
  */
-import { config } from 'dotenv';
-
-config({ path: '.env.local' });
-config({ path: '.env' });
-
 const { Pool, neonConfig } = await import('@neondatabase/serverless');
-const { resolveConnectionString } = await import('../src/infrastructure/db/env');
+const { loadEnvFiles, resolveConnectionString } = await import(
+  '../src/infrastructure/db/env'
+);
+
+loadEnvFiles();
 
 neonConfig.webSocketConstructor ??= globalThis.WebSocket;
 

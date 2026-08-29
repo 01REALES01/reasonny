@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
 
 import {
+  CSV_HEADER_LINE,
   formatTransactionToCsvRow,
-  getCsvHeaderLine,
-  minorUnitsToDecimalString,
   sanitizeCsvField,
 } from './csv-export.service';
 
@@ -32,25 +31,14 @@ describe('CSV Export Service', () => {
     });
   });
 
-  describe('minorUnitsToDecimalString', () => {
-    it('converts positive minor units with 2 decimal places', () => {
-      expect(minorUnitsToDecimalString(4500000n)).toBe('45000.00');
-      expect(minorUnitsToDecimalString(1250n)).toBe('12.50');
-      expect(minorUnitsToDecimalString(5n)).toBe('0.05');
-      expect(minorUnitsToDecimalString(0n)).toBe('0.00');
-    });
+  // The minor-units-to-decimal cases moved to money.test.ts along with the
+  // function itself: the export now calls core/money's toDecimalString instead
+  // of keeping a second copy of the same arithmetic.
 
-    it('converts negative minor units maintaining sign', () => {
-      expect(minorUnitsToDecimalString(-4500000n)).toBe('-45000.00');
-      expect(minorUnitsToDecimalString(-50n)).toBe('-0.50');
-    });
-  });
-
-  describe('formatTransactionToCsvRow & getCsvHeaderLine', () => {
+  describe('formatTransactionToCsvRow & CSV_HEADER_LINE', () => {
     it('generates correct CSV header', () => {
-      const header = getCsvHeaderLine();
-      expect(header).toContain('id,date,merchant,amount,currency,type,category,account,status,source,note');
-      expect(header.endsWith('\r\n')).toBe(true);
+      expect(CSV_HEADER_LINE).toContain('id,date,merchant,amount,currency,type,category,account,status,source,note');
+      expect(CSV_HEADER_LINE.endsWith('\r\n')).toBe(true);
     });
 
     it('formats enriched transaction row correctly', () => {
