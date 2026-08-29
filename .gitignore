@@ -40,3 +40,4 @@ docs/private/
 *.pem
 .neon
 .vercel
+.env*
