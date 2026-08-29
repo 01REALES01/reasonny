@@ -77,7 +77,14 @@
   --radius-full: 9999px;
 
   /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* next/font writes --font-sans-loaded on <html>. A DIFFERENT name is not a
+     style choice: next/font's class and :root both target <html> with equal
+     specificity, so reusing the name made this declaration win and reference
+     itself. A self-referential custom property is invalid at computed-value
+     time, which silently dropped BOTH the webfont and this fallback stack and
+     rendered the whole app in the browser default serif. */
+  --font-sans: var(--font-sans-loaded), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-serif-loaded), 'Instrument Serif', Georgia, serif;
   --text-hero: 44px;
   --text-display: 32px;
   --text-title: 20px;
@@ -99,6 +106,30 @@
   --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.48);
+  --glass-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  --glass-shadow-hover: 0 30px 60px rgba(0, 0, 0, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+}
+
+.specular-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgba(255, 255, 255, var(--glare-opacity, 0)) 0%,
+    transparent 65%
+  );
+}
+
+.glass-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--glass-border-strong);
+  pointer-events: none;
 }
 
 * {
@@ -176,13 +207,210 @@ textarea {
   width: 100%;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+/* Visible to screen readers, invisible on screen.
+   Needed because the sign-in design uses an <h2> as the visual label for each
+   field. A heading is not a label: it is not programmatically associated with
+   the input, so assistive technology announced both fields as unnamed - and on
+   the OTP screen the only text it could fall back to was the placeholder
+   "••••••". The clip-rect technique is used rather than display:none or
+   visibility:hidden, which remove the element from the accessibility tree too. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The `outline: none` above removes the browser's focus ring, and something
+   must put one back: without it a keyboard user cannot tell which field they
+   are typing into (WCAG 2.4.7). :focus-visible rather than :focus so the ring
+   appears for keyboard and assistive navigation but not on a mouse click.
+   Outline is used deliberately - unlike a border it does not affect layout,
+   so nothing shifts when a field takes focus (CLS). */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   border-color: var(--brand-500);
 }
 
-/* Respect user motion preferences */
+/* Emil Kowalski / Apple-grade Micro-Animations */
+@keyframes entranceScaleFade {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Autonomous kinetic floating motion (moves on its own smoothly) */
+@keyframes autonomousFluidFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-8px) rotate(0.4deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-0.3deg);
+  }
+  75% {
+    transform: translateY(-10px) rotate(0.2deg);
+  }
+}
+
+/* Autonomous specular light gleam sweeping across the texture */
+@keyframes autonomousSpecularGleam {
+  0% {
+    transform: translate(-100%, -100%) rotate(35deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.35;
+  }
+  45% {
+    transform: translate(120%, 120%) rotate(35deg);
+    opacity: 0.35;
+  }
+  55%, 100% {
+    transform: translate(120%, 120%) rotate(35deg);
+    opacity: 0;
+  }
+}
+
+/* Smooth step slide transition between sections */
+@keyframes stepSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.step-slide {
+  animation: stepSlideIn 280ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.autonomous-float {
+  animation: autonomousFluidFloat 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.autonomous-gleam {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 100%
+  );
+  animation: autonomousSpecularGleam 6s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.animate-entrance-1 {
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Same entrance, opacity only, for any container that HOLDS a position:fixed
+   descendant.
+   A transform on an ancestor makes that ancestor the containing block for its
+   fixed descendants - and `forwards` keeps the final transform applied rather
+   than returning to `none`. On the dashboard that turned the bottom nav from
+   viewport-fixed into just another element that scrolls away. The bug only
+   disappeared under prefers-reduced-motion, where the transform is dropped. */
+@keyframes entranceFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-entrance-fade {
+  animation: entranceFade 600ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.animate-entrance-2 {
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
+  opacity: 0;
+}
+
+.animate-entrance-3 {
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 220ms forwards;
+  opacity: 0;
+}
+
+.animate-entrance-4 {
+  animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) 320ms forwards;
+  opacity: 0;
+}
+
+/* Arrow slide transition on pill buttons */
+.pill-btn:hover .pill-arrow {
+  transform: translateX(6px);
+}
+
+.pill-arrow {
+  display: inline-block;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Desktop Responsive Layout Utilities */
+@media (min-width: 900px) {
+  .desktop-auth-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--space-8) !important;
+    max-width: 960px !important;
+    align-items: center !important;
+    padding: var(--space-8) 0 !important;
+  }
+
+  .desktop-dashboard-container {
+    max-width: 1120px !important;
+    padding: var(--space-6) var(--space-6) var(--space-12) !important;
+  }
+
+  .desktop-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 420px 1fr !important;
+    gap: var(--space-6) !important;
+    align-items: start !important;
+  }
+
+  .desktop-hide-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -192,4 +420,17 @@ textarea:focus {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .animate-entrance-1,
+  .animate-entrance-fade,
+  .animate-entrance-2,
+  .animate-entrance-3,
+  .animate-entrance-4,
+  .autonomous-float,
+  .autonomous-gleam,
+  .step-slide {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+

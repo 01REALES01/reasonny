@@ -8,6 +8,10 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 coverage/
+
+# Tooling de skills (vendorizado de terceros), no producto
+.agents/
+skills-lock.json
 .lighthouseci/
 .DS_Store
 *.pem

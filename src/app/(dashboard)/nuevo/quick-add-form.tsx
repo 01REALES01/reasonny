@@ -192,6 +192,7 @@ export function QuickAddForm({
 
       {/* Main card */}
       <div
+        className="step-slide"
         style={{
           backgroundColor: 'var(--surface-raised)',
           border: '1px solid var(--border-hairline)',

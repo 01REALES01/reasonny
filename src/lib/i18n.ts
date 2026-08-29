@@ -63,6 +63,9 @@ export const DICTIONARY = {
     record_expense: 'Registrar gasto',
     record_income: 'Registrar ingreso',
     view_on_home: 'Ver en inicio',
+    artwork_alt: 'Escultura brutalista de RealMoney',
+    field_email: 'Correo electrónico',
+    field_code: 'Código de un solo uso',
   },
   en: {
     // Navigation & Common
@@ -117,6 +120,9 @@ export const DICTIONARY = {
     record_expense: 'Record expense',
     record_income: 'Record income',
     view_on_home: 'View on home',
+    artwork_alt: 'RealMoney brutalist sculpture',
+    field_email: 'Email address',
+    field_code: 'One-time code',
   },
 } as const;
 
