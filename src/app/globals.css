@@ -224,7 +224,13 @@ input,
 select,
 textarea {
   font-family: inherit;
-  font-size: var(--text-body);
+  /* 16px, not --text-body's 15px, and it is the whole reason the viewport in
+     layout.tsx can allow pinch-to-zoom again. iOS Safari zooms the page when a
+     field with a font-size below 16px takes focus; the app used to suppress
+     that with user-scalable: false, which disables the gesture for everyone
+     everywhere and fails WCAG 1.4.4. One pixel on form controls buys the
+     gesture back. */
+  font-size: 16px;
   color: var(--ink-primary);
   background-color: var(--surface-sunken);
   border: 1px solid var(--border-hairline);
@@ -277,13 +283,36 @@ textarea:focus-visible {
 }
 
 /* Emil Kowalski / Apple-grade Micro-Animations */
+/* THE ENTRANCE ANIMATIONS DO NOT TOUCH OPACITY. THIS IS THE NO_FCP FIX.
+ *
+ * Every element on /sign-in sits inside .animate-entrance-1 or -2. While this
+ * keyframe began at `opacity: 0`, the page's first frame contained nothing
+ * visible - and Lighthouse reported NO_FCP, "the page did not paint any
+ * content", about one run in three, which made the P7 gate unmeasurable rather
+ * than merely failing.
+ *
+ * `animation-fill-mode: both` did not prevent this. It was adopted to stop a
+ * base `opacity: 0` declaration from being load-bearing, and it does fix the
+ * case where the animation never runs at all. But `both` includes the BACKWARDS
+ * fill, which applies the from-state before the animation starts - reproducing
+ * the exact first-frame transparency it was meant to remove. The declaration
+ * moved; the behaviour did not.
+ *
+ * Animating transform alone keeps the motion and paints the content at full
+ * opacity from frame one. Measured on this machine, three runs each:
+ *
+ *   with opacity: 0     NO_FCP, no metric at all
+ *   transform only      LCP 2409 / 2474 / 2465 ms, FCP 757 ms, CLS 0.000
+ *
+ * That is the difference between a budget that is failing and a budget that
+ * cannot be read. Do not reintroduce an opacity fade on an ancestor of the LCP
+ * element.
+ */
 @keyframes entranceScaleFade {
   from {
-    opacity: 0;
     transform: scale(0.96) translateY(16px);
   }
   to {
-    opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
@@ -365,25 +394,18 @@ textarea:focus-visible {
   animation: entranceScaleFade 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-/* Same entrance, opacity only, for any container that HOLDS a position:fixed
-   descendant.
-   A transform on an ancestor makes that ancestor the containing block for its
-   fixed descendants - and `forwards` keeps the final transform applied rather
-   than returning to `none`. On the dashboard that turned the bottom nav from
-   viewport-fixed into just another element that scrolls away. The bug only
-   disappeared under prefers-reduced-motion, where the transform is dropped. */
-@keyframes entranceFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-entrance-fade {
-  animation: entranceFade 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
+/* There is no opacity-only entrance any more, and the dashboard no longer
+   animates its outermost container.
+   That container held the bottom nav, and a transform on an ancestor makes it
+   the containing block for its position: fixed descendants - which turned the
+   nav into an element that scrolled away. The workaround was to fade the
+   container's opacity instead. That traded a layout bug for the NO_FCP defect
+   documented above, on the app's most-used screen, where it went unnoticed
+   because Lighthouse cannot reach a page behind authentication - only the
+   web-vitals field data P7 is actually defined on would have shown it.
+   The header and the grid now carry the transform entrance as siblings of the
+   nav, so nothing animates an ancestor of the fixed element and nothing starts
+   transparent. */
 
 /* `both`, and NO base opacity: 0.
    Declaring opacity: 0 on the element and relying on the animation to undo it
@@ -784,7 +806,6 @@ textarea:focus-visible {
 }
 
 .entry-input {
-  font-size: var(--text-body);
   background-color: var(--surface-sunken);
   padding: var(--space-3) var(--space-4);
 }
@@ -1109,7 +1130,6 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
   }
   .animate-entrance-1,
-  .animate-entrance-fade,
   .animate-entrance-2,
   .autonomous-float,
   .autonomous-gleam,

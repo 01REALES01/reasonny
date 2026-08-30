@@ -34,13 +34,25 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * No maximumScale or userScalable: false.
+ *
+ * They were there for the usual reason - stopping iOS Safari from zooming when
+ * a form field is focused - but they disable pinch-to-zoom for everyone, on
+ * every screen, permanently. That is a WCAG 1.4.4 failure and it is what held
+ * the Lighthouse accessibility score at 0.87, under the 0.9 the budget
+ * asserts. Someone who needs to magnify a transaction amount could not.
+ *
+ * The focus-zoom it was guarding against has a targeted fix that costs no
+ * accessibility: iOS only zooms into a field whose font-size is below 16px, and
+ * the form controls were at 15px. globals.css now sets them to 16px. Fix the
+ * cause, not everyone's gesture.
+ */
 export const viewport: Viewport = {
   colorScheme: 'dark',
   themeColor: '#09090b',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -46,9 +46,12 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   });
 
   return (
-    <div className="dash desktop-dashboard-container animate-entrance-fade">
-      {/* Top Navigation Header */}
-      <header className="dash-header">
+    <div className="dash desktop-dashboard-container">
+      {/* Top Navigation Header.
+          The entrance rides on the header and the grid, never on the container:
+          that would make it the containing block for the fixed nav below, and
+          it must not start transparent either. See globals.css. */}
+      <header className="dash-header animate-entrance-1">
         <div className="dash-identity">
           <div className="dash-mark" aria-hidden="true">
             ◈
@@ -82,7 +85,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       </header>
 
       {/* Main Responsive Grid (1 Column on Mobile, 2 Columns on Desktop) */}
-      <div className="dash-grid desktop-dashboard-grid">
+      <div className="dash-grid desktop-dashboard-grid animate-entrance-2">
         {/* Left Column (Overview & Cards) */}
         <div className="dash-column">
           {/* 1. Hero Balance Card (DESIGN_SYSTEM.md 6.1) */}

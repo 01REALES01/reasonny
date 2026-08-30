@@ -89,10 +89,10 @@ export function InteractiveArtworkCard(): React.ReactElement {
             : 'transform 700ms cubic-bezier(0.23, 1, 0.32, 1)',
           willChange: 'transform',
           cursor: 'grab',
-          // pan-y, no none: la tarjeta ocupa casi todo el viewport en móvil,
-          // y 'none' dejaba la página de acceso sin poder desplazarse con el
-          // dedo desde encima del artwork. 'pan-y' conserva el scroll vertical
-          // y sigue reservando el gesto horizontal para el tilt.
+          // pan-y, not none: the card fills most of the viewport on mobile, and
+          // 'none' left the sign-in page unable to scroll from any touch that
+          // started over the artwork. 'pan-y' keeps vertical scrolling and
+          // still reserves the horizontal gesture for the tilt.
           touchAction: 'pan-y',
         }}
       >
