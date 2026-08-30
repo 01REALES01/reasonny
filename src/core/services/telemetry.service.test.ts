@@ -80,8 +80,31 @@ describe('Telemetry Service', () => {
     });
 
     it('handles an empty batch without touching the database', async () => {
-      await expect(recordMetrics(userId, [])).resolves.toBeUndefined();
+      await expect(recordMetrics(userId, [])).resolves.toEqual({ failed: [] });
       expect(recordTelemetryEvent).not.toHaveBeenCalled();
+    });
+
+    it('names the refused metric and still writes the rest of the batch', async () => {
+      // The real per-row failure: these are independent INSERTs, so a CHECK
+      // violation on one sample commits the others. The name is what makes a
+      // beacon failure diagnosable at all.
+      (recordTelemetryEvent as any).mockImplementation(
+        (_u: unknown, input: { metric: string }) => {
+          if (input.metric === 'CLS') {
+            return Promise.reject(new Error('violates check constraint'));
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      const { failed } = await recordMetrics(userId, [
+        { metric: 'LCP', value: 2000 },
+        { metric: 'CLS', value: 0.05 },
+        { metric: 'INP', value: 120 },
+      ]);
+
+      expect(failed).toEqual(['CLS']);
+      expect(recordTelemetryEvent).toHaveBeenCalledTimes(3);
     });
 
     // No per-sample partial-failure test any more. The three that were here

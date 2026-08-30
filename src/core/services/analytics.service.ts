@@ -41,8 +41,10 @@ export interface DashboardData {
  * next year. The hand-written `if (nextMonth > 12)` it replaces was correct;
  * it was just a reimplementation of something with no edge cases left in it.
  *
- * 'en-CA' gives an ISO-ordered YYYY-MM-DD, so the date part needs no padding
- * or reassembly by hand.
+ * The zero-padding comes from toISOString(), not from a locale: the date is
+ * rebuilt with Date.UTC and sliced, so no part of the string is assembled by
+ * hand. The two Intl formatters here are only for reading the local year and
+ * month ('en-US') and for the display name of the month ('es-CO').
  */
 export function getMonthDateBounds(
   date: Date,

@@ -175,16 +175,23 @@ export const DICTIONARY = {
 export type TranslationKey = keyof typeof DICTIONARY.es;
 
 /**
- * No `?? DICTIONARY.es[key] ?? key` fallback chain, deliberately.
+ * The `?? DICTIONARY.es[key] ?? key` tail is gone; the locale guard is not.
  *
- * TranslationKey is derived from the Spanish table, and `as const` gives both
- * tables literal types, so a key missing from either one is a compile error -
- * which is how the sign-in keys were caught when they were added to one half
- * only. The runtime fallback could never fire, and its presence suggested the
- * catalogs were allowed to disagree.
+ * Those are two different fallbacks and only one of them was dead. The KEY is
+ * compile-checked: TranslationKey derives from the Spanish table and `as const`
+ * gives both tables literal types, so a key present in one half and missing
+ * from the other is a type error - which is exactly how the sign-in keys were
+ * caught while being added. That fallback could never fire.
+ *
+ * The LOCALE is not compile-checked wherever it crosses a trust boundary: a
+ * `lang` cookie, an Accept-Language header, a URL segment, or the timezone-like
+ * column a profile row will carry. Any of those reaches this function through a
+ * cast, and `DICTIONARY['fr']` is undefined - so dropping this `??` would turn
+ * a mistranslated label into a TypeError, which in a Server Component is a 500
+ * on the dashboard.
  */
 export function t(key: TranslationKey, locale: Locale = DEFAULT_LOCALE): string {
-  return DICTIONARY[locale][key];
+  return (DICTIONARY[locale] ?? DICTIONARY[DEFAULT_LOCALE])[key];
 }
 
 export function formatDate(

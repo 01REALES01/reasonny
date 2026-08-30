@@ -7,7 +7,7 @@
 
 import { toDecimalString } from '@/core/money';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
-import { t } from '@/lib/i18n';
+import { DEFAULT_LOCALE, t, type Locale } from '@/lib/i18n';
 
 const CSV_HEADERS = [
   'id',
@@ -55,8 +55,17 @@ export function sanitizeCsvField(value: string | number | null | undefined): str
  * The amount goes through core/money's toDecimalString rather than a local
  * copy: an export whose arithmetic drifts from the app's is a spreadsheet that
  * disagrees with the screen, and no one would know which was right.
+ *
+ * `locale` is a parameter rather than a call to t() with its default, so this
+ * service does not quietly pin an API response to one language. Nothing passes
+ * it yet - the app has no locale negotiation - but the alternative is a core
+ * service that reads the presentation layer's default and cannot be told
+ * otherwise, which is the retrofit CLAUDE.md rules out for B5 onwards.
  */
-export function formatTransactionToCsvRow(tx: EnrichedTransactionRow): string {
+export function formatTransactionToCsvRow(
+  tx: EnrichedTransactionRow,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
   const fields = [
     sanitizeCsvField(tx.id),
     sanitizeCsvField(tx.transactionDate.toISOString().split('T')[0]),
@@ -66,8 +75,8 @@ export function formatTransactionToCsvRow(tx: EnrichedTransactionRow): string {
     sanitizeCsvField(tx.type),
     // Through the catalog, not a Spanish literal: the same two words are
     // already keys, and an export is a document the user keeps.
-    sanitizeCsvField(tx.category?.name ?? t('uncategorized')),
-    sanitizeCsvField(tx.account?.name ?? t('account_cash')),
+    sanitizeCsvField(tx.category?.name ?? t('uncategorized', locale)),
+    sanitizeCsvField(tx.account?.name ?? t('account_cash', locale)),
     sanitizeCsvField(tx.status),
     sanitizeCsvField(tx.categorizedBy ?? 'manual'),
     sanitizeCsvField(tx.note ?? ''),

@@ -194,6 +194,96 @@ describe('Design System Rules (DESIGN_SYSTEM.md)', () => {
     }
   });
 
+  /**
+   * "Solo se animan transform y opacity" is on CLAUDE.md's merge-blocking list,
+   * and until now nothing checked it - the other rules here read .ts and .tsx,
+   * and every animation in this project lives in a stylesheet.
+   *
+   * The gap was not theoretical. Converting the sign-in form's inline styles
+   * turned a `transition: all` into an explicit background-color/border-color
+   * transition, with a comment arguing why that was acceptable. It was not, and
+   * a rule whose only enforcement is the reviewer's memory is a preference.
+   *
+   * transform and opacity are composited off the main thread; width, height,
+   * top, margin and background-color force layout or paint on it, which is the
+   * INP budget (P7) spent on decoration.
+   */
+  it('forbids animating anything but transform and opacity in the stylesheet', () => {
+    const css = readFileSync(join(srcRoot, 'app/globals.css'), 'utf-8')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+
+    const allowed = new Set(['transform', 'opacity', 'none', 'inherit', 'initial', 'unset']);
+    const violations: string[] = [];
+
+    /**
+     * Splits a transition value on its TOP-LEVEL commas only.
+     *
+     * A plain split(',') tears `cubic-bezier(0.23, 1, 0.32, 1)` into four
+     * pieces and then reads "1" and "0.32" as animated property names. The
+     * first version of this test did exactly that and reported them as
+     * violations, which is the kind of false positive that gets a gate
+     * disabled rather than obeyed.
+     */
+    function topLevelParts(value: string): string[] {
+      const parts: string[] = [];
+      let depth = 0;
+      let current = '';
+      for (const char of value) {
+        if (char === '(') depth += 1;
+        else if (char === ')') depth -= 1;
+        if (char === ',' && depth === 0) {
+          parts.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      parts.push(current);
+      return parts;
+    }
+
+    // `transition:` and `transition-property:` declarations. `animation:`
+    // shorthand names a @keyframes block instead of properties, and the
+    // keyframes below are checked separately.
+    for (const [, value] of css.matchAll(/\btransition(?:-property)?\s*:\s*([^;}]+)/g)) {
+      for (const part of topLevelParts(value!)) {
+        const property = part.trim().split(/\s+/)[0];
+        if (property && !allowed.has(property)) {
+          violations.push(`transition: ${property}`);
+        }
+      }
+    }
+
+    // Inside @keyframes, every declared property is animated by definition.
+    //
+    // The block is found by counting braces rather than by a lazy regex ending
+    // at "\n}": that version only matched keyframes formatted across multiple
+    // lines, so a single-line @keyframes slipped through the gate entirely.
+    for (const match of css.matchAll(/@keyframes\s+[\w-]+\s*\{/g)) {
+      let depth = 1;
+      let index = match.index + match[0].length;
+      const start = index;
+      while (index < css.length && depth > 0) {
+        if (css[index] === '{') depth += 1;
+        else if (css[index] === '}') depth -= 1;
+        index += 1;
+      }
+      const body = css.slice(start, index - 1);
+
+      for (const [, property] of body.matchAll(/([a-z-]+)\s*:/g)) {
+        if (!allowed.has(property!)) {
+          violations.push(`@keyframes: ${property}`);
+        }
+      }
+    }
+
+    expect(
+      [...new Set(violations)],
+      'Only transform and opacity may be animated (CLAUDE.md, Diseño). ' +
+        'Everything else forces layout or paint on the main thread.',
+    ).toEqual([]);
+  });
+
   it('forbids rendering money outside the <Money> component', () => {
     // The decimal de-emphasis rule and tabular figures live in <Money>. An
     // amount formatted anywhere else silently opts out of both, and two

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   try {
-    await recordMetrics(
+    const { failed } = await recordMetrics(
       toUserId(session.id),
       parsed.data.samples.map((sample) => ({
         metric: sample.metric,
@@ -85,6 +85,12 @@ export async function POST(request: NextRequest): Promise<Response> {
         route: sample.route ?? null,
       })),
     );
+
+    // Named, because the rest of the batch did commit. A count alone would not
+    // say which metric the database is refusing.
+    if (failed.length > 0) {
+      console.warn('[telemetry] samples refused by the database:', failed.join(', '));
+    }
   } catch (error) {
     // Losing a measurement must never surface to the user, and must never be
     // silent to us: this is the one place that distinction can be made.

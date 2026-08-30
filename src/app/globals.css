@@ -237,7 +237,10 @@ textarea {
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-standard);
+  /* The focus border changes instantly. It used to be transitioned, which is
+     the same border-color animation the rule forbids - and on a focus state it
+     is also worse: a ring that eases in lags the keyboard, and someone tabbing
+     through the form wants to know where they are now, not in 150ms. */
   width: 100%;
 }
 
@@ -353,13 +356,16 @@ textarea:focus-visible {
 }
 
 /* Smooth step slide transition between sections */
+/* Transform only, for the same reason as entranceScaleFade above - and this one
+   matters just as much. .step-slide wraps every step of the sign-in form,
+   including the <h1> and the copy; while it began at opacity: 0 the only thing
+   keeping /sign-in off NO_FCP was the artwork <Image>, which sits outside it.
+   That is a paint budget resting on one image loading in time. */
 @keyframes stepSlideIn {
   from {
-    opacity: 0;
     transform: translateX(18px);
   }
   to {
-    opacity: 1;
     transform: translateX(0);
   }
 }
@@ -561,18 +567,21 @@ textarea:focus-visible {
   letter-spacing: -0.01em;
 }
 
+/* The hover state changes colour but is NOT transitioned.
+   The previous inline style used `transition: all`, and the first pass at this
+   replaced it with an explicit background-color/border-color transition plus a
+   comment arguing why that was acceptable. CLAUDE.md does not leave room for
+   the argument: "Solo se animan transform y opacity ... animar
+   background-color está prohibido." Arguing an exception in a comment is how a
+   hard rule becomes a preference. The colour swaps instantly, which on a hover
+   state reads as crisp rather than abrupt - and the base `button` rule's
+   transform/opacity transition is no longer overridden, so :active still
+   eases. */
 .auth-pill--ghost {
   background-color: var(--auth-ghost);
   border: 1px solid var(--auth-field-border);
   color: var(--auth-ink);
   font-weight: 500;
-  /* Only background-color and border-color, never `all`: `all` would sweep in
-     any property the class later gains, and the design system allows animating
-     transform and opacity alone. These two do not move layout and the button is
-     not on a scrolling surface. */
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
 }
 
 .auth-pill--ghost:hover {

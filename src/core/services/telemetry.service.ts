@@ -54,27 +54,39 @@ export async function recordMetric(
 }
 
 /**
- * Records a batch.
+ * Records a batch, and names anything the database refused.
  *
- * WHY NOT Promise.allSettled WITH PER-SAMPLE REJECTION REPORTING
- * -------------------------------------------------------------
- * It used to be that, on the reasoning that one NaN should not discard the
- * other four samples in a beacon. But the only caller is the telemetry route,
- * and by the time a sample reaches here it has passed
- * `z.number().finite().min(0).max(86_400_000)` and a `z.enum` over the metric
- * names - which is every input toScaledValue rejects. The machinery guarded a
- * case its own caller had already made impossible, and the shape it returned
- * meant the route had to branch on failures that could not occur.
+ * These are N independent INSERTs, not one transaction, so a per-row failure -
+ * a CHECK violation after the metric vocabulary and the migration drift apart,
+ * or one oversized `route` - commits the rest and rejects only its own. That
+ * is why this uses allSettled rather than Promise.all: Promise.all would
+ * report a batch that was mostly written as a total failure, and would say
+ * nothing about which sample was at fault.
  *
- * What is left that CAN fail is the database, and that fails for the whole
- * batch or not at all. Promise.all says exactly that, and the route already
- * catches and logs it.
+ * Returns the failing metric names rather than a count. A beacon is
+ * fire-and-forget from a page that is being unloaded; the metric name is the
+ * only detail that makes such a failure diagnosable afterwards, and it is
+ * cheaper to carry than to reconstruct from a stack trace.
+ *
+ * (An earlier version of this returned per-sample rejections with reasons, to
+ * stop one NaN discarding a beacon's other four samples. That specific case
+ * cannot happen: the route validates with z.number().finite().min(0)
+ * .max(86_400_000) and a z.enum before anything reaches toScaledValue. What
+ * remains here is the database's own per-row refusal, which is real.)
  */
 export async function recordMetrics(
   userId: UserId,
   inputs: readonly RecordMetricInput[],
-): Promise<void> {
-  await Promise.all(inputs.map((input) => recordMetric(userId, input)));
+): Promise<{ failed: string[] }> {
+  const results = await Promise.allSettled(
+    inputs.map((input) => recordMetric(userId, input)),
+  );
+
+  const failed = results.flatMap((result, index) =>
+    result.status === 'rejected' ? [inputs[index]?.metric ?? 'unknown'] : [],
+  );
+
+  return { failed };
 }
 
 export interface MetricSummary {

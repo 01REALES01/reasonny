@@ -212,7 +212,15 @@ export async function getMonthlyTotals(
 
 export interface CategorySpendingBreakdown {
   readonly categoryId: string | null;
-  readonly categoryName: string;
+  /**
+   * null for the uncategorised bucket, not a label.
+   *
+   * This used to be COALESCE(categories.name, 'Sin Categoría') - a Spanish UI
+   * string invented inside a SQL query, which no amount of i18n at the edge
+   * could ever translate. The repository reports the absence; naming it is the
+   * caller's job, through the catalog.
+   */
+  readonly categoryName: string | null;
   readonly categoryIcon: string;
   readonly categoryColor: string;
   readonly totalMinor: bigint;
@@ -233,7 +241,7 @@ export async function getCategorySpendingBreakdown(
   const rows = await db
     .select({
       categoryId: transactions.categoryId,
-      categoryName: sql<string>`COALESCE(${categories.name}, 'Sin Categoría')`,
+      categoryName: categories.name,
       categoryIcon: sql<string>`COALESCE(${categories.icon}, 'HelpCircle')`,
       categoryColor: sql<string>`COALESCE(${categories.color}, '#6B7280')`,
       totalMinor: sql<bigint>`

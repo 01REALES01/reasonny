@@ -63,12 +63,18 @@ jobs:
         run: pnpm build
 
       # Handed to the lighthouse job so it measures this exact build instead of
-      # compiling its own.
+      # compiling its own. .next/cache is excluded deliberately: it is the
+      # compiler's own cache, routinely hundreds of megabytes on a Next 16
+      # build, `next start` never reads it, and shipping it would put an upload
+      # and a download of it on the critical path of the job the P7 gate lives
+      # in.
       - name: Upload the build
         uses: actions/upload-artifact@v4
         with:
           name: next-build
-          path: .next
+          path: |
+            .next
+            !.next/cache
           retention-days: 1
           include-hidden-files: true
 
@@ -162,12 +168,11 @@ jobs:
       #
       # Measured locally, three runs, after the fix:
       #   NO_FCP        0/3 runs (was ~1 in 3)
-      #   FCP           761-772 ms
-      #   LCP           2604 / 2876 / 2876 ms   <- over the 2500 budget
-      #   TBT           2-10 ms
+      #   FCP           758-768 ms
+      #   LCP           2870 / 2880 / 2895 ms   <- over the 2500 budget
+      #   TBT           3-12 ms
       #   CLS           0.000
       #   accessibility 1.00 (was 0.87; user-scalable: no is gone)
-      #   performance   0.95-0.97
       #
       # STILL NON-BLOCKING, but for an honest reason now: the job fails on a
       # real LCP number rather than on a broken measurement. That number is a

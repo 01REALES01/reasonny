@@ -62,10 +62,13 @@ export function CategoryBreakdown({
         {breakdown.map((item, idx) => {
           const pct = Math.max(1, Math.round((Number(item.totalMinor) / totalNum) * 100));
           const color = item.categoryColor || CATEGORICAL_COLORS[idx % CATEGORICAL_COLORS.length] || 'var(--cat-1)';
+          // The repository returns null for the uncategorised bucket rather
+          // than a label; naming it belongs here, through the catalog.
+          const name = item.categoryName ?? t('uncategorized');
           return (
             <div
               key={item.categoryId ?? `cat-${idx}`}
-              title={`${item.categoryName}: ${pct}%`}
+              title={`${name}: ${pct}%`}
               style={{
                 width: `${pct}%`,
                 backgroundColor: color,
@@ -100,7 +103,9 @@ export function CategoryBreakdown({
                     backgroundColor: color,
                   }}
                 />
-                <span style={{ color: 'var(--ink-primary)' }}>{item.categoryName}</span>
+                <span style={{ color: 'var(--ink-primary)' }}>
+                  {item.categoryName ?? t('uncategorized')}
+                </span>
                 <span style={{ color: 'var(--ink-muted)', fontSize: 'var(--text-caption)' }}>
                   ({pct}%)
                 </span>

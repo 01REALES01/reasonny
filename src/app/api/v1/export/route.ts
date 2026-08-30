@@ -38,6 +38,8 @@ async function authenticateRequest(request: NextRequest): Promise<UserId | null>
   return null;
 }
 
+const EXPORT_ROW_LIMIT = 50_000;
+
 /**
  * Serves the user's financial transactions as an RFC 4180 CSV export.
  *
@@ -47,8 +49,7 @@ async function authenticateRequest(request: NextRequest): Promise<UserId | null>
  * not: the line above it loads every row into an array first, and the stream's
  * start() then enqueued all of them synchronously before returning - the whole
  * dataset in memory, plus a second copy sitting in the stream's queue. The
- * ceremony bought nothing and hid the actual bound, which is the 50 000 row
- * limit on the query.
+ * ceremony bought nothing and hid the actual bound, which is EXPORT_ROW_LIMIT.
  *
  * Real streaming means a cursor in the repository handing rows out in batches,
  * which is a change to the data layer, not to this handler. Until an export is
@@ -57,8 +58,6 @@ async function authenticateRequest(request: NextRequest): Promise<UserId | null>
  * ponytail: whole result set in memory, bounded by EXPORT_ROW_LIMIT. Move to a
  * cursor in transaction.repository if a real export ever approaches it.
  */
-const EXPORT_ROW_LIMIT = 50_000;
-
 export async function GET(request: NextRequest): Promise<Response> {
   const userId = await authenticateRequest(request);
 
@@ -72,9 +71,13 @@ export async function GET(request: NextRequest): Promise<Response> {
   const transactions = await getRecentEnrichedTransactions(userId, EXPORT_ROW_LIMIT);
   const todayIso = new Date().toISOString().split('T')[0];
 
-  const body =
-    CSV_HEADER_LINE +
-    transactions.map((tx) => `${formatTransactionToCsvRow(tx)}\r\n`).join('');
+  // Accumulated rather than map().join(''): at the row limit the map would hold
+  // a 50 000-element array of line strings alongside the rows themselves and
+  // the finished body. Same output, one fewer full copy of the dataset.
+  let body = CSV_HEADER_LINE;
+  for (const tx of transactions) {
+    body += `${formatTransactionToCsvRow(tx)}\r\n`;
+  }
 
   return new Response(body, {
     status: 200,
