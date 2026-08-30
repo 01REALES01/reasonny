@@ -6,8 +6,10 @@ import { z } from 'zod';
 import { parseMoney } from '@/core/money';
 import {
   createAccount,
+  getAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
+import { getCategory } from '@/core/repositories/category.repository';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { toAccountId, toCategoryId, toUserId } from '@/core/types';
@@ -74,9 +76,25 @@ export async function createQuickTransactionAction(
       };
     }
 
-    // Resolve account if not specified
-    let targetAccountId = accountId ? toAccountId(accountId) : null;
+    // Resolve account if not specified.
+    //
+    // A caller-supplied accountId is verified to belong to this user before it
+    // is written. It arrives from a <select> in the browser, and a branded type
+    // only proves it is a well-formed uuid - it says nothing about ownership.
+    // transactions.account_id is a foreign key to accounts.id alone, not a
+    // composite with user_id, so the database would happily store a row of
+    // ours against someone else's account.
+    let targetAccountId = null;
     let currency = baseCurrency;
+
+    if (accountId) {
+      const account = await getAccount(userId, toAccountId(accountId));
+      if (!account) {
+        return { success: false, error: 'Unknown account.' };
+      }
+      targetAccountId = toAccountId(account.id);
+      currency = account.currency;
+    }
 
     if (!targetAccountId) {
       const accounts = await listAccounts(userId);
@@ -94,11 +112,24 @@ export async function createQuickTransactionAction(
       }
     }
 
+    // Same check as the account above, same reason: the category id comes from
+    // a list rendered in the browser, and the foreign key does not carry the
+    // owner. Tagging our row with someone else's category would surface their
+    // category name back to us through the dashboard's join.
+    let targetCategoryId = null;
+    if (categoryId) {
+      const category = await getCategory(userId, toCategoryId(categoryId));
+      if (!category) {
+        return { success: false, error: 'Unknown category.' };
+      }
+      targetCategoryId = toCategoryId(category.id);
+    }
+
     const txDate = transactionDate ? new Date(transactionDate) : new Date();
 
     const { transaction } = await createTransaction(userId, {
       accountId: targetAccountId,
-      categoryId: categoryId ? toCategoryId(categoryId) : null,
+      categoryId: targetCategoryId,
       amountMinor,
       currency,
       type,
@@ -107,7 +138,7 @@ export async function createQuickTransactionAction(
       note: note?.trim() || null,
       transactionDate: txDate,
       source: 'manual',
-      categorizedBy: categoryId ? 'manual' : null,
+      categorizedBy: targetCategoryId ? 'manual' : null,
     });
 
     revalidatePath('/');

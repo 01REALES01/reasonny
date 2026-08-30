@@ -308,18 +308,69 @@ suite('Tenant isolation against a real database', () => {
       expect((await repos.getAccount(b, types.toAccountId(owned.account.id)))?.name).toBe(
         'B checking',
       );
-      const bTransactions = await repos.getRecentEnrichedTransactions(b, 50);
-      expect(bTransactions[0]?.amountMinor).toBe(4_500_000n);
+      expect(
+        (await repos.getCategory(b, types.toCategoryId(owned.category.id)))?.name,
+      ).toBe('B food');
     }, TIMEOUT);
 
     it('deletes addressed at the other user’s rows delete nothing', async () => {
       const a = types.toUserId(userA);
 
       expect(await repos.revokeApiKey(a, types.toApiKeyId(owned.apiKey.id))).toBe(false);
+      expect(await repos.listApiKeys(types.toUserId(userB))).toHaveLength(1);
+    }, TIMEOUT);
 
+    /**
+     * The transactions table specifically, because it is the one holding money.
+     *
+     * createTransaction is the only write path left on it after the unbuilt
+     * phases were removed, and the account foreign key points at accounts.id
+     * alone - it is not composite with user_id. So nothing at the database
+     * level stops A from inserting a row that references B's account. What
+     * must hold is that the row lands in A's partition and never reaches B's
+     * balance, list or totals.
+     *
+     * An earlier version of this file asserted B's transaction count after a
+     * test that attempted no transaction write at all, so it passed
+     * unconditionally and proved nothing.
+     */
+    it('a row A writes against B’s account never reaches B’s money', async () => {
+      const a = types.toUserId(userA);
       const b = types.toUserId(userB);
-      expect(await repos.listApiKeys(b)).toHaveLength(1);
-      expect(await repos.getRecentEnrichedTransactions(b, 50)).toHaveLength(1);
+
+      await repos.createTransaction(a, {
+        accountId: types.toAccountId(owned.account.id),
+        categoryId: types.toCategoryId(owned.category.id),
+        amountMinor: 99_999_900n,
+        currency: 'COP',
+        type: 'expense',
+        merchant: 'A writing into B',
+        transactionDate: new Date(),
+        source: 'manual',
+      });
+
+      // B's ledger, balance and aggregate are all unchanged.
+      const bRows = await repos.getRecentEnrichedTransactions(b, 50);
+      expect(bRows).toHaveLength(1);
+      expect(bRows[0]?.amountMinor).toBe(4_500_000n);
+
+      const totals = await repos.getMonthlyTotals(
+        b,
+        'America/Bogota',
+        '2020-01-01 00:00:00',
+        '2100-01-01 00:00:00',
+      );
+      expect(totals.totalExpenseMinor).toBe(4_500_000n);
+
+      const balance = await repos.getAccountBalance(
+        b,
+        types.toAccountId(owned.account.id),
+      );
+      expect(balance?.balanceMinor).toBe(1_000_00n - 4_500_000n);
+
+      // And the row did land - under A, where it belongs. A test where the
+      // insert silently failed would satisfy every assertion above.
+      expect(await repos.getRecentEnrichedTransactions(a, 50)).toHaveLength(1);
     }, TIMEOUT);
   });
 

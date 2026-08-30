@@ -147,6 +147,17 @@ export async function getAccountBalance(
       transactions,
       and(
         eq(transactions.accountId, accounts.id),
+        // The tenant filter belongs in the JOIN, not only in the WHERE below.
+        //
+        // The WHERE clause constrains `accounts`, so it picks the right
+        // account - but this join matched every transaction pointing at that
+        // account id regardless of who wrote it, and the SUM added them all.
+        // transactions.account_id is a foreign key to accounts.id alone, not a
+        // composite with user_id, so nothing in the schema prevented a row
+        // owned by one user from referencing another user's account. The
+        // result was another tenant's spending inside this balance - a wrong
+        // number on the hero card, in a money app, with no error anywhere.
+        eq(transactions.userId, userId),
         sql`${transactions.deletedAt} IS NULL`,
         eq(transactions.status, 'confirmed'),
       ),
