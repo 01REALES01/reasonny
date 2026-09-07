@@ -2,6 +2,8 @@ import React from 'react';
 
 import { PhoneDock } from '@/components/dashboard/phone-dock';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Shared chrome for the authenticated app.
  *
