@@ -66,22 +66,41 @@ function buildSteps(): Step[] {
       cheer: 'Ese es el corazón de todo.',
     },
     {
-      id: 'filter',
+      id: 'sender',
       eyebrow: 'Paso 4',
-      title: 'Escribe «Bancolombia»',
+      title: 'Pon el remitente, no el nombre del banco',
       body: (
         <>
-          En el campo <em>Mensaje contiene</em>. Deja «Remitente» vacío. Marca{' '}
-          <strong>Ejecutar inmediatamente</strong> y, si te deja, apaga{' '}
-          <strong>Notificar al ejecutar</strong>.
+          Los bancos no escriben desde un nombre: mandan desde un{' '}
+          <strong>número corto de 5 dígitos</strong>. Abre Mensajes, entra a la
+          conversación de tu banco y copia ese número de arriba. Pégalo en{' '}
+          <em>Remitente</em>.
+          <br />
+          <br />
+          Si además escribes el nombre del banco en <em>Mensaje contiene</em>,
+          los códigos de verificación que te manda ese mismo número nunca salen
+          del teléfono.
         </>
       ),
-      cta: 'Listo, siguiente',
+      cta: 'Remitente puesto',
+      cheer: 'Así no se te escapa ningún mensaje.',
+    },
+    {
+      id: 'immediate',
+      eyebrow: 'Paso 5',
+      title: 'Marca «Ejecutar inmediatamente»',
+      body: (
+        <>
+          Y si te deja, apaga <strong>Notificar al ejecutar</strong>. Con eso la
+          captura es invisible: no te deja un aviso en cada pago.
+        </>
+      ),
+      cta: 'Marcado',
       cheer: 'Con eso la captura es invisible.',
     },
     {
       id: 'action',
-      eyebrow: 'Paso 5',
+      eyebrow: 'Paso 6',
       title: 'Añade «Obtener contenido de la URL»',
       body: <>Búscala en las acciones y pega esta dirección:</>,
       copy: 'url',
@@ -90,7 +109,7 @@ function buildSteps(): Step[] {
     },
     {
       id: 'method',
-      eyebrow: 'Paso 6',
+      eyebrow: 'Paso 7',
       title: 'Despliega «Mostrar más» y pon POST',
       body: (
         <>
@@ -103,7 +122,7 @@ function buildSteps(): Step[] {
     },
     {
       id: 'header',
-      eyebrow: 'Paso 7',
+      eyebrow: 'Paso 8',
       title: 'Añade el encabezado de acceso',
       body: (
         <>
@@ -193,6 +212,22 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
     }, EXIT_MS);
   }
 
+  /**
+   * A tap lands on the wrong thing all the time, and without a way back the
+   * only recovery was starting the whole flow over. It is an arrow rather than
+   * a labelled button on purpose: going back is a correction, not one of the
+   * two things this screen is asking you to do.
+   */
+  function goBack(): void {
+    if (index === 0) {
+      return;
+    }
+    setCopied(false);
+    const previous = index - 1;
+    setIndex(previous);
+    persist(previous);
+  }
+
   function restart(): void {
     setIndex(0);
     setStarted(false);
@@ -266,9 +301,23 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
   return (
     <section className="ingest">
       <div className="ingest-head">
+        {index > 0 ? (
+          <button
+            type="button"
+            onClick={goBack}
+            className="ingest-back"
+            aria-label="Volver al paso anterior"
+          >
+            <CategoryIcon name="ArrowLeft" size={15} />
+          </button>
+        ) : (
+          <span className="ingest-back ingest-back--placeholder" aria-hidden="true" />
+        )}
+
         <span className="ingest-count">
           {index + 1} de {steps.length}
         </span>
+
         {previousCheer && <span className="ingest-cheer">{previousCheer}</span>}
       </div>
 

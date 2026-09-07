@@ -79,6 +79,25 @@
      on a chart. */
   --brand-indigo: #e4cca6;
 
+  /* The authenticated app's ground.
+     It used to sit on --surface-base (#09090b), a neutral charcoal, and the
+     result read as a black screen with a wine card dropped on it. Two problems
+     with that in a finance app: the product loses the warm world the landing
+     built, and a dark surface with red on it is the visual language of an
+     alert - red means "bad" to anyone looking at their own money, and an
+     interface should not imply a verdict it has not made.
+
+     The fix is not less wine, it is more light. The ground is a warm plum
+     rather than a black, and champagne carries the illumination: it is the
+     accent the palette already had and the one that reads as value rather
+     than as warning. */
+  --app-ground: #1c0f18;
+  --app-ground-lit: #2a1424;
+  --app-champagne-veil: rgba(228, 204, 166, 0.05);
+  /* Panels lift off the ground instead of sinking into it. */
+  --app-panel: rgba(58, 31, 48, 0.55);
+  --app-panel-border: rgba(228, 204, 166, 0.2);
+
   /* Hero balance card (DESIGN_SYSTEM.md 6.1) — still the single gradient in the
      whole app, now the rich imperial wine of the luxury velvet aesthetic. */
   --hero-gradient-from: #4e1220;
@@ -1170,8 +1189,8 @@ textarea:focus-visible {
    and DESIGN_SYSTEM.md 5.5 forbids it there. */
 
 .panel {
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   display: flex;
@@ -1512,8 +1531,8 @@ textarea:focus-visible {
 }
 
 .fin-stat-value {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 800;
   color: var(--landing-warm-white);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1562,20 +1581,27 @@ textarea:focus-visible {
   transform: scale(0.96);
 }
 
+/* Champagne, not wine.
+   The most-pressed control on the screen was a red gradient, and in a finance
+   app red is not a neutral colour: it is the one people read as a loss before
+   they read the label. Gold is already the palette's accent and it reads as
+   value, so the action that starts every record now looks like a reward rather
+   than a warning. Wine keeps the atmosphere; it stops carrying the verb. */
 .fin-action-btn--primary {
   flex: 1.4;
-  background: linear-gradient(135deg, rgba(155, 44, 69, 0.92) 0%, rgba(78, 18, 32, 0.95) 100%);
-  border: 1px solid rgba(228, 204, 166, 0.35);
-  color: var(--landing-warm-white);
-  box-shadow: 0 6px 20px rgba(78, 18, 32, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #f0dcbc 0%, var(--landing-gold-solid) 100%);
+  border: 1px solid rgba(255, 240, 220, 0.6);
+  color: #2b0d18;
+  box-shadow: 0 8px 24px rgba(212, 179, 130, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .fin-action-btn--secondary {
   flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  background: rgba(228, 204, 166, 0.08);
+  border: 1px solid var(--app-panel-border);
+  color: var(--landing-champagne-gold);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1589,9 +1615,21 @@ textarea:focus-visible {
   min-height: 100svh;
   padding-bottom: 110px;
   position: relative;
-  background-color: var(--surface-base);
   display: flex;
   flex-direction: column;
+  /* Champagne first, so the light sits over the wine rather than under it: a
+     warm veil from the top, a soft rose bloom behind the hero, and the plum
+     ground beneath both. Three stops, none of them black. */
+  background-image:
+    linear-gradient(
+      to bottom,
+      var(--app-champagne-veil) 0%,
+      rgba(228, 204, 166, 0.03) 45%,
+      rgba(228, 204, 166, 0.02) 100%
+    ),
+    radial-gradient(120% 42% at 50% 0%, rgba(168, 54, 98, 0.34) 0%, transparent 72%),
+    linear-gradient(to bottom, var(--app-ground-lit) 0%, var(--app-ground) 60%);
+  background-color: var(--app-ground);
 }
 
 @media (min-width: 768px) {
@@ -1620,10 +1658,10 @@ textarea:focus-visible {
 }
 
 .phone-ledger-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--ink-primary);
-  letter-spacing: -0.01em;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--landing-champagne-gold);
+  letter-spacing: -0.025em;
   margin: 0;
 }
 
@@ -1722,8 +1760,8 @@ textarea:focus-visible {
 /* Tinted with the category's own colour rather than a uniform grey, so the
    colour in the breakdown and the colour on the row are the same fact. */
 .phone-tx-icon {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
@@ -1745,8 +1783,9 @@ textarea:focus-visible {
 }
 
 .phone-tx-merchant {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--ink-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -1764,8 +1803,9 @@ textarea:focus-visible {
 .phone-tx-amount {
   display: flex;
   align-items: center;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--ink-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1821,11 +1861,14 @@ textarea:focus-visible {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
+/* Same reasoning as the primary action: this is the button pressed more than
+   any other, and a red disc on a dark bar reads as an alert rather than as the
+   way in. Gold is the palette's accent and it does not imply a loss. */
 .phone-dock-item--highlight {
-  background: linear-gradient(135deg, rgba(155, 44, 69, 0.9) 0%, rgba(78, 18, 32, 0.95) 100%);
-  border: 1px solid rgba(228, 204, 166, 0.35);
-  color: var(--landing-warm-white);
-  box-shadow: 0 4px 14px rgba(78, 18, 32, 0.5);
+  background: linear-gradient(135deg, #f0dcbc 0%, var(--landing-gold-solid) 100%);
+  border: 1px solid rgba(255, 240, 220, 0.55);
+  color: #2b0d18;
+  box-shadow: 0 4px 16px rgba(212, 179, 130, 0.3);
 }
 
 /* The dock is fixed to the viewport, which is right on a phone and wrong from
@@ -1971,8 +2014,8 @@ textarea:focus-visible {
 }
 
 .review-card {
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   display: flex;
@@ -2064,8 +2107,8 @@ textarea:focus-visible {
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-full);
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
 }
 
 .month-switch-btn {
@@ -2110,8 +2153,8 @@ textarea:focus-visible {
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
 }
 
 .month-total-value {
@@ -2133,8 +2176,8 @@ textarea:focus-visible {
   gap: var(--space-4);
   padding: var(--space-5);
   border-radius: var(--radius-lg);
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
 }
 
 .breakdown-panel-title {
@@ -2259,8 +2302,8 @@ textarea:focus-visible {
   gap: var(--space-4);
   padding: var(--space-6);
   border-radius: var(--radius-xl);
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
   box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -2423,8 +2466,8 @@ textarea:focus-visible {
   padding: var(--space-5);
   margin-top: var(--space-5);
   border-radius: var(--radius-xl);
-  background-color: var(--landing-velvet-card);
-  border: 1px solid var(--landing-champagne-border);
+  background-color: var(--app-panel);
+  border: 1px solid var(--app-panel-border);
   box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   /* Steps translate out past the edge; without this they would widen the page. */
@@ -2691,4 +2734,39 @@ textarea:focus-visible {
   font-size: var(--text-label);
   font-weight: 600;
   cursor: pointer;
+}
+
+/* The step-back arrow. Small and quiet: going back is a correction, not one of
+   the two things the screen is asking for. */
+.ingest-back {
+  width: 30px;
+  height: 30px;
+  margin: -6px 0 -6px -4px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.ingest-back:active {
+  transform: translateX(-3px);
+}
+
+/* Holds the row's shape on the first step, where there is nothing to go back to. */
+.ingest-back--placeholder {
+  pointer-events: none;
+}
+
+.ingest-head {
+  align-items: center;
+}
+
+.ingest-count {
+  margin-right: auto;
 }
