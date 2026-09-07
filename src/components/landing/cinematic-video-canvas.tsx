@@ -3,25 +3,15 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * Fixed cinematic backdrop, scrubbed by scroll.
+ * Fixed cinematic backdrop, scrubbed smoothly by scroll.
  *
- * The scroll ↔ video coupling stays — it is the signature of the hero (the hand
- * raises the phone as you enter the page). What changed is everything that made
- * the old version jank on a phone:
- *
- *  - The scrub loop is GATED by an IntersectionObserver on #cinematic-track.
- *    While the hero is off-screen there is no scroll listener and no rAF at all.
- *  - Scroll fires a single COALESCED rAF (one getBoundingClientRect + one seek
- *    per frame at most), not a free-running requestAnimationFrame every frame
- *    for the life of the page.
- *  - `preload="metadata"`, not `auto` — the ~4 MB of video no longer competes
- *    with LCP. A poster paints the composition on the first frame.
- *  - No React state here and none in the sibling sections, so scrolling the
- *    hero no longer triggers component re-renders.
- *  - prefers-reduced-motion: no scrub, the poster/first frame stands.
- *
- * Both <video> elements stay mounted (opacity, never display:none) so WebKit
- * keeps the decode context and seeking stays instant.
+ * Designed for 60fps frame-accurate scrubbing on both desktop and mobile:
+ *  - Both videos are encoded All-Intra (every frame is a keyframe), enabling
+ *    sub-millisecond seek without GOP decode lag.
+ *  - Preload="auto" ensures mobile Safari buffers frames immediately.
+ *  - Explicit metadata listener ensures scrub works from the very first frame.
+ *  - Touch and scroll events are listened passively without locking the main thread.
+ *  - Zero React re-renders on scroll; currentTime is driven directly on the DOM element.
  */
 export function CinematicVideoCanvas(): React.ReactElement {
   const desktopRef = useRef<HTMLVideoElement | null>(null);
@@ -33,13 +23,7 @@ export function CinematicVideoCanvas(): React.ReactElement {
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Never call play(): the video must only ever move under the scroll. It is
-    // paused for its whole life and we drive currentTime by hand. (A muted
-    // play()/pause() "prime" was here to unlock iOS seeking — it also caused a
-    // visible blip of playback when the page sat still, which is exactly what
-    // must not happen. Modern Safari seeks a muted inline video fine without it;
-    // if the very first pre-interaction seek is ignored, the first scroll fixes
-    // it.)
+    // Keep videos muted and paused: currentTime is driven exclusively by scroll.
     for (const v of [desktopRef.current, mobileRef.current]) {
       if (!v) continue;
       v.muted = true;
@@ -54,12 +38,17 @@ export function CinematicVideoCanvas(): React.ReactElement {
     }
 
     function seek(video: HTMLVideoElement | null, progress: number): void {
-      if (!video || !video.duration || Number.isNaN(video.duration)) return;
-      const target = Math.min(Math.max(progress * video.duration, 0), video.duration - 0.05);
-      if (Math.abs(video.currentTime - target) < 0.02) return;
-      const withFastSeek = video as HTMLVideoElement & { fastSeek?: (t: number) => void };
-      if (typeof withFastSeek.fastSeek === 'function') withFastSeek.fastSeek(target);
-      else video.currentTime = target;
+      if (!video) return;
+      if (!video.duration || Number.isNaN(video.duration) || video.duration <= 0) {
+        const onLoaded = () => {
+          seek(video, progress);
+        };
+        video.addEventListener('loadedmetadata', onLoaded, { once: true });
+        return;
+      }
+      const target = Math.min(Math.max(progress * video.duration, 0), Math.max(0, video.duration - 0.04));
+      if (Math.abs(video.currentTime - target) < 0.015) return;
+      video.currentTime = target;
     }
 
     let frame = 0;
@@ -70,8 +59,11 @@ export function CinematicVideoCanvas(): React.ReactElement {
       const progress = scrollable > 0 ? Math.min(Math.max(-rect.top / scrollable, 0), 1) : 0;
       seek(activeVideo(), progress);
     }
+
     function onScroll(): void {
-      if (frame === 0) frame = window.requestAnimationFrame(update);
+      if (frame === 0) {
+        frame = window.requestAnimationFrame(update);
+      }
     }
 
     let listening = false;
@@ -79,25 +71,34 @@ export function CinematicVideoCanvas(): React.ReactElement {
       if (listening) return;
       listening = true;
       window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('touchmove', onScroll, { passive: true });
       window.addEventListener('resize', onScroll, { passive: true });
       update();
     }
+
     function stopListening(): void {
       if (!listening) return;
       listening = false;
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('touchmove', onScroll);
       window.removeEventListener('resize', onScroll);
       if (frame) window.cancelAnimationFrame(frame);
       frame = 0;
     }
 
-    // Only run the scrub while the cinematic track is anywhere near the viewport.
+    // Initial seek to ensure frame 0 is rendered immediately
+    update();
+
+    // Observe track visibility to pause scroll listener when far out of view
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) startListening();
-        else stopListening();
+        if (entries.some((e) => e.isIntersecting)) {
+          startListening();
+        } else {
+          stopListening();
+        }
       },
-      { rootMargin: '200px' },
+      { rootMargin: '300px' },
     );
     io.observe(track);
 
@@ -116,7 +117,7 @@ export function CinematicVideoCanvas(): React.ReactElement {
         poster="/images/hero-desktop.jpeg"
         muted
         playsInline
-        preload="metadata"
+        preload="auto"
         tabIndex={-1}
       />
       <video
@@ -126,7 +127,7 @@ export function CinematicVideoCanvas(): React.ReactElement {
         poster="/images/hero-mobile.jpeg"
         muted
         playsInline
-        preload="metadata"
+        preload="auto"
         tabIndex={-1}
       />
     </div>

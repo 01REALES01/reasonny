@@ -31,8 +31,8 @@
   display: block;
 }
 
-.cinematic-video-mobile { opacity: 1; z-index: 1; object-position: center 42%; }
-.cinematic-video-desktop { opacity: 0; z-index: 0; }
+.cinematic-video-mobile { opacity: 1; z-index: 1; object-position: center center; }
+.cinematic-video-desktop { opacity: 0; z-index: 0; object-position: center center; }
 
 @media (min-width: 769px) {
   .cinematic-video-mobile { opacity: 0; z-index: 0; }
@@ -217,47 +217,142 @@
 }
 
 /* Mobile Hamburger Toggle */
-.landing-mobile-toggle {
+/* Mobile Bottom Dock (Apple-grade floating capsule) */
+.landing-mobile-bottom-dock {
   display: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 0;
-  color: inherit;
-  transition: transform 160ms var(--ease-out);
 }
 
-@media (max-width: 860px) {
-  .landing-mobile-toggle {
+@media (max-width: 768px) {
+  .landing-top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    padding: max(14px, env(safe-area-inset-top, 14px)) 20px 8px;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .landing-top-bar-inner {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    justify-content: center !important;
+  }
+
+  .landing-top-actions {
+    display: none !important;
+  }
+
+  .landing-mobile-bottom-dock {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: fixed;
+    bottom: max(18px, env(safe-area-inset-bottom, 18px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 380px;
+    padding: 8px 10px 8px 16px;
+    border-radius: 9999px;
+    background: rgba(18, 10, 16, 0.84);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(228, 204, 166, 0.25);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    z-index: 95;
+    pointer-events: auto;
+  }
+
+  .landing-mobile-dock-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(228, 204, 166, 0.08);
+    border: 1px solid rgba(228, 204, 166, 0.18);
+    color: var(--landing-champagne-gold);
+    border-radius: 9999px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: transform 140ms ease, background 140ms ease;
+  }
+
+  .landing-mobile-dock-btn:active {
+    transform: scale(0.95);
+    background: rgba(228, 204, 166, 0.16);
+  }
+
+  .landing-dock-menu-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2;
+  }
+
+  .landing-mobile-dock-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 22px;
+    border-radius: 9999px;
+    background: var(--landing-gold-solid);
+    color: var(--landing-deep-black);
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    box-shadow: 0 4px 18px rgba(212, 179, 130, 0.35);
+    transition: transform 140ms ease, opacity 140ms ease;
+  }
+
+  .landing-mobile-dock-cta:active {
+    transform: scale(0.96);
   }
 }
 
-.landing-mobile-toggle:active {
+.landing-mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(228, 204, 166, 0.15);
+}
+
+.landing-drawer-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--landing-champagne-gold);
+}
+
+.landing-drawer-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(228, 204, 166, 0.2);
+  color: var(--landing-warm-white);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: transform 140ms ease;
+}
+
+.landing-drawer-close-btn:active {
   transform: scale(0.92);
-}
-
-.landing-hamburger-bar {
-  width: 18px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 2px;
-  transition: transform 220ms var(--ease-out), opacity 220ms ease;
-}
-
-.landing-mobile-toggle--open .landing-hamburger-bar:nth-child(1) {
-  transform: translateY(3.5px) rotate(45deg);
-}
-
-.landing-mobile-toggle--open .landing-hamburger-bar:nth-child(2) {
-  transform: translateY(-3.5px) rotate(-45deg);
 }
 
 /* Mobile Drawer (Full-Bleed Apple-Style Glass Sheet) */
@@ -471,6 +566,12 @@
   z-index: 15;
   pointer-events: auto;
   margin-bottom: clamp(16px, 4vh, 40px);
+}
+
+@media (max-width: 768px) {
+  .landing-hero-bottom {
+    margin-bottom: clamp(72px, 11vh, 96px);
+  }
 }
 
 .landing-word-center {
