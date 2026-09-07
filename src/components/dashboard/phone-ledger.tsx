@@ -1,0 +1,91 @@
+import Link from 'next/link';
+import React from 'react';
+
+import { CategoryIcon } from '@/components/ui/category-icon';
+import { Money } from '@/components/ui/money';
+import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
+import { formatDate, t } from '@/lib/i18n';
+
+interface PhoneLedgerProps {
+  readonly transactions: EnrichedTransactionRow[];
+}
+
+/**
+ * Obsidian Ledger matching Reference Photo 1:
+ * - "Recent Transactions" title in warm champagne gold + "View All" on right.
+ * - Circular icon tiles (44px) for each merchant.
+ * - Merchant name in bold, relative time subline.
+ * - Tabular amounts on right (negative for expense, positive green for income).
+ */
+export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElement {
+  return (
+    <section className="phone-ledger">
+      {/* Header */}
+      <div className="phone-ledger-header">
+        <h2 className="phone-ledger-title">{t('dashboard_recent_title')}</h2>
+        <a href="/api/v1/export" download className="phone-ledger-view-all">
+          {t('dashboard_export_csv')}
+        </a>
+      </div>
+
+      {/* Transaction List */}
+      {transactions.length === 0 ? (
+        <div className="phone-ledger-empty">
+          <p>{t('dashboard_empty')}</p>
+          <Link href="/nuevo" className="phone-ledger-empty-cta">
+            {t('dashboard_empty_cta')} →
+          </Link>
+        </div>
+      ) : (
+        <div className="phone-ledger-list">
+          {transactions.map((tx) => {
+            const isIncome = tx.type === 'income';
+            const categoryName = tx.category?.name ?? t('uncategorized');
+            const timeFormatted = formatDate(tx.transactionDate, 'en', {
+              month: 'short',
+              day: 'numeric',
+            });
+
+            return (
+              <div key={tx.id} className="phone-tx-row">
+                <div className="phone-tx-lead">
+                  <div
+                    className="phone-tx-icon"
+                    style={
+                      (tx.category?.color
+                        ? { '--tx-icon-ink': tx.category.color }
+                        : {}) as React.CSSProperties
+                    }
+                  >
+                    <CategoryIcon
+                      name={isIncome ? 'TrendingUp' : tx.category?.icon}
+                      size={18}
+                    />
+                  </div>
+
+                  <div className="phone-tx-info">
+                    <span className="phone-tx-merchant">{tx.merchant}</span>
+                    <span className="phone-tx-meta">
+                      {categoryName} · {timeFormatted}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className={`phone-tx-amount${
+                    isIncome ? ' phone-tx-amount--income' : ''
+                  }`}
+                >
+                  <span>
+                    {isIncome ? '+' : '-'}
+                    <Money amountMinor={tx.amountMinor} currency={tx.currency} />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

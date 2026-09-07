@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 
 import { createQuickTransactionAction } from '@/app/actions/transactions';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import { parseMoney } from '@/core/money';
 import type { AccountRow } from '@/core/repositories/account.repository';
@@ -14,6 +15,7 @@ import { reportManualEntryDuration, startTiming } from '@/lib/telemetry';
 interface QuickAddFormProps {
   readonly accounts: AccountRow[];
   readonly categories: CategoryRow[];
+  readonly initialType?: 'expense' | 'income';
 }
 
 const QUICK_AMOUNTS = ['10000', '20000', '50000', '100000'];
@@ -21,10 +23,11 @@ const QUICK_AMOUNTS = ['10000', '20000', '50000', '100000'];
 export function QuickAddForm({
   accounts,
   categories,
+  initialType = 'expense',
 }: QuickAddFormProps): React.ReactElement {
   const [isPending, startTransition] = useTransition();
 
-  const [type, setType] = useState<'expense' | 'income'>('expense');
+  const [type, setType] = useState<'expense' | 'income'>(initialType);
   const [amountInput, setAmountInput] = useState('');
   const [merchant, setMerchant] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -35,16 +38,6 @@ export function QuickAddForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
 
-  /**
-   * The phase-1 baseline (B9): how long a manual entry actually takes.
-   *
-   * The stopwatch starts when the form appears, not on first keystroke,
-   * because what phase 2 will be compared against is the whole cost of
-   * recording an expense by hand - including staring at the screen deciding
-   * what to call the merchant. A ref rather than state: this value changes
-   * without anything on screen depending on it, and putting it in state would
-   * re-render the form on every entry for no visible reason (P7).
-   */
   const stopTimingRef = useRef<(() => number) | null>(null);
 
   useEffect(() => {
@@ -91,15 +84,10 @@ export function QuickAddForm({
       if (!result.success) {
         setError(result.error ?? t('error_generic'));
       } else {
-        // Only a successful save counts. Timing an attempt that errored would
-        // mix "how long entry takes" with "how long a failure takes", and the
-        // baseline is meant to answer the first question.
         const elapsedMs = stopTimingRef.current?.();
         if (elapsedMs !== undefined) {
           reportManualEntryDuration(elapsedMs);
         }
-        // The form stays open for another entry, so the next one is timed from
-        // here rather than from the original mount.
         stopTimingRef.current = startTiming();
 
         setSuccess(true);
@@ -118,10 +106,11 @@ export function QuickAddForm({
       {/* Top navigation bar */}
       <div className="entry-bar">
         <Link href="/dashboard" className="entry-back">
-          ← {t('back')}
+          <CategoryIcon name="ArrowLeft" size={15} />
+          <span>{t('back')}</span>
         </Link>
 
-        {/* Segmented Control (DESIGN_SYSTEM.md 6.4) */}
+        {/* Segmented Control (Gasto / Ingreso) */}
         <div role="group" aria-label={t('transaction_type')} className="entry-segmented">
           <button
             type="button"
@@ -148,16 +137,14 @@ export function QuickAddForm({
         </div>
       </div>
 
-      {/* Main card */}
+      {/* Main Luxury Entry Container */}
       <div className="step-slide entry-card">
-        <h1 className="entry-heading">
-          {isIncome ? t('record_income') : t('record_expense')}
-        </h1>
-
         {success && (
           <div role="status" className="entry-banner entry-banner--success">
             <span>✓ {t('transaction_created_success')}</span>
-            <Link href="/dashboard">{t('view_on_home')} →</Link>
+            <Link href="/dashboard">
+              {t('view_on_home')} <CategoryIcon name="ArrowRight" size={13} />
+            </Link>
           </div>
         )}
 
@@ -168,23 +155,26 @@ export function QuickAddForm({
         )}
 
         <form onSubmit={handleQuickSubmit} className="entry-form">
-          {/* Field 1: Amount with Display & Quick Suggestions */}
-          <div className="entry-field">
-            <label htmlFor="amount" className="entry-label">
-              {t('field_amount')} (COP)
+          {/* Monumental Hero Amount Section */}
+          <div className="entry-hero-section">
+            <label htmlFor="amount" className="entry-hero-label">
+              {isIncome ? 'Monto a ingresar' : 'Monto del gasto'} (COP)
             </label>
 
-            <input
-              id="amount"
-              name="amount"
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              placeholder="0"
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              className={`entry-amount${isIncome ? ' entry-amount--income' : ''}`}
-            />
+            <div className={`entry-hero-input-wrap${isIncome ? ' entry-hero-input-wrap--income' : ''}`}>
+              <span className="entry-hero-currency">$</span>
+              <input
+                id="amount"
+                name="amount"
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                placeholder="0"
+                value={amountInput}
+                onChange={(e) => setAmountInput(e.target.value)}
+                className="entry-hero-input"
+              />
+            </div>
 
             {/* Quick Amount Chips */}
             <div className="entry-chips">
@@ -195,9 +185,6 @@ export function QuickAddForm({
                   onClick={() => setAmountInput(val)}
                   className="entry-chip"
                 >
-                  {/* Through <Money>, not toLocaleString: the chip and the
-                      figure it fills in must be formatted by the same rules,
-                      or the shortcut shows one number and the field another. */}
                   +
                   <Money
                     amountMinor={parseMoney(val, 'COP').minor}
@@ -210,7 +197,7 @@ export function QuickAddForm({
 
             {previewMinor > 0n && (
               <div className={`entry-preview${isIncome ? ' entry-preview--income' : ''}`}>
-                {t('field_amount_preview')}{' '}
+                <span>{t('field_amount_preview')}: </span>
                 <strong>
                   <Money amountMinor={previewMinor} currency="COP" />
                 </strong>
@@ -218,7 +205,7 @@ export function QuickAddForm({
             )}
           </div>
 
-          {/* Field 2: Merchant / Concept */}
+          {/* Field 1: Merchant / Concepto */}
           <div className="entry-field">
             <label htmlFor="merchant" className="entry-label">
               {t('field_merchant')}
@@ -227,7 +214,7 @@ export function QuickAddForm({
               id="merchant"
               name="merchant"
               type="text"
-              placeholder={t('field_merchant_placeholder')}
+              placeholder={isIncome ? 'Ej. Salario, Rendimiento, Pago' : t('field_merchant_placeholder')}
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               required
@@ -235,7 +222,7 @@ export function QuickAddForm({
             />
           </div>
 
-          {/* Field 3: Category Chips */}
+          {/* Field 2: Category Selector with Squircle Tiles */}
           <div className="entry-field">
             <label className="entry-label">{t('field_category')}</label>
             <div className="entry-categories">
@@ -247,25 +234,15 @@ export function QuickAddForm({
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setSelectedCategoryId(isSelected ? null : cat.id)}
-                    className="entry-category"
+                    className="entry-category-tile"
+                    style={
+                      (cat.color ? { '--cat-tile-ink': cat.color } : {}) as React.CSSProperties
+                    }
                   >
-                    {/* The one inline style left in this file, and the reason
-                        the rule allows it: cat.color is a per-row value from
-                        the database, so it cannot be a class. It rides in as a
-                        custom property the stylesheet reads, which keeps the
-                        colour a token substitution rather than a second styling
-                        mechanism. */}
-                    <span
-                      className="entry-category-dot"
-                      style={
-                        // Omitted rather than set empty when the row has no
-                        // colour: var(--dot, ...) only reaches its fallback if
-                        // the property is absent, so an empty string would
-                        // paint nothing instead of the brand default.
-                        (cat.color ? { '--dot': cat.color } : {}) as React.CSSProperties
-                      }
-                    />
-                    {cat.name}
+                    <div className="entry-category-tile-icon">
+                      <CategoryIcon name={cat.icon} size={18} />
+                    </div>
+                    <span className="entry-category-tile-name">{cat.name}</span>
                   </button>
                 );
               })}
@@ -315,10 +292,15 @@ export function QuickAddForm({
             disabled={isPending}
             className={`entry-submit${isIncome ? ' entry-submit--income' : ''}`}
           >
-            {isPending ? t('saving') : t('btn_submit_transaction')}
+            {isPending
+              ? t('saving')
+              : isIncome
+              ? '+ Registrar Ingreso'
+              : '+ Registrar Gasto'}
           </button>
         </form>
       </div>
     </div>
   );
 }
+

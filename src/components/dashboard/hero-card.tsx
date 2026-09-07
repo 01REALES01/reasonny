@@ -1,6 +1,9 @@
-import Link from 'next/link';
-import React from 'react';
+'use client';
 
+import Link from 'next/link';
+import React, { useState } from 'react';
+
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import { t } from '@/lib/i18n';
 
@@ -12,107 +15,93 @@ interface HeroCardProps {
 /**
  * Hero balance card (DESIGN_SYSTEM.md 6.1).
  *
- * The ONLY element in the app allowed to carry a gradient surface. Its colours
- * come from --hero-* tokens rather than literals, which is the rule that blocks
- * the merge: a literal here is copyable, and the second component that copies
- * it turns the one hero gradient into a system.
+ * The single element in the app allowed a gradient surface: deep imperial wine
+ * into velvet obsidian, framed with a champagne gold hairline. The figure sets
+ * the scale of the screen, complemented by a subtle SVG telemetry sparkline.
  *
- * Deliberately has no shadow and no border, per 6.1 - the gradient already
- * separates it from the surface behind it.
+ * Includes the required balance privacy toggle (DESIGN_SYSTEM.md 6.1:
+ * "Acción de ocultar/mostrar saldo en la esquina superior derecha").
  */
 export function HeroCard({
   totalBalanceMinor,
   currency,
 }: HeroCardProps): React.ReactElement {
-  return (
-    <div
-      style={{
-        background:
-          'linear-gradient(135deg, var(--hero-gradient-from) 0%, var(--hero-gradient-to) 100%)',
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--space-5)',
-        color: 'var(--hero-ink)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        minHeight: '170px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Subtle decorative mesh circle */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-40px',
-          right: '-40px',
-          width: '140px',
-          height: '140px',
-          borderRadius: '50%',
-          background: 'var(--hero-mesh)',
-          pointerEvents: 'none',
-        }}
-      />
+  const [isHidden, setIsHidden] = useState(false);
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <span
-          style={{
-            fontSize: 'var(--text-label)',
-            color: 'var(--hero-ink-label)',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.6px',
-          }}
+  return (
+    <section className="hero-card">
+      <div className="hero-card-head">
+        <span className="hero-card-label">{t('hero_total_balance')}</span>
+
+        <button
+          type="button"
+          onClick={() => setIsHidden((prev) => !prev)}
+          className="hero-privacy-btn"
+          aria-label={isHidden ? t('hero_show_balance') : t('hero_hide_balance')}
+          title={isHidden ? t('hero_show_balance') : t('hero_hide_balance')}
         >
-          {t('hero_total_balance')}
-        </span>
-        <div
-          style={{
-            marginTop: 'var(--space-2)',
-            fontSize: 'var(--text-hero)',
-            fontWeight: 700,
-            color: 'var(--hero-ink)',
-            lineHeight: 1.1,
-          }}
-        >
-          <Money amountMinor={totalBalanceMinor} currency={currency} />
-        </div>
+          <CategoryIcon name={isHidden ? 'Eye' : 'EyeOff'} size={15} />
+        </button>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: 'var(--space-4)',
-          position: 'relative',
-          zIndex: 1,
-        }}
+      {/* Pure SVG Telemetry wave - strictly uses CSS variables, zero color literals */}
+      <svg
+        className="hero-sparkline"
+        viewBox="0 0 240 90"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
       >
-        <span
-          style={{ fontSize: 'var(--text-caption)', color: 'var(--hero-ink-caption)' }}
-        >
-          {currency} · {t('hero_realtime')}
+        <path
+          d="M0 65 Q 40 50, 80 58 T 150 35 T 210 20 T 240 10"
+          stroke="var(--landing-champagne-gold)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M0 65 Q 40 50, 80 58 T 150 35 T 210 20 T 240 10 V 90 H 0 Z"
+          fill="url(#sparkline-fill)"
+          opacity="0.25"
+        />
+        <defs>
+          <linearGradient
+            id="sparkline-fill"
+            x1="120"
+            y1="0"
+            x2="120"
+            y2="90"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="var(--landing-champagne-gold)" stopOpacity="0.4" />
+            <stop offset="1" stopColor="var(--landing-champagne-gold)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div className="hero-card-figure">
+        {isHidden ? (
+          <span className="hero-card-masked" aria-label={t('hero_hide_balance')}>
+            $ ••••••••
+          </span>
+        ) : (
+          <Money amountMinor={totalBalanceMinor} currency={currency} />
+        )}
+      </div>
+
+      <div className="hero-card-foot">
+        <span className="hero-card-caption">
+          <CategoryIcon name="ShieldCheck" size={13} />
+          <span>
+            {currency} · {t('hero_realtime')}
+          </span>
         </span>
 
-        <Link
-          href="/nuevo"
-          style={{
-            backgroundColor: 'var(--hero-action-surface)',
-            color: 'var(--hero-ink)',
-            padding: '6px 14px',
-            borderRadius: 'var(--radius-full)',
-            fontSize: 'var(--text-label)',
-            fontWeight: 600,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          + {t('hero_new_expense')}
+        <Link href="/nuevo" className="hero-card-action">
+          <CategoryIcon name="Plus" size={15} />
+          <span>{t('hero_new_expense')}</span>
         </Link>
       </div>
-    </div>
+    </section>
   );
 }

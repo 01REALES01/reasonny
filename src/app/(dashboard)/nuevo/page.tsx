@@ -18,13 +18,20 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function QuickAddPage(): Promise<React.ReactElement> {
-  const session = await getCurrentUser();
+export default async function QuickAddPage(props: {
+  searchParams: Promise<{ type?: string }>;
+}): Promise<React.ReactElement> {
+  const [session, searchParams] = await Promise.all([
+    getCurrentUser(),
+    props.searchParams,
+  ]);
+
   if (!session) {
     redirect('/sign-in');
   }
 
   const userId = toUserId(session.id);
+  const initialType = searchParams?.type === 'income' ? 'income' : 'expense';
 
   // Ensure profile row exists in database for foreign key integrity
   await ensureProfile(userId, session.email);
@@ -40,17 +47,12 @@ export default async function QuickAddPage(): Promise<React.ReactElement> {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: '680px',
-        margin: '0 auto',
-        padding: 'var(--space-6) var(--space-4) var(--space-12)',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <QuickAddForm accounts={accounts} categories={categories} />
+    <main className="entry-page">
+      <QuickAddForm
+        accounts={accounts}
+        categories={categories}
+        initialType={initialType}
+      />
     </main>
   );
 }

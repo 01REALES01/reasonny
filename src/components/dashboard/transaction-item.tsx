@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
 import { formatDate, t } from '@/lib/i18n';
@@ -12,6 +13,10 @@ interface TransactionItemProps {
  * Transaction row item (DESIGN_SYSTEM.md 6.3).
  *
  * Touch target >= 44px, tabular numbers, and uncategorized warning dot.
+ *
+ * The icon comes from `category.icon`, which the seed catalogue has always
+ * written to the database and which this row used to ignore in favour of a
+ * coffee cup on every expense, groceries and rent included.
  *
  * Styled by class rather than inline, unlike the static cards beside it: this
  * is the row the list repeats, so every style object here was ten fresh objects
@@ -31,7 +36,6 @@ export function TransactionItem({
 
   return (
     <div className="tx">
-      {/* Icon + Details */}
       <div className="tx-lead">
         <div
           className="tx-icon"
@@ -44,7 +48,10 @@ export function TransactionItem({
               : {}) as React.CSSProperties
           }
         >
-          {isIncome ? '↓' : '☕'}
+          <CategoryIcon
+            name={isIncome ? 'TrendingUp' : transaction.category?.icon}
+            size={17}
+          />
         </div>
 
         <div className="tx-detail">
@@ -59,14 +66,19 @@ export function TransactionItem({
         </div>
       </div>
 
-      {/* Amount */}
-      <div className={`tx-amount${isIncome ? ' tx-amount--income' : ''}`}>
-        <span>
-          {isIncome ? '+' : ''}
-          <Money
-            amountMinor={transaction.amountMinor}
-            currency={transaction.currency}
-          />
+      <div className="tx-end">
+        <div className={`tx-amount${isIncome ? ' tx-amount--income' : ''}`}>
+          <span>
+            {isIncome ? '+' : ''}
+            <Money
+              amountMinor={transaction.amountMinor}
+              currency={transaction.currency}
+            />
+          </span>
+        </div>
+
+        <span className="tx-chevron" aria-hidden="true">
+          <CategoryIcon name="ChevronRight" size={14} />
         </span>
       </div>
     </div>

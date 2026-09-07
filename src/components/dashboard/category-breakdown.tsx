@@ -1,8 +1,9 @@
 import React from 'react';
 
-import { t } from '@/lib/i18n';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import type { CategorySpendingBreakdown } from '@/core/repositories/transaction.repository';
+import { t } from '@/lib/i18n';
 
 interface CategoryBreakdownProps {
   readonly breakdown: CategorySpendingBreakdown[];
@@ -20,107 +21,113 @@ const CATEGORICAL_COLORS = [
 ];
 
 /**
- * Segmented progress bar and category breakdown (DESIGN_SYSTEM.md 6.6).
+ * Segmented bar and category breakdown (DESIGN_SYSTEM.md 6.6).
+ *
+ * Percentages are computed once, in one place. They used to be computed twice
+ * with different rounding - the bar clamped to a minimum of 1% and the legend
+ * did not - so a category under 0.5% read "1%" in the tooltip and "0%" in the
+ * list directly below it.
+ *
+ * The bar distributes with flex-grow rather than percentage widths. With
+ * `width: N%` on every segment plus a 2px gap between them the row always added
+ * up to more than 100% and the last segment was silently clipped, which is the
+ * worst possible failure for a chart: the smallest category disappears.
  */
 export function CategoryBreakdown({
   breakdown,
   totalExpenseMinor,
   currency,
-}: CategoryBreakdownProps): React.ReactElement | null {
+}: CategoryBreakdownProps): React.ReactElement {
   if (breakdown.length === 0 || totalExpenseMinor <= 0n) {
-    return null;
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <h2 className="panel-title">
+            <strong>{t('breakdown_title')}</strong>
+          </h2>
+        </div>
+        <div className="breakdown-empty">
+          <p>{t('breakdown_empty')}</p>
+          <span className="breakdown-empty-hint">{t('breakdown_empty_hint')}</span>
+        </div>
+      </section>
+    );
   }
 
   const totalNum = Number(totalExpenseMinor);
 
+  const slices = breakdown.map((item, idx) => ({
+    key: item.categoryId ?? `cat-${idx}`,
+    name: item.categoryName ?? t('uncategorized'),
+    icon: item.categoryIcon,
+    // The repository returns null for the uncategorised bucket rather than a
+    // label; naming it belongs here, through the catalog.
+    color:
+      item.categoryColor ||
+      CATEGORICAL_COLORS[idx % CATEGORICAL_COLORS.length] ||
+      'var(--cat-1)',
+    share: Number(item.totalMinor) / totalNum,
+    pct: Math.round((Number(item.totalMinor) / totalNum) * 100),
+    totalMinor: item.totalMinor,
+  }));
+
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--surface-raised)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 'var(--space-4)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-4)',
-      }}
-    >
-      <h3 style={{ fontSize: 'var(--text-heading)', fontWeight: 600, color: 'var(--ink-primary)' }}>
-        {t('breakdown_title')}
-      </h3>
+    <section className="panel">
+      <div className="panel-head">
+        <h2 className="panel-title">
+          <strong>{t('breakdown_title')}</strong>
+        </h2>
+      </div>
 
-      {/* Segmented bar */}
-      <div
-        style={{
-          display: 'flex',
-          height: '8px',
-          borderRadius: 'var(--radius-full)',
-          overflow: 'hidden',
-          backgroundColor: 'var(--surface-overlay)',
-          gap: '2px',
-        }}
-      >
-        {breakdown.map((item, idx) => {
-          const pct = Math.max(1, Math.round((Number(item.totalMinor) / totalNum) * 100));
-          const color = item.categoryColor || CATEGORICAL_COLORS[idx % CATEGORICAL_COLORS.length] || 'var(--cat-1)';
-          // The repository returns null for the uncategorised bucket rather
-          // than a label; naming it belongs here, through the catalog.
-          const name = item.categoryName ?? t('uncategorized');
-          return (
-            <div
-              key={item.categoryId ?? `cat-${idx}`}
-              title={`${name}: ${pct}%`}
-              style={{
-                width: `${pct}%`,
-                backgroundColor: color,
-                borderRadius: 'var(--radius-full)',
-              }}
+      <div className="breakdown-bar">
+        {slices.map((slice) => (
+          <span
+            key={slice.key}
+            className="breakdown-seg"
+            title={`${slice.name}: ${slice.pct}%`}
+            style={
+              {
+                flexGrow: slice.share,
+                '--seg-ink': slice.color,
+              } as React.CSSProperties
+            }
+          />
+        ))}
+      </div>
+
+      <ul className="breakdown-list">
+        {slices.slice(0, 5).map((slice) => (
+          <li key={slice.key} className="breakdown-row">
+            <span
+              className="breakdown-dot"
+              style={{ '--seg-ink': slice.color } as React.CSSProperties}
             />
-          );
-        })}
-      </div>
-
-      {/* Category list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        {breakdown.slice(0, 5).map((item, idx) => {
-          const pct = Math.round((Number(item.totalMinor) / totalNum) * 100);
-          const color = item.categoryColor || CATEGORICAL_COLORS[idx % CATEGORICAL_COLORS.length] || 'var(--cat-1)';
-          return (
-            <div
-              key={item.categoryId ?? `legend-${idx}`}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 'var(--text-label)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: color,
-                  }}
-                />
-                <span style={{ color: 'var(--ink-primary)' }}>
-                  {item.categoryName ?? t('uncategorized')}
-                </span>
-                <span style={{ color: 'var(--ink-muted)', fontSize: 'var(--text-caption)' }}>
-                  ({pct}%)
-                </span>
-              </div>
-              <div style={{ fontWeight: 500 }}>
-                <Money
-                  amountMinor={item.totalMinor}
-                  currency={currency}
-                  showFractionDeEmphasis={false}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            {slice.icon && (
+              <span
+                style={
+                  {
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    color: slice.color,
+                  } as React.CSSProperties
+                }
+                aria-hidden="true"
+              >
+                <CategoryIcon name={slice.icon} size={13} />
+              </span>
+            )}
+            <span className="breakdown-name">{slice.name}</span>
+            <span className="breakdown-pct">{slice.pct}%</span>
+            <span className="breakdown-amount">
+              <Money
+                amountMinor={slice.totalMinor}
+                currency={currency}
+                showFractionDeEmphasis={false}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
