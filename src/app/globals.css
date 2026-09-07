@@ -2410,3 +2410,115 @@ textarea:focus-visible {
 .danger-confirm:disabled:active {
   transform: none;
 }
+
+/* ── SMS ingestion setup ────────────────────────────────────────────────────*/
+
+.ingest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  margin-top: var(--space-5);
+  border-radius: var(--radius-lg);
+  background-color: var(--landing-velvet-card);
+  border: 1px solid var(--landing-champagne-border);
+}
+
+.ingest-title {
+  font-size: var(--text-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+}
+
+.ingest-lede {
+  font-size: var(--text-label);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}
+
+.ingest-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(228, 204, 166, 0.12);
+}
+
+.ingest-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(228, 204, 166, 0.6);
+  flex-shrink: 0;
+}
+
+/* The token is long and must not wrap the layout: it scrolls inside its own
+   box rather than pushing the card wider than the screen. */
+.ingest-value {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-secondary);
+}
+
+.ingest-copy {
+  min-height: 32px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: rgba(228, 204, 166, 0.1);
+  border: 1px solid var(--landing-champagne-border);
+  color: var(--landing-champagne-gold);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.ingest-copy:active {
+  transform: scale(0.94);
+}
+
+.ingest-warning {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--warning);
+  background: var(--warning-tint);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.ingest-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-label);
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+.ingest-steps strong {
+  color: var(--ink-primary);
+  font-weight: 700;
+}
+
+.ingest-steps code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--landing-champagne-gold);
+}

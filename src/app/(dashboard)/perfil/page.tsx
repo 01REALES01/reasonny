@@ -3,8 +3,10 @@ import { redirect } from 'next/navigation';
 
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { toUserId } from '@/core/types';
+import { mintIngestToken } from '@/lib/ingest-token';
 import { getCurrentUser } from '@/lib/session';
 
+import { IngestSetup } from './ingest-setup';
 import { ProfileForm } from './profile-form';
 
 // P8: Authenticated app is strictly noindex
@@ -19,7 +21,20 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
     redirect('/sign-in');
   }
 
-  const profile = await ensureProfile(toUserId(session.id), session.email);
+  const userId = toUserId(session.id);
+  const profile = await ensureProfile(userId, session.email);
+
+  // A missing secret must not take the whole profile page down with it - the
+  // name form has nothing to do with ingestion.
+  let ingest: { token: string; endpoint: string } | null = null;
+  try {
+    ingest = {
+      token: mintIngestToken(userId),
+      endpoint: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://reasonny.vercel.app'}/api/v1/quick-add`,
+    };
+  } catch {
+    ingest = null;
+  }
 
   return (
     <main className="entry-page">
@@ -29,6 +44,7 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
         baseCurrency={profile.baseCurrency}
         timezone={profile.timezone}
       />
+      {ingest && <IngestSetup token={ingest.token} endpoint={ingest.endpoint} />}
     </main>
   );
 }
