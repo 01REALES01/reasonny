@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { updateProfileName } from '@/core/repositories/profile.repository';
 import { toUserId } from '@/core/types';
+import { markOnboardingSeen } from '@/lib/onboarding';
 import { requireCurrentUser } from '@/lib/session';
 
 // Not exported: a 'use server' module may only export async functions.
@@ -21,6 +22,17 @@ const DisplayNameSchema = z
 export interface ProfileActionResult {
   readonly success: boolean;
   readonly error?: string;
+}
+
+/**
+ * Records that the welcome flow has been shown, so /dashboard stops redirecting
+ * into it. Called on finish AND on skip - skipping is an answer.
+ */
+export async function completeOnboardingAction(): Promise<ProfileActionResult> {
+  await requireCurrentUser();
+  await markOnboardingSeen();
+  revalidatePath('/dashboard');
+  return { success: true };
 }
 
 /**

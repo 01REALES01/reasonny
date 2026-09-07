@@ -1658,18 +1658,58 @@ textarea:focus-visible {
 .phone-ledger-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
+/* No outline and no fill on the row.
+   Every transaction was drawn as its own bordered box, so a list of eight was
+   eight rectangles competing with the eight coloured icon tiles inside them -
+   sixteen shapes to say eight things. The tile is already the anchor for the
+   eye; the row only needs rhythm, which is spacing.
+
+   The row is a link, so it owes the finger an answer. Background and a lift on
+   hover, a small scale on press, both transform/opacity only so the compositor
+   handles them and INP is untouched. */
 .phone-tx-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: 12px;
+  margin: 0 -12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+  color: inherit;
   transition: transform var(--duration-fast) var(--ease-out);
+}
+
+/* The hover fill is a pre-painted layer whose opacity moves, not an animated
+   background-color. Same look, and it is the difference between the compositor
+   handling the frame and the main thread repainting the row - which on a list
+   is the whole INP budget. The architecture test enforces this. */
+.phone-tx-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.phone-tx-row:hover::before {
+  opacity: 1;
+}
+
+.phone-tx-row:active {
+  transform: scale(0.985);
+}
+
+/* The row's own children have to sit above that layer. */
+.phone-tx-lead,
+.phone-tx-amount {
+  position: relative;
 }
 
 .phone-tx-lead {
@@ -1679,16 +1719,21 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+/* Tinted with the category's own colour rather than a uniform grey, so the
+   colour in the breakdown and the colour on the row are the same fact. */
 .phone-tx-icon {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--tx-icon-ink, var(--landing-champagne-gold));
+  background-color: color-mix(
+    in srgb,
+    var(--tx-icon-ink, var(--landing-champagne-gold)) 13%,
+    transparent
+  );
   flex-shrink: 0;
 }
 
@@ -2312,4 +2357,56 @@ textarea:focus-visible {
   color: var(--landing-champagne-gold);
   background: rgba(228, 204, 166, 0.1);
   border: 1px solid var(--landing-champagne-border);
+}
+
+/* ── Press feedback ─────────────────────────────────────────────────────────
+   Everything tappable answers the finger. On a touch screen there is no hover
+   to tell you a control is live, so the press state is the only confirmation
+   the tap registered - and its absence is what makes an interface feel dead
+   before it feels slow.
+
+   scale() only. Any of these could have been a background or a colour change;
+   both repaint, and this list is the screen whose whole budget is INP. The
+   architecture test fails the build if a transition names anything but
+   transform or opacity. */
+
+.entry-category,
+.review-card-edit,
+.danger-trigger,
+.danger-cancel,
+.danger-confirm,
+.entry-segment,
+.ob-skip,
+.entry-back,
+.phone-ledger-view-all,
+.dash-empty a,
+.phone-ledger-empty-cta {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.entry-category:active,
+.review-card-edit:active,
+.danger-trigger:active,
+.danger-cancel:active,
+.danger-confirm:active,
+.entry-segment:active,
+.ob-skip:active,
+.phone-ledger-view-all:active,
+.dash-empty a:active,
+.phone-ledger-empty-cta:active {
+  transform: scale(0.96);
+}
+
+/* The back link travels rather than shrinks: it is the one control whose
+   meaning is a direction, so the motion says where it goes. */
+.entry-back:active {
+  transform: translateX(-3px);
+}
+
+/* A disabled control must not answer, or the press reads as "it worked" on a
+   form that is still in flight. */
+.entry-category:disabled:active,
+.entry-submit:disabled:active,
+.danger-confirm:disabled:active {
+  transform: none;
 }

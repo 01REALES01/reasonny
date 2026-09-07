@@ -135,6 +135,23 @@ export async function createTransaction(
  *
  * The list version comes back in phase 2 with the review screen that needs it.
  */
+/**
+ * Whether this user has ever recorded anything.
+ *
+ * EXISTS with LIMIT 1, not COUNT(*): the question is "any at all", and counting
+ * every row of a long history to compare it against zero is work thrown away.
+ */
+export async function hasAnyTransaction(userId: UserId): Promise<boolean> {
+  const db = getDb();
+  const rows = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.userId, userId), isNull(transactions.deletedAt)))
+    .limit(1);
+
+  return rows.length > 0;
+}
+
 export async function countUncategorizedTransactions(userId: UserId): Promise<number> {
   const db = getDb();
   const [row] = await db

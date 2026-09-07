@@ -3,7 +3,10 @@
 import { useRouter } from 'next/navigation';
 import React, { useState, useTransition } from 'react';
 
-import { updateDisplayNameAction } from '@/app/actions/profile';
+import {
+  completeOnboardingAction,
+  updateDisplayNameAction,
+} from '@/app/actions/profile';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { t } from '@/lib/i18n';
 
@@ -34,8 +37,15 @@ export function OnboardingFlow({
   const [name, setName] = useState(initialName);
   const [isPending, startTransition] = useTransition();
 
+  // Skipping is an answer, so it is recorded the same way finishing is: without
+  // it, an account with no name and no transactions still matches the "new
+  // user" condition and /dashboard would send them straight back here on the
+  // next visit, forever.
   function finish(): void {
-    router.push('/dashboard');
+    startTransition(async () => {
+      await completeOnboardingAction();
+      router.push('/dashboard');
+    });
   }
 
   function saveNameAndContinue(): void {
