@@ -2411,82 +2411,227 @@ textarea:focus-visible {
   transform: none;
 }
 
-/* ── SMS ingestion setup ────────────────────────────────────────────────────*/
+/* ── Guided SMS setup ───────────────────────────────────────────────────────
+   One step on screen at a time. The old version listed all eight, which reads
+   as a wall: the whole cost is visible before any of it is done, and the reader
+   has to hold their own place in it. */
 
 .ingest {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   padding: var(--space-5);
   margin-top: var(--space-5);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background-color: var(--landing-velvet-card);
   border: 1px solid var(--landing-champagne-border);
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Steps translate out past the edge; without this they would widen the page. */
+  overflow: hidden;
 }
 
-.ingest-title {
-  font-size: var(--text-heading);
+.ingest-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  background: rgba(228, 204, 166, 0.1);
+  border: 1px solid var(--landing-champagne-border);
+  color: var(--landing-champagne-gold);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ingest-hook {
+  font-size: clamp(1.5rem, 6.5vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--ink-secondary);
+  text-wrap: balance;
+}
+
+.ingest-hook strong {
   color: var(--ink-primary);
+  font-weight: 800;
 }
 
 .ingest-lede {
   font-size: var(--text-label);
   color: var(--ink-secondary);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-.ingest-field {
+.ingest-head {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(228, 204, 166, 0.12);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 16px;
 }
 
-.ingest-label {
+.ingest-count {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(228, 204, 166, 0.6);
-  flex-shrink: 0;
+  color: rgba(228, 204, 166, 0.55);
 }
 
-/* The token is long and must not wrap the layout: it scrolls inside its own
-   box rather than pushing the card wider than the screen. */
-.ingest-value {
+/* The reward for the step just cleared. It arrives rather than sits there, so
+   it reads as a response to what the user did. */
+.ingest-cheer {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--positive);
+  animation: ingestCheer 320ms var(--ease-out) both;
+}
+
+@keyframes ingestCheer {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ingest-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(228, 204, 166, 0.12);
+  overflow: hidden;
+}
+
+/* scaleX, not width. Width is a layout property and animating it is exactly
+   what the design system forbids; the compositor handles a transform. */
+.ingest-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    90deg,
+    var(--landing-lighter-burgundy),
+    var(--landing-champagne-gold)
+  );
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.ingest-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: ingestStepIn 260ms var(--ease-out) both;
+}
+
+.ingest-step--out {
+  animation: ingestStepOut 200ms var(--ease-accelerate) both;
+}
+
+@keyframes ingestStepIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ingestStepOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.ingest-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--landing-champagne-gold);
+}
+
+.ingest-title {
+  font-size: clamp(1.25rem, 5.5vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--ink-primary);
+  text-wrap: balance;
+}
+
+.ingest-body {
+  font-size: var(--text-label);
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+.ingest-body strong {
+  color: var(--ink-primary);
+  font-weight: 700;
+}
+
+.ingest-body code,
+.ingest-secret code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--landing-champagne-gold);
+}
+
+/* The whole block is the copy target: on a phone, asking someone to hit a
+   small button next to a long string is asking them to miss it. */
+.ingest-secret {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(228, 204, 166, 0.16);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.ingest-secret:active {
+  transform: scale(0.985);
+}
+
+.ingest-secret code {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--ink-secondary);
+  background: none;
+  padding: 0;
 }
 
-.ingest-copy {
-  min-height: 32px;
-  padding: 0 10px;
+.ingest-secret-action {
   flex-shrink: 0;
-  border-radius: var(--radius-full);
-  background: rgba(228, 204, 166, 0.1);
-  border: 1px solid var(--landing-champagne-border);
-  color: var(--landing-champagne-gold);
   font-size: var(--text-caption);
   font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: transform var(--duration-fast) var(--ease-out);
-}
-
-.ingest-copy:active {
-  transform: scale(0.94);
+  color: var(--landing-champagne-gold);
 }
 
 .ingest-warning {
@@ -2498,27 +2643,52 @@ textarea:focus-visible {
   padding: var(--space-3);
 }
 
-.ingest-steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding-left: var(--space-5);
-  font-size: var(--text-label);
-  line-height: 1.55;
-  color: var(--ink-secondary);
-}
-
-.ingest-steps strong {
-  color: var(--ink-primary);
+.ingest-start {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--brand-500);
+  border: 1px solid var(--landing-champagne-border);
+  color: var(--on-accent);
+  font-size: var(--text-body);
   font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-brand-raised);
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
-.ingest-steps code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  color: var(--landing-champagne-gold);
+.ingest-start:active {
+  transform: scale(0.97);
+}
+
+.ingest--done {
+  align-items: center;
+  text-align: center;
+}
+
+.ingest-trophy {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--positive);
+  background: var(--positive-tint);
+  animation: ingestCheer 400ms var(--ease-overshoot) both;
+}
+
+.ingest-restart {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  font-size: var(--text-label);
+  font-weight: 600;
+  cursor: pointer;
 }
