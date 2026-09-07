@@ -302,47 +302,54 @@ export interface EnrichedTransactionRow {
   } | null;
 }
 
-/**
- * Fetches recent transactions enriched with category and account details.
- */
-export async function getRecentEnrichedTransactions(
-  userId: UserId,
-  limit = 20,
-): Promise<EnrichedTransactionRow[]> {
-  const db = getDb();
+// The enriched projection and its row mapping are shared by every screen that
+// lists or opens a transaction. Written once so the detail view, the review
+// inbox and the dashboard cannot drift apart in what they select or how they
+// name a missing category.
+const ENRICHED_COLUMNS = {
+  id: transactions.id,
+  amountMinor: transactions.amountMinor,
+  currency: transactions.currency,
+  type: transactions.type,
+  status: transactions.status,
+  merchant: transactions.merchant,
+  note: transactions.note,
+  transactionDate: transactions.transactionDate,
+  categorizedBy: transactions.categorizedBy,
+  catId: categories.id,
+  catName: categories.name,
+  catIcon: categories.icon,
+  catColor: categories.color,
+  accId: accounts.id,
+  accName: accounts.name,
+  accCurrency: accounts.currency,
+} as const;
 
-  const rows = await db
-    .select({
-      id: transactions.id,
-      amountMinor: transactions.amountMinor,
-      currency: transactions.currency,
-      type: transactions.type,
-      status: transactions.status,
-      merchant: transactions.merchant,
-      note: transactions.note,
-      transactionDate: transactions.transactionDate,
-      categorizedBy: transactions.categorizedBy,
-      catId: categories.id,
-      catName: categories.name,
-      catIcon: categories.icon,
-      catColor: categories.color,
-      accId: accounts.id,
-      accName: accounts.name,
-      accCurrency: accounts.currency,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        isNull(transactions.deletedAt),
-      ),
-    )
-    .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
-    .limit(limit);
+// Written out rather than mapped over ENRICHED_COLUMNS: a mapped type reads the
+// column's data type but not its nullability, so every left-joined column came
+// back as non-null and the mapper's `?? 'Categoría'` fallbacks looked dead.
+// The category and account columns are all nullable because both joins are LEFT.
+interface EnrichedQueryRow {
+  readonly id: string;
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly type: string;
+  readonly status: string;
+  readonly merchant: string;
+  readonly note: string | null;
+  readonly transactionDate: Date;
+  readonly categorizedBy: string | null;
+  readonly catId: string | null;
+  readonly catName: string | null;
+  readonly catIcon: string | null;
+  readonly catColor: string | null;
+  readonly accId: string | null;
+  readonly accName: string | null;
+  readonly accCurrency: string | null;
+}
 
-  return rows.map((r) => ({
+function toEnrichedRow(r: EnrichedQueryRow): EnrichedTransactionRow {
+  return {
     id: r.id,
     amountMinor: r.amountMinor,
     currency: r.currency,
@@ -367,6 +374,213 @@ export async function getRecentEnrichedTransactions(
           currency: r.accCurrency ?? 'COP',
         }
       : null,
-  }));
+  };
+}
+
+/**
+ * Fetches recent transactions enriched with category and account details.
+ */
+export async function getRecentEnrichedTransactions(
+  userId: UserId,
+  limit = 20,
+): Promise<EnrichedTransactionRow[]> {
+  const db = getDb();
+
+  const rows = await db
+    .select(ENRICHED_COLUMNS)
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        isNull(transactions.deletedAt),
+      ),
+    )
+    .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+    .limit(limit);
+
+  return rows.map(toEnrichedRow);
+}
+
+/**
+ * Transactions inside one month, for the month view.
+ *
+ * Bounds are the same local-midnight strings the aggregations use, compared
+ * `AT TIME ZONE` like every other period query (CLAUDE.md rule 4): a spend at
+ * 20:00 on 31 August in Bogotá belongs to August, and grouping in UTC would
+ * file it under September.
+ */
+export async function getEnrichedTransactionsInMonth(
+  userId: UserId,
+  timezone: string,
+  startOfMonthIso: string,
+  startOfNextMonthIso: string,
+  limit = 200,
+): Promise<EnrichedTransactionRow[]> {
+  const db = getDb();
+
+  const localDate = sql`(${transactions.transactionDate} AT TIME ZONE ${timezone})`;
+
+  const rows = await db
+    .select(ENRICHED_COLUMNS)
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        isNull(transactions.deletedAt),
+        sql`${localDate} >= ${startOfMonthIso}::timestamp`,
+        sql`${localDate} < ${startOfNextMonthIso}::timestamp`,
+      ),
+    )
+    .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+    .limit(limit);
+
+  return rows.map(toEnrichedRow);
+}
+
+/**
+ * The review queue: everything with no category yet.
+ *
+ * Ordered oldest first, unlike every other listing here. The queue exists to be
+ * emptied, and the row most likely to be forgotten is the one that has been
+ * waiting longest - showing the newest first would bury it.
+ */
+export async function listUncategorizedTransactions(
+  userId: UserId,
+  limit = 100,
+): Promise<EnrichedTransactionRow[]> {
+  const db = getDb();
+
+  const rows = await db
+    .select(ENRICHED_COLUMNS)
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        isNull(transactions.deletedAt),
+        isNull(transactions.categoryId),
+      ),
+    )
+    .orderBy(transactions.transactionDate)
+    .limit(limit);
+
+  return rows.map(toEnrichedRow);
+}
+
+/**
+ * One transaction, or null.
+ *
+ * userId is in the WHERE, not checked after the read: a detail page reached by
+ * guessing a uuid must return nothing rather than another tenant's row.
+ */
+export async function getEnrichedTransaction(
+  userId: UserId,
+  transactionId: string,
+): Promise<EnrichedTransactionRow | null> {
+  const db = getDb();
+
+  const rows = await db
+    .select(ENRICHED_COLUMNS)
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.id, transactionId),
+        isNull(transactions.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  return rows[0] ? toEnrichedRow(rows[0]) : null;
+}
+
+export interface UpdateTransactionInput {
+  readonly merchant?: string;
+  readonly amountMinor?: bigint;
+  readonly categoryId?: CategoryId | null;
+  readonly note?: string | null;
+  readonly transactionDate?: Date;
+}
+
+/**
+ * Edits a transaction the user already recorded.
+ *
+ * Returns null when nothing matched, which is the same answer for "does not
+ * exist" and "belongs to somebody else" - the caller must not be able to tell
+ * those apart. Setting a category by hand marks categorizedBy 'manual', so a
+ * later rule-engine pass can tell a human decision from its own guess and leave
+ * it alone.
+ */
+export async function updateTransaction(
+  userId: UserId,
+  transactionId: string,
+  input: UpdateTransactionInput,
+): Promise<TransactionRow | null> {
+  const db = getDb();
+
+  const patch: Record<string, unknown> = {};
+  if (input.merchant !== undefined) patch.merchant = input.merchant;
+  if (input.amountMinor !== undefined) patch.amountMinor = input.amountMinor;
+  if (input.note !== undefined) patch.note = input.note;
+  if (input.transactionDate !== undefined) {
+    patch.transactionDate = input.transactionDate;
+  }
+  if (input.categoryId !== undefined) {
+    patch.categoryId = input.categoryId;
+    patch.categorizedBy = input.categoryId ? 'manual' : null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return null;
+  }
+
+  const [row] = await db
+    .update(transactions)
+    .set(patch)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.id, transactionId),
+        isNull(transactions.deletedAt),
+      ),
+    )
+    .returning();
+
+  return row ?? null;
+}
+
+/**
+ * Soft-deletes a transaction.
+ *
+ * Sets deleted_at rather than removing the row: in a money app the record that
+ * a spend was deleted is itself part of the history, and every read here
+ * already filters on `deletedAt IS NULL`.
+ */
+export async function softDeleteTransaction(
+  userId: UserId,
+  transactionId: string,
+): Promise<boolean> {
+  const db = getDb();
+
+  const [row] = await db
+    .update(transactions)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.id, transactionId),
+        isNull(transactions.deletedAt),
+      ),
+    )
+    .returning({ id: transactions.id });
+
+  return Boolean(row);
 }
 

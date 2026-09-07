@@ -23,14 +23,9 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
       {/* Header */}
       <div className="phone-ledger-header">
         <h2 className="phone-ledger-title">{t('dashboard_recent_title')}</h2>
-        <a
-          href="/api/v1/export"
-          download
-          className="phone-ledger-view-all"
-          title={t('dashboard_export_csv_title')}
-        >
-          {t('dashboard_export_csv')}
-        </a>
+        <Link href="/mes" className="phone-ledger-view-all">
+          {t('month_view')}
+        </Link>
       </div>
 
       {/* Transaction List */}
@@ -54,8 +49,11 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
               day: 'numeric',
             });
 
+            // The row is a link now: a spend recorded with the wrong category
+            // or a typo in the merchant used to be permanent, because there was
+            // nowhere to open it from.
             return (
-              <div key={tx.id} className="phone-tx-row">
+              <Link key={tx.id} href={`/movimiento/${tx.id}`} className="phone-tx-row">
                 <div className="phone-tx-lead">
                   <div
                     className="phone-tx-icon"
@@ -89,7 +87,7 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
                     <Money amountMinor={tx.amountMinor} currency={tx.currency} />
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

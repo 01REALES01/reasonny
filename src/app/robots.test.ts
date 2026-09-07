@@ -12,7 +12,12 @@ describe('Robots.txt (Principle P8)', () => {
     expect(rule?.disallow).toContain('/api/');
     expect(rule?.disallow).toContain('/nuevo');
     expect(rule?.disallow).toContain('/dashboard');
-    expect(rule?.disallow).toContain('/perfil');
+    // Every authenticated route, not a sample: P8 says the product is private
+    // and Google must not index any of it, so a new screen that forgets this
+    // list has to fail here rather than in a search result.
+    for (const path of ['/perfil', '/revisar', '/mes', '/movimiento', '/bienvenida']) {
+      expect(rule?.disallow).toContain(path);
+    }
     expect(config.sitemap).toBe('https://reasonny.app/sitemap.xml');
   });
 });

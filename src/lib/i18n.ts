@@ -76,6 +76,44 @@ export const DICTIONARY = {
     profile_email: 'Correo',
     profile_currency: 'Moneda base',
     profile_timezone: 'Zona horaria',
+
+    // Detalle y edición
+    edit_title: 'Editar movimiento',
+    delete_transaction: 'Eliminar este movimiento',
+    delete_confirm: '¿Eliminar este movimiento? Dejará de contar en tus totales.',
+    delete_confirm_yes: 'Sí, eliminar',
+
+    // Por revisar
+    review_title: 'Por revisar',
+    review_lede: 'Toca una categoría para clasificar. Cada una que asignas mejora el desglose del mes.',
+    review_open_detail: 'Ver detalle',
+    review_clear_title: 'Todo al día',
+    review_clear_text: 'No tienes movimientos sin categoría.',
+    review_back_home: 'Volver al inicio',
+
+    // Mes
+    month_nav: 'Cambiar de mes',
+    month_previous: 'Mes anterior',
+    month_next: 'Mes siguiente',
+    month_view: 'Ver el mes',
+
+    // Bienvenida
+    ob_welcome_title: 'Razón y dinero, en el mismo lugar.',
+    ob_welcome_text: 'Reasonny registra lo que gastas con casi cero esfuerzo y te dice lo que importa, sin que tengas que buscarlo.',
+    ob_start: 'Empezar',
+    ob_skip: 'Saltar la bienvenida',
+    ob_skip_step: 'Ahora no',
+    ob_continue: 'Continuar',
+    ob_name_title: '¿Cómo te llamamos?',
+    ob_name_text: 'Solo para saludarte. Puedes cambiarlo cuando quieras desde tu perfil.',
+    ob_how_title: 'Cómo funciona',
+    ob_how_1_title: 'Registra en segundos',
+    ob_how_1_text: 'Monto, comercio y listo. La categoría puede esperar.',
+    ob_how_2_title: 'El desglose se arma solo',
+    ob_how_2_text: 'A medida que clasificas, el mes se explica a sí mismo.',
+    ob_how_3_title: 'Tus datos son tuyos',
+    ob_how_3_text: 'Aislados por usuario, exportables cuando quieras. Moneda base:',
+    ob_finish: 'Entrar a Reasonny',
     nav_home: 'Inicio',
     nav_new: 'Nuevo',
     dashboard_pending_review: 'por revisar',
@@ -187,6 +225,44 @@ export const DICTIONARY = {
     profile_email: 'Email',
     profile_currency: 'Base currency',
     profile_timezone: 'Time zone',
+
+    // Detail and editing
+    edit_title: 'Edit transaction',
+    delete_transaction: 'Delete this transaction',
+    delete_confirm: 'Delete this transaction? It will stop counting in your totals.',
+    delete_confirm_yes: 'Yes, delete',
+
+    // Review queue
+    review_title: 'To review',
+    review_lede: 'Tap a category to file it. Every one you assign sharpens the month breakdown.',
+    review_open_detail: 'Open detail',
+    review_clear_title: 'All caught up',
+    review_clear_text: 'Nothing is waiting for a category.',
+    review_back_home: 'Back to home',
+
+    // Month
+    month_nav: 'Change month',
+    month_previous: 'Previous month',
+    month_next: 'Next month',
+    month_view: 'View the month',
+
+    // Onboarding
+    ob_welcome_title: 'Reason and money, in one place.',
+    ob_welcome_text: 'Reasonny records what you spend with almost no effort and tells you what matters, without you going to look for it.',
+    ob_start: 'Get started',
+    ob_skip: 'Skip the intro',
+    ob_skip_step: 'Not now',
+    ob_continue: 'Continue',
+    ob_name_title: 'What should we call you?',
+    ob_name_text: 'Only to greet you. You can change it any time from your profile.',
+    ob_how_title: 'How it works',
+    ob_how_1_title: 'Record in seconds',
+    ob_how_1_text: 'Amount, merchant, done. The category can wait.',
+    ob_how_2_title: 'The breakdown builds itself',
+    ob_how_2_text: 'As you file things, the month starts explaining itself.',
+    ob_how_3_title: 'Your data is yours',
+    ob_how_3_text: 'Isolated per user, exportable whenever. Base currency:',
+    ob_finish: 'Enter Reasonny',
     nav_home: 'Home',
     nav_new: 'New',
     dashboard_pending_review: 'to review',

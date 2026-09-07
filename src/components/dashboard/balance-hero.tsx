@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
@@ -88,7 +89,8 @@ export function BalanceHero({
             a status indicator now: it carries the real count of transactions
             waiting to be categorised, and it is absent when there are none. */}
         {uncategorizedCount > 0 && (
-          <span
+          <Link
+            href="/revisar"
             className="balance-hero-bell"
             title={`${uncategorizedCount} ${t('dashboard_pending_review')}`}
           >
@@ -97,7 +99,7 @@ export function BalanceHero({
             <span className="sr-only">
               {uncategorizedCount} {t('dashboard_pending_review')}
             </span>
-          </span>
+          </Link>
         )}
       </div>
 

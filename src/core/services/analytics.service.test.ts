@@ -13,6 +13,7 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   getMonthlyTotals: vi.fn(),
   getCategorySpendingBreakdown: vi.fn(),
   getRecentEnrichedTransactions: vi.fn(),
+  getEnrichedTransactionsInMonth: vi.fn(),
   countUncategorizedTransactions: vi.fn(),
 }));
 
@@ -25,6 +26,7 @@ import {
   getCategorySpendingBreakdown,
   getMonthlyTotals,
   getRecentEnrichedTransactions,
+  getEnrichedTransactionsInMonth,
   countUncategorizedTransactions,
 } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
@@ -32,6 +34,7 @@ import { toUserId } from '@/core/types';
 import {
   getDashboardData,
   getMonthDateBounds,
+  getMonthViewData,
 } from './analytics.service';
 
 describe('Analytics Service & Timezone Boundaries', () => {
@@ -59,6 +62,93 @@ describe('Analytics Service & Timezone Boundaries', () => {
       expect(bounds.year).toBe(2026);
       expect(bounds.startOfMonthIso).toBe('2026-12-01 00:00:00');
       expect(bounds.startOfNextMonthIso).toBe('2027-01-01 00:00:00');
+    });
+  });
+
+  describe('Month navigation', () => {
+    function mockMonthQueries(): void {
+      (getProfile as any).mockResolvedValue({
+        id: userId,
+        timezone: 'America/Bogota',
+        baseCurrency: 'COP',
+      });
+      (getMonthlyTotals as any).mockResolvedValue({
+        totalExpenseMinor: 0n,
+        totalIncomeMinor: 0n,
+        transactionCount: 0,
+      });
+      (getCategorySpendingBreakdown as any).mockResolvedValue([]);
+      (getEnrichedTransactionsInMonth as any).mockResolvedValue([]);
+    }
+
+    /**
+     * The bug this guards: stepping back a month by subtracting 1 from the
+     * month of a Date that still carries the current day. From 31 March that
+     * builds 31 February, which Date normalises forward into March - so asking
+     * for the previous month returns the one you are already looking at.
+     */
+    it('steps back to February from the 31st of March', async () => {
+      mockMonthQueries();
+      const march31 = new Date('2026-03-31T15:00:00Z');
+
+      const data = await getMonthViewData(userId, -1, march31);
+
+      expect(getMonthlyTotals).toHaveBeenCalledWith(
+        userId,
+        'America/Bogota',
+        '2026-02-01 00:00:00',
+        '2026-03-01 00:00:00',
+      );
+      expect(data.isCurrentMonth).toBe(false);
+    });
+
+    it('steps back across the January boundary into the previous year', async () => {
+      mockMonthQueries();
+      const jan15 = new Date('2026-01-15T12:00:00Z');
+
+      await getMonthViewData(userId, -1, jan15);
+
+      expect(getMonthlyTotals).toHaveBeenCalledWith(
+        userId,
+        'America/Bogota',
+        '2025-12-01 00:00:00',
+        '2026-01-01 00:00:00',
+      );
+    });
+
+    it('clamps a future offset to the current month', async () => {
+      mockMonthQueries();
+      const june = new Date('2026-06-10T12:00:00Z');
+
+      const data = await getMonthViewData(userId, 5, june);
+
+      expect(data.offset).toBe(0);
+      expect(data.isCurrentMonth).toBe(true);
+      expect(getMonthlyTotals).toHaveBeenCalledWith(
+        userId,
+        'America/Bogota',
+        '2026-06-01 00:00:00',
+        '2026-07-01 00:00:00',
+      );
+    });
+
+    /**
+     * 1 June 02:00 UTC is still 31 May in Bogotá. The shifted date must be
+     * built at midday, or it lands on the previous calendar day in every
+     * timezone west of Greenwich and the view silently shows the wrong month.
+     */
+    it('resolves the month in the user timezone, not UTC', async () => {
+      mockMonthQueries();
+      const stillMayInBogota = new Date('2026-06-01T02:00:00Z');
+
+      await getMonthViewData(userId, 0, stillMayInBogota);
+
+      expect(getMonthlyTotals).toHaveBeenCalledWith(
+        userId,
+        'America/Bogota',
+        '2026-05-01 00:00:00',
+        '2026-06-01 00:00:00',
+      );
     });
   });
 

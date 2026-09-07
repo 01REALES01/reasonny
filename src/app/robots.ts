@@ -11,7 +11,16 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: ['/', '/sign-in'],
-        disallow: ['/api/', '/nuevo', '/dashboard', '/perfil'],
+        disallow: [
+          '/api/',
+          '/nuevo',
+          '/dashboard',
+          '/perfil',
+          '/revisar',
+          '/mes',
+          '/movimiento',
+          '/bienvenida',
+        ],
       },
     ],
     sitemap: 'https://reasonny.app/sitemap.xml',

@@ -13,6 +13,7 @@ import { getProfile } from '@/core/repositories/profile.repository';
 import {
   countUncategorizedTransactions,
   getCategorySpendingBreakdown,
+  getEnrichedTransactionsInMonth,
   getMonthlyTotals,
   getRecentEnrichedTransactions,
   type CategorySpendingBreakdown,
@@ -82,6 +83,98 @@ export function getMonthDateBounds(
       month: 'long',
     }).format(date),
     year,
+  };
+}
+
+export interface MonthViewData {
+  readonly baseCurrency: string;
+  readonly timezone: string;
+  readonly monthlyTotals: MonthlyTotals;
+  readonly categoryBreakdown: CategorySpendingBreakdown[];
+  readonly transactions: EnrichedTransactionRow[];
+  readonly monthLabel: string;
+  /** 0 is the current month, -1 the previous one. Never positive. */
+  readonly offset: number;
+  readonly isCurrentMonth: boolean;
+}
+
+/**
+ * Shifts a date by whole months, in the user's timezone.
+ *
+ * Day 1 is used deliberately rather than the current day of the month: stepping
+ * back one month from 31 March lands on 31 February, which Date normalises to
+ * 2 or 3 March, so the user would ask for February and be shown March.
+ */
+function shiftMonths(date: Date, timezone: string, offset: number): Date {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(date);
+
+  const year = Number(parts.find((p) => p.type === 'year')!.value);
+  const month = Number(parts.find((p) => p.type === 'month')!.value);
+
+  // Midday, not midnight: a UTC midnight is the previous calendar day in every
+  // timezone west of Greenwich, so getMonthDateBounds would read the wrong
+  // month back out for a Bogotá user.
+  return new Date(Date.UTC(year, month - 1 + offset, 1, 12));
+}
+
+/**
+ * One month of history: totals, breakdown and the transactions inside it.
+ *
+ * The dashboard only ever knew about the current month, so there was nothing to
+ * compare against and no way to look at what was already closed.
+ */
+export async function getMonthViewData(
+  userId: UserId,
+  offset: number,
+  referenceDate: Date = new Date(),
+): Promise<MonthViewData> {
+  const profile = await getProfile(userId);
+  const timezone = profile?.timezone ?? 'America/Bogota';
+  const baseCurrency = profile?.baseCurrency ?? 'COP';
+
+  // Clamped at 0: there is no data in the future, and a positive offset would
+  // render an empty month that looks like a bug.
+  const safeOffset = Math.min(0, Math.trunc(offset));
+  const target = shiftMonths(referenceDate, timezone, safeOffset);
+  const bounds = getMonthDateBounds(target, timezone);
+
+  const [monthlyTotals, categoryBreakdown, transactions] = await Promise.all([
+    getMonthlyTotals(
+      userId,
+      timezone,
+      bounds.startOfMonthIso,
+      bounds.startOfNextMonthIso,
+    ),
+    getCategorySpendingBreakdown(
+      userId,
+      timezone,
+      bounds.startOfMonthIso,
+      bounds.startOfNextMonthIso,
+    ),
+    getEnrichedTransactionsInMonth(
+      userId,
+      timezone,
+      bounds.startOfMonthIso,
+      bounds.startOfNextMonthIso,
+    ),
+  ]);
+
+  const capitalizedMonth =
+    bounds.monthName.charAt(0).toUpperCase() + bounds.monthName.slice(1);
+
+  return {
+    baseCurrency,
+    timezone,
+    monthlyTotals,
+    categoryBreakdown,
+    transactions,
+    monthLabel: `${capitalizedMonth} ${bounds.year}`,
+    offset: safeOffset,
+    isCurrentMonth: safeOffset === 0,
   };
 }
 
