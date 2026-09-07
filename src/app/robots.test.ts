@@ -12,6 +12,7 @@ describe('Robots.txt (Principle P8)', () => {
     expect(rule?.disallow).toContain('/api/');
     expect(rule?.disallow).toContain('/nuevo');
     expect(rule?.disallow).toContain('/dashboard');
+    expect(rule?.disallow).toContain('/perfil');
     expect(config.sitemap).toBe('https://reasonny.app/sitemap.xml');
   });
 });

@@ -1065,6 +1065,60 @@ textarea:focus-visible {
   box-shadow: 0 8px 24px rgba(27, 122, 72, 0.4);
 }
 
+/* ── Profile ────────────────────────────────────────────────────────────────*/
+
+.entry-hint {
+  font-size: var(--text-caption);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.profile-heading {
+  font-size: clamp(1.6rem, 7vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink-primary);
+}
+
+/* Read-only facts sit outside the card on the page ground, so they read as
+   information about the account rather than as more fields to fill in. */
+.profile-facts {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-2);
+}
+
+.profile-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 44px;
+  border-bottom: 1px solid rgba(228, 204, 166, 0.08);
+}
+
+.profile-fact:last-child {
+  border-bottom: none;
+}
+
+.profile-fact-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(228, 204, 166, 0.6);
+  flex-shrink: 0;
+}
+
+.profile-fact-value {
+  font-size: var(--text-label);
+  color: var(--ink-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Authenticated shell ────────────────────────────────────────────────────
    The landing and the sign-in screen sit in a warm dark wine atmosphere and
    the app did not: it was flat charcoal with three identical grey cards, so
@@ -1210,14 +1264,35 @@ textarea:focus-visible {
    AUTHENTIC LUXURY BALANCE HERO & FINANCIAL DASHBOARD
    ══════════════════════════════════════════════════════════════════════════════ */
 
+/* The hero was #4e1220 -> #290713 -> #130208: three near-blacks, so the card
+   read as a dark hole rather than as the lit wine of the landing.
+
+   Luminescence is not one brighter colour, it is a light source. Three stacked
+   radials do that: a rose core off-centre at the top, a wider magenta bloom
+   that carries it outward, and only then the wine body underneath. The bright
+   stops sit OUTSIDE the card's top edge (at -20%) so what shows is the falloff
+   rather than the centre of the lamp, which is what stops it looking like a
+   flat pink rectangle.
+
+   Inset with a radius on all four corners instead of a full-bleed slab with two
+   rounded ones: a light source has to have edges to glow past. */
 .balance-hero {
-  width: 100%;
+  width: auto;
   display: flex;
   flex-direction: column;
-  padding: 24px 20px 16px;
+  padding: 22px 20px 18px;
+  margin: 10px 12px 0;
   position: relative;
-  background: radial-gradient(130% 110% at 50% -10%, #4e1220 0%, #290713 42%, #130208 80%, transparent 100%);
-  border-radius: 0 0 32px 32px;
+  isolation: isolate;
+  border-radius: 30px;
+  border: 1px solid rgba(228, 204, 166, 0.18);
+  background:
+    radial-gradient(90% 70% at 28% -18%, rgba(240, 122, 172, 0.55) 0%, rgba(240, 122, 172, 0) 60%),
+    radial-gradient(120% 95% at 62% -10%, rgba(198, 58, 110, 0.6) 0%, rgba(198, 58, 110, 0) 62%),
+    linear-gradient(168deg, #8e2347 0%, #611730 38%, #360d1c 72%, #1d0710 100%);
+  box-shadow:
+    0 20px 50px -18px rgba(160, 40, 85, 0.5),
+    0 2px 0 0 rgba(255, 255, 255, 0.1) inset;
 }
 
 /* 1. Top Bar */
@@ -1294,6 +1369,8 @@ textarea:focus-visible {
   transform: scale(0.92);
 }
 
+/* Was the literal #ff4757, which is neither a token nor the palette's red. The
+   semantic ramp is validated; the dot is a real alert, so it uses it. */
 .balance-hero-bell-dot {
   position: absolute;
   top: 10px;
@@ -1301,8 +1378,8 @@ textarea:focus-visible {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
-  background: #ff4757;
-  box-shadow: 0 0 8px #ff4757;
+  background: var(--critical);
+  box-shadow: 0 0 8px var(--critical);
 }
 
 /* 2. Central Monumental Balance */
@@ -1316,35 +1393,52 @@ textarea:focus-visible {
   z-index: 2;
 }
 
+/* Champagne, not wine: the aura behind the figure is the warm light the wine
+   is lit BY, so it has to be a different temperature from the card or it just
+   makes the middle muddier. blur() on a static element is composited once, not
+   per frame. */
 .balance-hero-glow {
   position: absolute;
-  top: 50%;
+  top: 42%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 240px;
-  height: 120px;
-  background: radial-gradient(ellipse, rgba(155, 44, 69, 0.45) 0%, rgba(228, 204, 166, 0.15) 50%, transparent 80%);
-  filter: blur(36px);
+  width: 300px;
+  height: 150px;
+  background: radial-gradient(
+    ellipse,
+    rgba(255, 214, 235, 0.3) 0%,
+    rgba(228, 204, 166, 0.16) 45%,
+    transparent 78%
+  );
+  filter: blur(40px);
   pointer-events: none;
+  z-index: -1;
 }
 
+/* The eyebrow reads as a label, so it goes champagne with the landing's wide
+   tracking rather than another grey line - it was competing with the greeting
+   above it at nearly the same size and colour. */
 .balance-hero-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--landing-champagne-gold);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  opacity: 0.85;
+  margin-bottom: 10px;
 }
 
+/* Fixed 42px on every phone meant the figure was cramped on a 430px screen and
+   overflowing on a 360px one. clamp() ties it to the viewport, and the tighter
+   tracking is what makes a large number read as editorial instead of just big. */
 .balance-hero-amount {
-  font-size: 42px;
+  font-size: clamp(2.6rem, 13vw, 3.5rem);
   font-weight: 800;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.045em;
   color: var(--landing-warm-white);
-  line-height: 1.12;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-  margin-bottom: 14px;
+  line-height: 1;
+  text-shadow: 0 2px 30px rgba(90, 10, 35, 0.55);
+  margin-bottom: 18px;
 }
 
 .balance-hero-masked {
@@ -1410,10 +1504,11 @@ textarea:focus-visible {
 }
 
 .fin-stat-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.03em;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(228, 204, 166, 0.6);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .fin-stat-value {

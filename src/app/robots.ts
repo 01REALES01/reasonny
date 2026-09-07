@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: ['/', '/sign-in'],
-        disallow: ['/api/', '/nuevo', '/dashboard'],
+        disallow: ['/api/', '/nuevo', '/dashboard', '/perfil'],
       },
     ],
     sitemap: 'https://reasonny.app/sitemap.xml',

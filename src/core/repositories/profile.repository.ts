@@ -58,6 +58,30 @@ async function upsertProfile(
 }
 
 /**
+ * Sets the name the app addresses the user by.
+ *
+ * `full_name` has existed on the table since B1 and nothing ever wrote to it,
+ * so the dashboard was deriving a greeting from the email handle - a guess that
+ * is wrong for every address that is not a person's name.
+ *
+ * userId is the first parameter and scopes the WHERE, like every other
+ * repository function: this is the isolation barrier, not RLS.
+ */
+export async function updateProfileName(
+  userId: UserId,
+  fullName: string | null,
+): Promise<ProfileRow | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(profiles)
+    .set({ fullName })
+    .where(eq(profiles.id, userId))
+    .returning();
+
+  return row ?? null;
+}
+
+/**
  * Ensures a profile row exists in the profiles table for this authenticated user.
  * Neon Auth manages credentials in `neon_auth.user`; this ensures our domain
  * profile row and FK targets exist.

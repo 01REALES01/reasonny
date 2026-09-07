@@ -45,16 +45,17 @@ export function PhoneDock(): React.ReactElement {
         <CategoryIcon name="Plus" size={22} />
       </Link>
 
-      {/* 3. Exportar CSV */}
-      <a
-        href="/api/v1/export"
-        download
-        className="phone-dock-item"
-        aria-label={t('nav_export')}
-        title={t('dashboard_export_csv_title')}
+      {/* 3. Perfil */}
+      <Link
+        href="/perfil"
+        className={`phone-dock-item${
+          pathname === '/perfil' ? ' phone-dock-item--active' : ''
+        }`}
+        aria-label={t('nav_profile')}
+        aria-current={pathname === '/perfil' ? 'page' : undefined}
       >
-        <CategoryIcon name="Download" size={19} />
-      </a>
+        <CategoryIcon name="Sliders" size={19} />
+      </Link>
     </nav>
   );
 }

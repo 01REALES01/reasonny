@@ -10,6 +10,8 @@ interface BalanceHeroProps {
   readonly totalBalanceMinor: bigint;
   readonly currency: string;
   readonly userEmail: string;
+  /** From profiles.full_name. Null until the user sets it in /perfil. */
+  readonly displayName: string | null;
   readonly monthLabel: string;
   readonly uncategorizedCount: number;
 }
@@ -54,11 +56,14 @@ export function BalanceHero({
   totalBalanceMinor,
   currency,
   userEmail,
+  displayName,
   monthLabel,
   uncategorizedCount,
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
-  const name = getGreetingName(userEmail);
+  // What the user chose to be called wins; the handle is only the fallback for
+  // an account that has not been through /perfil yet.
+  const name = displayName?.trim() || getGreetingName(userEmail);
   const initial = name.slice(0, 2).toUpperCase();
 
   return (

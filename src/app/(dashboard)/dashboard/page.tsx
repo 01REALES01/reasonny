@@ -25,7 +25,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   }
 
   const userId = toUserId(session.id);
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   const queryStartedAt = performance.now();
   const data = await getDashboardData(userId);
@@ -50,6 +50,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         totalBalanceMinor={data.totalBalanceMinor}
         currency={data.baseCurrency}
         userEmail={session.email}
+        displayName={profile.fullName}
         monthLabel={data.currentMonthLabel}
         uncategorizedCount={data.uncategorizedCount}
       />
