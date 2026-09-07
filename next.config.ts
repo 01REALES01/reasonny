@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // globe only adds round trips to it. Route handlers stay on Node because the
   // Edge runtime cannot open the WebSocket that neon-serverless needs.
   serverExternalPackages: ['@neondatabase/serverless'],
+  images: {
+    qualities: [75, 92],
+  },
 };
 
 export default nextConfig;

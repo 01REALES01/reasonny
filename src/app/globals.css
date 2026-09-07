@@ -27,22 +27,63 @@
   --ink-muted: #71717a;
   --ink-inverse: #09090b;
 
-  /* Brand (Violet accent) */
-  --brand-500: #8172f2;
-  --brand-600: #6d5ae0;
-  --brand-400: #9d91f6;
-  --brand-tint: rgba(129, 114, 242, 0.14);
-  /* The far stop of the app-mark gradient. Not a categorical colour: it is
-     never used alone and never on a chart. */
-  --brand-indigo: #6366f1;
+  --landing-deep-black: #060608;
+  --landing-warm-black: #0a090b;
+  --landing-rich-burgundy: #4a101d;
+  --landing-illuminated-wine: #781d32;
+  /* Alias several landing components already reference by this name (SVG
+     gradient stops, the enclave shield). Was undefined, so those strokes fell
+     back to transparent. Points at the same imperial wine as above. */
+  --landing-dark-wine: #4a101d;
+  --landing-lighter-burgundy: #9b2c45;
+  --landing-champagne-gold: #e4cca6;
+  --landing-champagne-dim: rgba(228, 204, 166, 0.7);
+  --landing-champagne-border: rgba(228, 204, 166, 0.22);
+  --landing-warm-white: #ffffff;
+  --landing-glass-bg: rgba(10, 9, 11, 0.78);
+  --landing-glass-border: rgba(228, 204, 166, 0.25);
+  --landing-velvet-canvas: #150912;
+  --landing-velvet-card: rgba(30, 13, 24, 0.85);
+  --landing-card-bg: rgba(30, 13, 24, 0.85);
+  --landing-gold-solid: #d4b382;
+  --landing-gold-glow: rgba(212, 179, 130, 0.4);
 
-  /* Hero balance card (DESIGN_SYSTEM.md 6.1)
-     The single gradient in the whole app. These live here rather than in the
-     component because "no colour literal in src/components/" is a rule that
-     blocks the merge - and because a second component reaching for the same
-     orange is exactly how one hero gradient becomes a system. */
-  --hero-gradient-from: #c2410c;
-  --hero-gradient-to: #ea580c;
+  /* Landing Light Editorial Palette */
+  --landing-light-bg: #ffffff;
+  --landing-light-surface: #fbf9f6;
+  --landing-light-card: rgba(255, 255, 255, 0.92);
+  --landing-light-card-border: rgba(212, 179, 130, 0.38);
+  --landing-light-ink: #0b0a0d;
+  --landing-light-ink-muted: #4e4a52;
+  --landing-light-gold: #9e7033;
+  --landing-light-wine: #5c1424;
+  --landing-light-wine-glow: rgba(92, 20, 36, 0.08);
+
+  /* Animation Easing Tokens (Emil Kowalski / Apple Design) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Brand — illuminated wine / vinotinto, with champagne gold as the light.
+     Was violet (#8172f2). Unified with the landing palette (01_MASTER_VISUAL_DNA):
+     wine carries fills and states, gold carries links and emphasis on dark.
+     Note: --positive / --warning / --serious / --critical and the categorical
+     --cat-* scale are deliberately UNCHANGED — they are reserved semantics and
+     a CVD-validated ramp; recolouring them would break accessibility, not the
+     brand. */
+  --brand-500: #9b2c45;   /* primary buttons, focus ring, active nav */
+  --brand-600: #781d32;   /* hover / pressed */
+  --brand-400: #e4cca6;   /* links & accents on dark surfaces (champagne) */
+  --brand-tint: rgba(155, 44, 69, 0.16);   /* selected pills, tinted fills */
+  /* Far stop of the app-mark gradient (wine -> gold). Never used alone, never
+     on a chart. */
+  --brand-indigo: #e4cca6;
+
+  /* Hero balance card (DESIGN_SYSTEM.md 6.1) — still the single gradient in the
+     whole app, now the magenta -> wine of the phone screen in the landing hero
+     ("usa los colores del celular del above the fold"). */
+  --hero-gradient-from: #d1477f;
+  --hero-gradient-to: #4a101d;
   --hero-ink: #ffffff;
   --hero-ink-label: rgba(255, 255, 255, 0.72);
   --hero-ink-caption: rgba(255, 255, 255, 0.75);
@@ -66,8 +107,8 @@
 
   /* Coloured elevation. A shadow tinted with the element's own fill, which is
      what keeps a raised control from reading as a sticker on dark surfaces. */
-  --shadow-brand-raised: 0 4px 16px rgba(129, 114, 242, 0.3);
-  --shadow-brand-chip: 0 2px 8px rgba(129, 114, 242, 0.35);
+  --shadow-brand-raised: 0 4px 16px rgba(155, 44, 69, 0.35);
+  --shadow-brand-chip: 0 2px 8px rgba(155, 44, 69, 0.4);
   --shadow-positive-raised: 0 4px 16px rgba(52, 199, 123, 0.3);
 
   /* Categorical (Validated against CVD) */
@@ -104,7 +145,6 @@
      time, which silently dropped BOTH the webfont and this fallback stack and
      rendered the whole app in the browser default serif. */
   --font-sans: var(--font-sans-loaded), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: var(--font-serif-loaded), 'Instrument Serif', Georgia, serif;
   --text-hero: 44px;
   --text-display: 32px;
   --text-title: 20px;
@@ -132,13 +172,10 @@
   --glass-border-strong: rgba(255, 255, 255, 0.16);
 
   /* Sign-in surface.
-     Deliberately its own palette, not --surface-base: the auth screen is pure
-     black so the artwork card reads as a lit object against nothing. These are
-     tokens rather than literals in the component for the same reason the hero
-     gradient above is - the rule that blocks the merge, and the fact that a
-     second screen reaching for "that translucent white" is how one screen's
-     palette leaks into the system. */
-  --auth-surface: #000000;
+     Its own near-black, now warmed toward the landing's wine so the auth screen
+     reads as the same world (was pure #000). The artwork card still sits as a
+     lit object against a near-void. */
+  --auth-surface: #070406;
   --auth-ink: #ffffff;
   --auth-ink-secondary: rgba(255, 255, 255, 0.52);
   --auth-ink-muted: rgba(255, 255, 255, 0.45);
@@ -148,7 +185,7 @@
   --auth-ghost: rgba(255, 255, 255, 0.04);
   --auth-ghost-hover: rgba(255, 255, 255, 0.09);
   --auth-ghost-border-hover: rgba(255, 255, 255, 0.38);
-  --auth-glow: rgba(255, 255, 255, 0.04);
+  --auth-glow: rgba(155, 44, 69, 0.12);
   --auth-error-surface: rgba(229, 72, 77, 0.18);
   --auth-error-ink: #ff6b6b;
 }
@@ -480,6 +517,139 @@ textarea:focus-visible {
   z-index: 1;
 }
 
+/* ── Cinematic sign-in ──────────────────────────────────────────────────────
+   Layout of the reference: the claw/card video fills the screen, the copy and
+   the pill dock at the BOTTOM over a gradient that only darkens the lower band.
+   No opaque card — the video is the hero. */
+.auth-screen--cinematic {
+  background-color: var(--landing-deep-black);
+  justify-content: flex-end;
+  padding: 0;
+  min-height: 100svh;
+}
+
+.auth-video {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-video-el {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+/* Clear at the top (video reads fully), opaque only where the text sits. */
+.auth-video-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 4, 7, 0) 0%,
+    rgba(6, 4, 7, 0) 40%,
+    rgba(6, 4, 7, 0.45) 62%,
+    rgba(6, 4, 7, 0.82) 82%,
+    rgba(6, 4, 7, 0.97) 100%
+  );
+}
+
+.auth-screen--cinematic .auth-layout {
+  max-width: 480px;
+  margin: 0 auto;
+  gap: var(--space-4);
+  padding: 0 24px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* Typography: our sans, heavy and tight, left-aligned — not the serif. */
+.auth-screen--cinematic .auth-title {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: clamp(2rem, 8.5vw, 2.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-align: left;
+  color: var(--landing-warm-white);
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.85);
+}
+
+.auth-screen--cinematic .auth-subtitle {
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.8);
+  max-width: 40ch;
+}
+
+/* The email / code steps need a form-sized heading, not the hero size. */
+.auth-screen--cinematic form .auth-title {
+  font-size: clamp(1.6rem, 6vw, 2.1rem);
+}
+
+.auth-screen--cinematic .auth-copy {
+  gap: var(--space-3);
+}
+
+/* Fields carry their own near-opaque fill (no card behind them). */
+.auth-screen--cinematic .auth-field {
+  background-color: rgba(8, 5, 8, 0.86);
+  border-color: rgba(228, 204, 166, 0.32);
+  color: #fff;
+}
+
+.auth-screen--cinematic .auth-field::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-screen--cinematic .auth-back {
+  color: rgba(255, 255, 255, 0.72);
+  text-align: left;
+  align-self: flex-start;
+}
+
+/* The pill: white, label left, arrow in a circle at the right edge — the
+   "Learn More →" control from the reference. */
+.auth-screen--cinematic .auth-pill {
+  padding: 8px 8px 8px 26px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.auth-screen--cinematic .auth-pill--ghost,
+.auth-screen--cinematic .auth-pill--solid {
+  background-color: #ffffff;
+  color: var(--landing-deep-black);
+  border: none;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+.auth-screen--cinematic .auth-pill--ghost:hover {
+  background-color: #f2ece4;
+  border: none;
+}
+
+.auth-screen--cinematic .pill-arrow {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--landing-deep-black);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.auth-screen--cinematic .pill-btn:hover .pill-arrow {
+  transform: translateX(3px);
+}
+
 .auth-column {
   width: 100%;
   display: flex;
@@ -500,9 +670,10 @@ textarea:focus-visible {
 }
 
 .auth-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 36px;
-  font-weight: 400;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--auth-ink);
   margin: 0;
 }
@@ -1142,7 +1313,8 @@ textarea:focus-visible {
   .animate-entrance-2,
   .autonomous-float,
   .autonomous-gleam,
-  .step-slide {
+  .step-slide,
+  .landing-scroll-pip {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

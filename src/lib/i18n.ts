@@ -12,7 +12,7 @@ export const DEFAULT_LOCALE: Locale = 'es';
 export const DICTIONARY = {
   es: {
     // Navigation & Common
-    app_name: 'RealMoney',
+    app_name: 'Reasonny',
     save: 'Guardar',
     saving: 'Guardando…',
     cancel: 'Cancelar',
@@ -65,20 +65,17 @@ export const DICTIONARY = {
     record_expense: 'Registrar gasto',
     record_income: 'Registrar ingreso',
     view_on_home: 'Ver en inicio',
-    artwork_alt: 'Escultura brutalista de RealMoney',
+    artwork_alt: 'Escultura brutalista de Reasonny',
     field_email: 'Correo electrónico',
     field_code: 'Código de un solo uso',
 
-    // Sign-in
-    // The hero line shipped in English on the Spanish screen. Kept verbatim so
-    // this refactor changes no pixel; now that it is a catalog key rather than
-    // a JSX literal, translating it is a one-line decision instead of an edit
-    // to a component.
-    auth_hero_line_1: 'Bank Smarter.',
-    auth_hero_line_2: 'Quickly. Globally.',
+    // Sign-in — the immersive entry. Carries the Reasonny narrative (reason +
+    // money) over the autoplaying claw/card video.
+    auth_hero_line_1: 'Razón y dinero,',
+    auth_hero_line_2: 'en el mismo lugar.',
     auth_hero_subtitle:
-      'Disfruta de un control financiero inteligente y sin esfuerzo, estés donde estés, cuando lo necesites.',
-    auth_enter: 'Ingresar a RealMoney',
+      'Registra tus gastos con casi cero esfuerzo. El sistema interpreta, clasifica y te dice lo que importa.',
+    auth_enter: 'Entrar a Reasonny',
     auth_email_title: 'Tu Correo',
     auth_email_subtitle: 'Te enviaremos un código seguro de un solo uso.',
     auth_email_placeholder: 'tu@correo.com',
@@ -94,7 +91,7 @@ export const DICTIONARY = {
   },
   en: {
     // Navigation & Common
-    app_name: 'RealMoney',
+    app_name: 'Reasonny',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -147,16 +144,16 @@ export const DICTIONARY = {
     record_expense: 'Record expense',
     record_income: 'Record income',
     view_on_home: 'View on home',
-    artwork_alt: 'RealMoney brutalist sculpture',
+    artwork_alt: 'Reasonny brutalist sculpture',
     field_email: 'Email address',
     field_code: 'One-time code',
 
-    // Sign-in
-    auth_hero_line_1: 'Bank Smarter.',
-    auth_hero_line_2: 'Quickly. Globally.',
+    // Sign-in — the immersive entry.
+    auth_hero_line_1: 'Reason and money,',
+    auth_hero_line_2: 'in one place.',
     auth_hero_subtitle:
-      'Effortless, intelligent control of your money - wherever you are, whenever you need it.',
-    auth_enter: 'Enter RealMoney',
+      'Log your spending with almost zero effort. The system reads it, files it, and tells you what matters.',
+    auth_enter: 'Enter Reasonny',
     auth_email_title: 'Your Email',
     auth_email_subtitle: "We'll send you a secure one-time code.",
     auth_email_placeholder: 'you@email.com',

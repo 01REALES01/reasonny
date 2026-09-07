@@ -7,8 +7,8 @@ import type { MetadataRoute } from 'next';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'RealMoney — Finanzas Personales con IA',
-    short_name: 'RealMoney',
+    name: 'Reasonny — Finanzas Personales con IA',
+    short_name: 'Reasonny',
     description: 'App de finanzas personales con ingesta asistida por IA.',
     start_url: '/',
     display: 'standalone',

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register';
@@ -9,24 +9,19 @@ const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-sans-loaded',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const serif = Instrument_Serif({
-  subsets: ['latin'],
-  variable: '--font-serif-loaded',
-  display: 'swap',
-  weight: ['400'],
-  style: ['normal', 'italic'],
+  weight: ['400', '500', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
-  title: 'RealMoney',
+  // Resolves canonical/OG/Twitter URLs. Without it Next warns and falls back to
+  // localhost. The deployed host wins via NEXT_PUBLIC_APP_URL.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://reasonny.app'),
+  title: 'Reasonny',
   description: 'Finanzas personales con ingesta asistida por IA.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'RealMoney',
+    title: 'Reasonny',
   },
   icons: {
     icon: '/icon.png',
@@ -53,11 +48,15 @@ export const viewport: Viewport = {
   themeColor: '#09090b',
   width: 'device-width',
   initialScale: 1,
+  // The landing hero and the app both sit under a black-translucent status bar;
+  // `cover` lets `env(safe-area-inset-*)` return real values so content can
+  // clear the notch instead of hiding behind it.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${sans.variable} ${serif.variable}`}>
+    <html lang="es" className={sans.variable}>
       <body>
         <ServiceWorkerRegister />
         <WebVitalsReporter />

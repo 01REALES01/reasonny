@@ -1,4 +1,4 @@
-# RealMoney
+# Reasonny
 
 Personal finance app with AI-assisted ingestion. Built to remove the friction that makes expense tracking fail: payments are captured automatically, categorized by a rule engine that learns, and reconciled against bank statements read by a vision model.
 

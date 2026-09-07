@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## RealMoney — Reglas del proyecto
+## Reasonny — Reglas del proyecto
 
 App de finanzas personales con ingesta asistida por IA. Autor: Jean Paul Reales.
 
@@ -94,7 +94,7 @@ Nunca se commitea directo a `main`. **Cada cambio o feature nueva vive en su pro
 
 Una rama que acumula dos cambios sin relación no se puede revisar ni revertir por separado. Si a mitad de un bloque aparece un arreglo que no pertenece ahí, sale en su propia rama.
 
-### `/code-review` antes de cada push — obligatorio
+### `/code-review` antes de cada push — recomendar al usuario, pero solo hacerlo si el lo PIDE!
 
 **Claude debe recordárselo a Jean Paul antes de cualquier `push`, siempre, aunque el cambio parezca trivial.** El orden es:
 
@@ -107,9 +107,9 @@ Saltarse el paso 2 porque "es un cambio pequeño" es exactamente cuando se cuela
 
 ---
 
-## Datos sensibles — el repo es PÚBLICO
+## Datos sensibles — el repo se trata como PÚBLICO
 
-`github.com/01REALES01/RealMoney` es público. Esto no es una recomendación, es una condición de trabajo:
+`github.com/01REALES01/reasonny` es **privado hoy** (verificado el 07-sep-2026), pero se trabaja como si fuera público, porque la intención es abrirlo y el historial de git no se puede limpiar después sin reescribirlo. Esto no es una recomendación, es una condición de trabajo:
 
 - **Ningún extracto bancario real, recibo o captura con datos financieros se commitea jamás.** El golden set del OCR (Fase 2, ≥20 extractos) vive **fuera del repo**, en local. `.gitignore` cubre `fixtures/statements/`, `**/golden-set/`, `*.statement.*` y `receipts/`, pero el `.gitignore` es la segunda barrera, no la primera.
 - **Los fixtures que sí se commitean van anonimizados**: montos alterados, comercios genéricos, sin números de cuenta ni nombres. Lo mismo para el corpus de SMS de los parsers.

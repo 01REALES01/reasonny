@@ -117,7 +117,7 @@ export function QuickAddForm({
     <div className="entry">
       {/* Top navigation bar */}
       <div className="entry-bar">
-        <Link href="/" className="entry-back">
+        <Link href="/dashboard" className="entry-back">
           ← {t('back')}
         </Link>
 
@@ -157,7 +157,7 @@ export function QuickAddForm({
         {success && (
           <div role="status" className="entry-banner entry-banner--success">
             <span>✓ {t('transaction_created_success')}</span>
-            <Link href="/">{t('view_on_home')} →</Link>
+            <Link href="/dashboard">{t('view_on_home')} →</Link>
           </div>
         )}
 

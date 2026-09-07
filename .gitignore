@@ -41,3 +41,6 @@ docs/private/
 .neon
 .vercel
 .env*
+
+# Local video-frame scratchpad, never committed
+scratch/

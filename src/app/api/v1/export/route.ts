@@ -83,7 +83,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="realmoney-export-${todayIso}.csv"`,
+      'Content-Disposition': `attachment; filename="reasonny-export-${todayIso}.csv"`,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
     },
   });

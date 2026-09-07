@@ -6,7 +6,7 @@ import type { MetadataRoute } from 'next';
  * Only includes public, indexable canonical URLs.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://realmoney.app';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://reasonny.app';
 
   return [
     {

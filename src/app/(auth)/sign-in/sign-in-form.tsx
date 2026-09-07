@@ -38,7 +38,7 @@ export function SignInForm(): React.ReactElement {
       const auth = getAuthClient();
       const result = await auth.signIn.emailOtp({ email, otp: code });
       if (result.error) throw new Error(result.error.message ?? t('auth_code_invalid'));
-      window.location.assign('/');
+      window.location.assign('/dashboard');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('auth_code_invalid'));
     } finally {

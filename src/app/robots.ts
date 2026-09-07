@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/nuevo', '/dashboard'],
       },
     ],
-    sitemap: 'https://realmoney.app/sitemap.xml',
+    sitemap: 'https://reasonny.app/sitemap.xml',
   };
 }

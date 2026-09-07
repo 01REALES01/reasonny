@@ -16,7 +16,7 @@ import { getCurrentUser } from '@/lib/session';
 
 // P8: Authenticated app is strictly noindex
 export const metadata: Metadata = {
-  title: 'Dashboard — RealMoney',
+  title: 'Dashboard — Reasonny',
   robots: { index: false, follow: false },
 };
 
@@ -38,7 +38,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       await recordMetric(userId, {
         metric: 'dashboard_query_duration',
         value: queryDurationMs,
-        route: '/',
+        route: '/dashboard',
       });
     } catch (error) {
       console.error('[telemetry] failed to record dashboard latency:', error);
@@ -57,7 +57,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
             ◈
           </div>
           <div>
-            <h1 className="dash-title">RealMoney</h1>
+            <h1 className="dash-title">Reasonny</h1>
             <span className="dash-email">{session.email}</span>
           </div>
         </div>
@@ -114,10 +114,6 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           <div className="dash-ledger-header">
             <h3 className="dash-ledger-title">{t('dashboard_recent_title')}</h3>
             <span className="dash-ledger-count">
-              {/* transactionCount, not recentTransactions.length: the list is
-                  capped at 20 by getRecentEnrichedTransactions, so from the
-                  21st transaction on, the label froze at "20" forever. In a
-                  money app a number that lies is worse than no number. */}
               {data.monthlyTotals.transactionCount} {t('monthly_records')}
             </span>
           </div>
@@ -139,7 +135,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
       {/* Fixed Bottom Navigation for Mobile Only */}
       <nav className="dash-nav desktop-hide-bottom-nav">
-        <Link href="/" aria-current="page">
+        <Link href="/dashboard" aria-current="page">
           <span aria-hidden="true">◈</span>
           <span>{t('nav_home')}</span>
         </Link>
