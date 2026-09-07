@@ -23,7 +23,12 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
       {/* Header */}
       <div className="phone-ledger-header">
         <h2 className="phone-ledger-title">{t('dashboard_recent_title')}</h2>
-        <a href="/api/v1/export" download className="phone-ledger-view-all">
+        <a
+          href="/api/v1/export"
+          download
+          className="phone-ledger-view-all"
+          title={t('dashboard_export_csv_title')}
+        >
           {t('dashboard_export_csv')}
         </a>
       </div>
@@ -41,7 +46,10 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
           {transactions.map((tx) => {
             const isIncome = tx.type === 'income';
             const categoryName = tx.category?.name ?? t('uncategorized');
-            const timeFormatted = formatDate(tx.transactionDate, 'en', {
+            // 'es', not 'en': the surrounding UI is Spanish, and an English
+            // month abbreviation next to "Restaurantes y Café" is the kind of
+            // detail that makes a product feel translated rather than built.
+            const timeFormatted = formatDate(tx.transactionDate, 'es', {
               month: 'short',
               day: 'numeric',
             });

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import React from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
+import { t } from '@/lib/i18n';
 
 /**
  * Floating Glass Capsule Dock:
@@ -19,14 +20,14 @@ export function PhoneDock(): React.ReactElement {
   const pathname = usePathname();
 
   return (
-    <nav className="phone-dock" aria-label="Navegación principal">
+    <nav className="phone-dock" aria-label={t('nav_main')}>
       {/* 1. Dashboard / Resumen */}
       <Link
         href="/dashboard"
         className={`phone-dock-item${
           pathname === '/dashboard' ? ' phone-dock-item--active' : ''
         }`}
-        aria-label="Inicio"
+        aria-label={t('nav_home')}
         aria-current={pathname === '/dashboard' ? 'page' : undefined}
       >
         <CategoryIcon name="LayoutGrid" size={20} />
@@ -38,7 +39,7 @@ export function PhoneDock(): React.ReactElement {
         className={`phone-dock-item phone-dock-item--highlight${
           pathname === '/nuevo' ? ' phone-dock-item--active' : ''
         }`}
-        aria-label="Registrar"
+        aria-label={t('nav_new')}
         aria-current={pathname === '/nuevo' ? 'page' : undefined}
       >
         <CategoryIcon name="Plus" size={22} />
@@ -49,8 +50,8 @@ export function PhoneDock(): React.ReactElement {
         href="/api/v1/export"
         download
         className="phone-dock-item"
-        aria-label="Exportar datos CSV"
-        title="Exportar CSV"
+        aria-label={t('nav_export')}
+        title={t('dashboard_export_csv_title')}
       >
         <CategoryIcon name="Download" size={19} />
       </a>

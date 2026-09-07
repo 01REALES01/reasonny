@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Money } from '@/components/ui/money';
+import { t } from '@/lib/i18n';
 
 interface FinancialStatsProps {
   readonly totalExpenseMinor: bigint;
@@ -27,7 +28,7 @@ export function FinancialStats({
     <div className="fin-stats-row">
       {/* 1. Gastos */}
       <div className="fin-stat-item">
-        <span className="fin-stat-label">Gastos</span>
+        <span className="fin-stat-label">{t('stat_expenses')}</span>
         <div className="fin-stat-value fin-stat-value--expense">
           <Money amountMinor={totalExpenseMinor} currency={currency} />
         </div>
@@ -37,7 +38,7 @@ export function FinancialStats({
 
       {/* 2. Ingresos */}
       <div className="fin-stat-item">
-        <span className="fin-stat-label">Ingresos</span>
+        <span className="fin-stat-label">{t('stat_income')}</span>
         <div className="fin-stat-value fin-stat-value--income">
           <Money amountMinor={totalIncomeMinor} currency={currency} />
         </div>
@@ -47,9 +48,11 @@ export function FinancialStats({
 
       {/* 3. Movimientos */}
       <div className="fin-stat-item">
-        <span className="fin-stat-label">Movimientos</span>
+        <span className="fin-stat-label">{t('stat_movements')}</span>
         <div className="fin-stat-value">
-          <span>{transactionCount} reg.</span>
+          <span>
+            {transactionCount} {t('stat_records_short')}
+          </span>
         </div>
       </div>
     </div>

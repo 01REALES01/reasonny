@@ -51,6 +51,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         currency={data.baseCurrency}
         userEmail={session.email}
         monthLabel={data.currentMonthLabel}
+        uncategorizedCount={data.uncategorizedCount}
       />
 
       {/* 2. Three Boxless Floating Financial Metrics (Gastos, Ingresos, Movimientos) */}

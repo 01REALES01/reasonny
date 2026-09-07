@@ -11,15 +11,34 @@ interface BalanceHeroProps {
   readonly currency: string;
   readonly userEmail: string;
   readonly monthLabel: string;
+  readonly uncategorizedCount: number;
 }
 
+/**
+ * Best-effort display name from the email handle.
+ *
+ * No special-casing by address: matching "jean" or "reales" and answering
+ * "Jean Paul" greets the wrong person the first time anyone named Jeanette or
+ * Realeses signs up, and it is the kind of bug nobody reports - they just feel
+ * the product does not know them. Separators become spaces so
+ * `jean.paul@` reads as "Jean Paul" for everyone it actually applies to.
+ */
 function getGreetingName(email: string): string {
-  const lower = email.toLowerCase();
-  if (lower.includes('reales') || lower.includes('jean')) {
-    return 'Jean Paul';
+  const handle = email.split('@')[0] ?? '';
+  const words = handle
+    .replace(/[._-]+/g, ' ')
+    .replace(/\d+/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) {
+    return email;
   }
-  const handle = email.split('@')[0] ?? 'Usuario';
-  return handle.charAt(0).toUpperCase() + handle.slice(1);
+
+  return words
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 /**
@@ -36,6 +55,7 @@ export function BalanceHero({
   currency,
   userEmail,
   monthLabel,
+  uncategorizedCount,
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
   const name = getGreetingName(userEmail);
@@ -50,20 +70,30 @@ export function BalanceHero({
         </div>
 
         <div className="balance-hero-identity">
-          <h1 className="balance-hero-greeting">Hola, {name}</h1>
+          <h1 className="balance-hero-greeting">
+            {t('greeting')}, {name}
+          </h1>
           <p className="balance-hero-subline">
-            Resumen de {monthLabel}
+            {t('month_summary')} {monthLabel}
           </p>
         </div>
 
-        <button
-          type="button"
-          className="balance-hero-bell"
-          aria-label={t('dashboard_pending_review')}
-        >
-          <CategoryIcon name="Bell" size={17} />
-          <span className="balance-hero-bell-dot" aria-hidden="true" />
-        </button>
+        {/* The bell used to be a button with no handler and a red dot that was
+            always lit, so it promised notifications the app cannot send. It is
+            a status indicator now: it carries the real count of transactions
+            waiting to be categorised, and it is absent when there are none. */}
+        {uncategorizedCount > 0 && (
+          <span
+            className="balance-hero-bell"
+            title={`${uncategorizedCount} ${t('dashboard_pending_review')}`}
+          >
+            <CategoryIcon name="Bell" size={17} />
+            <span className="balance-hero-bell-dot" aria-hidden="true" />
+            <span className="sr-only">
+              {uncategorizedCount} {t('dashboard_pending_review')}
+            </span>
+          </span>
+        )}
       </div>
 
       {/* 2. Central Monumental Balance Focus */}
@@ -71,7 +101,7 @@ export function BalanceHero({
         {/* Soft Organic Diffuse Aura behind balance */}
         <div className="balance-hero-glow" aria-hidden="true" />
 
-        <span className="balance-hero-label">Saldo disponible</span>
+        <span className="balance-hero-label">{t('balance_available')}</span>
 
         <div className="balance-hero-amount">
           {isHidden ? (
@@ -81,11 +111,19 @@ export function BalanceHero({
           )}
         </div>
 
-        {/* Delta / Status Pill */}
+        {/* The pill next to the toggle used to read "2.4% este mes". That
+            number was a literal - it never came from a query, it never moved,
+            and it was presented as the user's own performance. P6 requires n,
+            method and a baseline for any figure, and P3 says financial content
+            is cited or not said. There is no month-over-month comparison in
+            getDashboardData yet, so the honest version states what the figure
+            above actually is, and the delta returns when the query does. */}
         <div className="balance-hero-actions-row">
           <div className="balance-hero-pill">
-            <CategoryIcon name="TrendingUp" size={13} />
-            <span>2.4% este mes</span>
+            <CategoryIcon name="ShieldCheck" size={13} />
+            <span>
+              {currency} · {t('hero_realtime')}
+            </span>
           </div>
 
           <button
@@ -95,7 +133,7 @@ export function BalanceHero({
             aria-label={isHidden ? t('hero_show_balance') : t('hero_hide_balance')}
           >
             <CategoryIcon name={isHidden ? 'Eye' : 'EyeOff'} size={13} />
-            <span>{isHidden ? 'Mostrar' : 'Ocultar'}</span>
+            <span>{isHidden ? t('hero_show_short') : t('hero_hide_short')}</span>
           </button>
         </div>
       </div>
