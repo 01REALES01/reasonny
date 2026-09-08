@@ -22,7 +22,8 @@
   background-color: var(--landing-deep-black);
 }
 
-.cinematic-video-layer {
+.cinematic-video-layer,
+.cinematic-canvas-layer {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -31,12 +32,35 @@
   display: block;
 }
 
-.cinematic-video-mobile { opacity: 1; z-index: 1; object-position: center center; }
-.cinematic-video-desktop { opacity: 0; z-index: 0; object-position: center center; }
+.cinematic-canvas-mobile {
+  opacity: 1;
+  z-index: 2;
+  object-position: center center;
+}
+
+.cinematic-video-mobile-source {
+  opacity: 0.001;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cinematic-video-desktop {
+  opacity: 0;
+  z-index: 0;
+  object-position: center center;
+}
 
 @media (min-width: 769px) {
-  .cinematic-video-mobile { opacity: 0; z-index: 0; }
-  .cinematic-video-desktop { opacity: 1; z-index: 1; }
+  .cinematic-canvas-mobile {
+    display: none;
+  }
+  .cinematic-video-mobile-source {
+    display: none;
+  }
+  .cinematic-video-desktop {
+    opacity: 1;
+    z-index: 1;
+  }
 }
 
 /* Continuous Scroll Experience Container */
