@@ -543,7 +543,14 @@ export async function updateTransaction(
   const db = getDb();
 
   const patch: Record<string, unknown> = {};
-  if (input.merchant !== undefined) patch.merchant = input.merchant;
+  if (input.merchant !== undefined) {
+    patch.merchant = input.merchant;
+    // The normalized column is what deduplication and the future rule engine
+    // match on. Writing one without the other leaves the row claiming to be
+    // one merchant and matching as another, and nothing would ever surface the
+    // disagreement - createTransaction sets both, so only edits drifted.
+    patch.merchantNormalized = input.merchant.toLowerCase();
+  }
   if (input.amountMinor !== undefined) patch.amountMinor = input.amountMinor;
   if (input.note !== undefined) patch.note = input.note;
   if (input.transactionDate !== undefined) {
