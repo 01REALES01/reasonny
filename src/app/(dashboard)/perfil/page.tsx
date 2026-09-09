@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
+import Link from 'next/link';
+
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getAutomaticCaptureStatus } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
-import { mintIngestToken } from '@/lib/ingest-token';
 import { getCurrentUser } from '@/lib/session';
 
-import { IngestSetup } from './ingest-setup';
 import { ProfileForm } from './profile-form';
 
 // P8: Authenticated app is strictly noindex
@@ -25,21 +26,8 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
   const userId = toUserId(session.id);
   const profile = await ensureProfile(userId, session.email);
 
-  // What the server has actually received, so the setup screen can stop taking
-  // the user's word for it.
+  // Only to word the link below. The wizard itself moved to /captura.
   const capture = await getAutomaticCaptureStatus(userId);
-
-  // A missing secret must not take the whole profile page down with it - the
-  // name form has nothing to do with ingestion.
-  let ingest: { token: string; endpoint: string } | null = null;
-  try {
-    ingest = {
-      token: mintIngestToken(userId),
-      endpoint: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://reasonny.vercel.app'}/api/v1/quick-add`,
-    };
-  } catch {
-    ingest = null;
-  }
 
   return (
     <main className="entry-page">
@@ -49,14 +37,21 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
         baseCurrency={profile.baseCurrency}
         timezone={profile.timezone}
       />
-      {ingest && (
-        <IngestSetup
-          token={ingest.token}
-          endpoint={ingest.endpoint}
-          receivedCount={capture.count}
-          lastReceivedAt={capture.lastAt?.toISOString() ?? null}
-        />
-      )}
+      {/* The wizard is a page now, not a panel at the bottom of this form. The
+          link stays here for the user who already set it up: the dashboard
+          button disappears once capture is confirmed, so this becomes the way
+          back in - to check it is still running, or to redo it on a new phone. */}
+      <Link href="/captura" className="settings-link">
+        <span className="settings-link-text">
+          <span className="settings-link-title">Guardado automático</span>
+          <span className="settings-link-sub">
+            {capture.count > 0
+              ? `Funcionando · ${capture.count} ${capture.count === 1 ? 'pago recibido' : 'pagos recibidos'}`
+              : 'Sin configurar'}
+          </span>
+        </span>
+        <CategoryIcon name="ChevronRight" size={18} />
+      </Link>
     </main>
   );
 }

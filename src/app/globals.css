@@ -2731,6 +2731,249 @@ textarea:focus-visible {
   animation: ingestCheer 400ms var(--ease-overshoot) both;
 }
 
+/* ── Screen mock inside a wizard step ───────────────────────────────────────
+   A drawing of the iPhone screen the step is talking about, built from divs
+   rather than a screenshot: nine images would go stale the first time Apple
+   moves a menu, and they would only ever exist in one language.
+
+   Everything is grey except the row to tap. That is the whole design - the
+   reader's question is "which of these", and one lit row answers it faster than
+   any arrow or caption could. */
+.art {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-panel-border);
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  font-size: 12px;
+  user-select: none;
+}
+
+.art-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--app-panel-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.art-chevron {
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.art-title {
+  flex: 1;
+  font-weight: 700;
+  color: var(--ink-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.art-plus {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.art-plus--target {
+  color: #2b0d18;
+  background: var(--landing-gold-solid);
+}
+
+.art-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.art-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--ink-muted);
+}
+
+.art-row:last-child {
+  border-bottom: none;
+}
+
+/* The one thing to tap. Left border rather than a full fill so the row still
+   reads as a row and not as a button that has already been pressed. */
+.art-row--target {
+  background: rgba(228, 204, 166, 0.12);
+  box-shadow: inset 3px 0 0 var(--landing-champagne-gold);
+  color: var(--landing-champagne-gold);
+}
+
+.art-row--target .art-label {
+  font-weight: 700;
+}
+
+/* A search box, drawn as the field it is. */
+.art-row--field {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  margin: 10px 12px;
+  border-bottom: none;
+  font-style: italic;
+}
+
+.art-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.art-value {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.art-switch {
+  flex-shrink: 0;
+  width: 30px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.14);
+  position: relative;
+}
+
+.art-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--ink-primary);
+}
+
+.art-switch--on {
+  background: var(--positive);
+}
+
+.art-switch--on::after {
+  left: auto;
+  right: 2px;
+}
+
+.art-tabs {
+  display: flex;
+  border-top: 1px solid var(--app-panel-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.art-tab {
+  flex: 1;
+  padding: 9px 6px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+.art-tab--target {
+  color: var(--landing-champagne-gold);
+  font-weight: 700;
+  background: rgba(228, 204, 166, 0.12);
+}
+
+/* ── The way in, on the dashboard ───────────────────────────────────────────
+   Present only until the server has seen a captured transaction. Gold hairline
+   and no fill: it has to be findable without competing with the balance, which
+   is the one thing on that screen allowed to shout. */
+.capture-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--landing-champagne-border);
+  background: rgba(228, 204, 166, 0.07);
+  color: var(--landing-champagne-gold);
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.capture-callout:active {
+  transform: scale(0.985);
+}
+
+.capture-callout-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(228, 204, 166, 0.12);
+  border: 1px solid var(--landing-champagne-border);
+}
+
+.capture-callout-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.capture-callout-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.capture-callout-sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* ── A row in the profile that opens another screen ─────────────────────── */
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-panel-border);
+  background-color: var(--app-panel);
+  color: var(--ink-primary);
+  text-decoration: none;
+}
+
+.settings-link-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-link-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-link-sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
 /* Language switch for the wizard. Two pills rather than a menu: with two
    options a menu is a tap for nothing, and the labels stay in their own
    language so the pill is legible to someone who cannot read the other one. */

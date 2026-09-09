@@ -3,10 +3,12 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
 import { BalanceHero } from '@/components/dashboard/balance-hero';
+import { CaptureCallout } from '@/components/dashboard/capture-callout';
 import { FinancialActions } from '@/components/dashboard/financial-actions';
 import { FinancialStats } from '@/components/dashboard/financial-stats';
 import { PhoneLedger } from '@/components/dashboard/phone-ledger';
 import { ensureProfile } from '@/core/repositories/profile.repository';
+import { getAutomaticCaptureStatus } from '@/core/repositories/transaction.repository';
 import { getDashboardData } from '@/core/services/analytics.service';
 import { recordMetric } from '@/core/services/telemetry.service';
 import { toUserId } from '@/core/types';
@@ -36,7 +38,13 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   }
 
   const queryStartedAt = performance.now();
-  const data = await getDashboardData(userId);
+  // In parallel: the callout below is decided by the second, and making it wait
+  // for the first would add a Neon round trip to the screen with the tightest
+  // LCP budget in the app.
+  const [data, capture] = await Promise.all([
+    getDashboardData(userId),
+    getAutomaticCaptureStatus(userId),
+  ]);
   const queryDurationMs = performance.now() - queryStartedAt;
 
   after(async () => {
@@ -73,6 +81,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
       {/* 3. Purposeful Financial Actions (+ Registrar gasto, + Ingreso) */}
       <FinancialActions />
+
+      {/* Only until the pipe has actually delivered something. See the note in
+          the component for why it leaves rather than turning into a tick. */}
+      {capture.count === 0 && <CaptureCallout />}
 
       {/* 4. Stream of Recent Transactions */}
       <PhoneLedger transactions={data.recentTransactions} timeZone={profile.timezone} />

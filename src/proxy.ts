@@ -37,6 +37,7 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/bienvenida/:path*',
+    '/captura/:path*',
     '/mes/:path*',
     '/movimiento/:path*',
     '/nuevo/:path*',

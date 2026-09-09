@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 
+import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
+import { STEP_ART, StepArtwork } from './step-art';
 
 type Ui = 'es' | 'en';
 
@@ -83,7 +85,8 @@ const EXIT_MS = 200;
 interface ScreenCopy {
   readonly badge: string;
   readonly hook: React.ReactNode;
-  readonly lede: string;
+  /** Takes the step count so the number cannot drift from the array again. */
+  readonly lede: (steps: number) => string;
   readonly start: string;
   readonly stepCount: (current: number, total: number) => string;
   readonly copyIdle: string;
@@ -106,7 +109,8 @@ const COPY: Readonly<Record<Ui, ScreenCopy>> = {
         Que tus gastos se guarden <strong>solos</strong>.
       </>
     ),
-    lede: 'Cuando te llegue el SMS del banco, la transacción entra sola. Son 8 pasos cortos en tu iPhone y se hace una sola vez.',
+    lede: (steps) =>
+      `Cuando te llegue el SMS del banco, la transacción entra sola. Son ${steps} pasos cortos en tu iPhone y se hace una sola vez.`,
     start: 'Empezar',
     stepCount: (current, total) => `${current} de ${total}`,
     copyIdle: 'Copiar',
@@ -146,7 +150,8 @@ const COPY: Readonly<Record<Ui, ScreenCopy>> = {
         Let your spending record <strong>itself</strong>.
       </>
     ),
-    lede: 'When your bank texts you, the transaction lands on its own. Eight short steps on your iPhone, once.',
+    lede: (steps) =>
+      `When your bank texts you, the transaction lands on its own. ${steps} short steps on your iPhone, once.`,
     start: 'Start',
     stepCount: (current, total) => `${current} of ${total}`,
     copyIdle: 'Copy',
@@ -181,7 +186,7 @@ const COPY: Readonly<Record<Ui, ScreenCopy>> = {
   },
 };
 
-function buildSteps(locale: Ui): Step[] {
+export function buildSteps(locale: Ui): Step[] {
   if (locale === 'en') {
     return [
       {
@@ -627,7 +632,7 @@ export function IngestSetup({
         </span>
 
         <h2 className="ingest-hook">{copy.hook}</h2>
-        <p className="ingest-lede">{copy.lede}</p>
+        <p className="ingest-lede">{copy.lede(steps.length)}</p>
 
         {languageToggle}
 
@@ -663,6 +668,7 @@ export function IngestSetup({
   }
 
   const step = steps[index]!;
+  const art = STEP_ART[ui][step.id];
   const secret = step.copy === 'url' ? endpoint : `Bearer ${token}`;
   const previousCheer = index > 0 ? steps[index - 1]!.cheer : '';
 
@@ -707,6 +713,11 @@ export function IngestSetup({
         <h2 className="ingest-title">{step.title}</h2>
         <p className="ingest-body">{step.body}</p>
 
+        {/* The picture goes AFTER the words, not before: the sentence says what
+            you are doing and the drawing says where. Reversed, the reader
+            studies a screen without knowing what they are looking for. */}
+        {art && <StepArtwork art={art} />}
+
         {step.copy && (
           <button
             type="button"
@@ -715,7 +726,14 @@ export function IngestSetup({
           >
             <code>{secret}</code>
             <span className="ingest-secret-action">
-              {copied ? copy.copyDone : copy.copyIdle}
+              {copied ? (
+                <>
+                  <AnimatedCheck size={14} />
+                  <span>{copy.copyDone}</span>
+                </>
+              ) : (
+                copy.copyIdle
+              )}
             </span>
           </button>
         )}
