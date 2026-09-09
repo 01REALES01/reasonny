@@ -9,6 +9,7 @@ import {
   editTransactionAction,
 } from '@/app/actions/edit-transaction';
 import { CategoryIcon } from '@/components/ui/category-icon';
+import { toDecimalString } from '@/core/money';
 import type { CategoryRow } from '@/core/repositories/category.repository';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
 import { formatDate, t } from '@/lib/i18n';
@@ -16,19 +17,34 @@ import { formatDate, t } from '@/lib/i18n';
 interface EditTransactionFormProps {
   readonly transaction: EnrichedTransactionRow;
   readonly categories: CategoryRow[];
+  /** The profile's zone. Dates are grouped in it, so they must be read in it. */
+  readonly timeZone: string;
 }
 
 export function EditTransactionForm({
   transaction,
   categories,
+  timeZone,
 }: EditTransactionFormProps): React.ReactElement {
   const router = useRouter();
 
-  // The amount is seeded as a plain integer string, not through formatMoney:
-  // the field feeds parseMoney back on the server, so grouping separators here
-  // would only be something the user has to delete before typing.
+  // The amount is seeded as a plain decimal, not through formatMoney: the field
+  // feeds parseMoney back on the server, so grouping separators here would only
+  // be something the user has to delete before typing.
+  //
+  // toDecimalString rather than `amountMinor / 100n`, which is BIGINT DIVISION
+  // and truncates: a transaction of 45.50 opened as "45", and saving after
+  // correcting only the note silently rewrote it as 45.00. The user destroyed
+  // fifty cents by editing a field they never touched.
+  //
+  // The trailing ".00" is trimmed because pesos have no cents in practice and
+  // the field is typed into far more often than it is read. A real fraction
+  // survives, which is the half that matters.
   const [merchant, setMerchant] = useState(transaction.merchant);
-  const [amount, setAmount] = useState(String(transaction.amountMinor / 100n));
+  const [amount, setAmount] = useState(() => {
+    const decimal = toDecimalString(transaction.amountMinor);
+    return decimal.endsWith('.00') ? decimal.slice(0, -3) : decimal;
+  });
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction.category?.id ?? null,
   );
@@ -84,7 +100,7 @@ export function EditTransactionForm({
           <span>{t('back')}</span>
         </Link>
         <span className="entry-date-chip">
-          {formatDate(transaction.transactionDate, 'es', {
+          {formatDate(transaction.transactionDate, timeZone, 'es', {
             day: 'numeric',
             month: 'long',
             year: 'numeric',
