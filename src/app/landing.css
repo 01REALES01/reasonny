@@ -22,8 +22,7 @@
   background-color: var(--landing-deep-black);
 }
 
-.cinematic-video-layer,
-.cinematic-canvas-layer {
+.cinematic-video-layer {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -32,16 +31,17 @@
   display: block;
 }
 
+.cinematic-canvas-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .cinematic-canvas-mobile {
   opacity: 1;
   z-index: 2;
-  object-position: center center;
-}
-
-.cinematic-video-mobile-source {
-  opacity: 0.001;
-  z-index: 0;
-  pointer-events: none;
 }
 
 .cinematic-video-desktop {
@@ -52,9 +52,6 @@
 
 @media (min-width: 769px) {
   .cinematic-canvas-mobile {
-    display: none;
-  }
-  .cinematic-video-mobile-source {
     display: none;
   }
   .cinematic-video-desktop {
@@ -523,13 +520,13 @@
   flex-direction: column;
   justify-content: flex-end;
   box-sizing: border-box;
-  padding: 0 20px clamp(24px, 5vh, 52px);
+  padding: 0 20px clamp(16px, 3vh, 32px);
 }
 
 /* Words at Phone Height: Snugly flanking the hand and smartphone at the exact same height */
 .landing-hand-flank-row {
   position: absolute;
-  top: 44%;
+  top: 42%;
   left: 0;
   right: 0;
   transform: translateY(-50%);
@@ -537,21 +534,22 @@
   justify-content: center;
   align-items: center;
   pointer-events: none;
-  z-index: 10;
-  padding: 0 16px;
+  user-select: none;
+  z-index: 5;
+  padding: 0 24px;
 }
 
 .landing-phone-spacer {
-  width: clamp(280px, 32vw, 420px);
+  width: clamp(340px, 30vw, 460px);
   flex-shrink: 0;
 }
 
 .landing-word-giant {
   font-family: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  font-size: clamp(3.8rem, 8vw, 8.5rem);
+  font-size: clamp(2.4rem, 5.2vw, 5.8rem);
   font-weight: 800;
   line-height: 0.9;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.04em;
   color: var(--landing-warm-white);
   text-transform: uppercase;
   margin: 0;
@@ -569,15 +567,7 @@
 
 @media (max-width: 768px) {
   .landing-hand-flank-row {
-    top: 40%;
-  }
-
-  .landing-phone-spacer {
-    width: clamp(200px, 55vw, 280px);
-  }
-
-  .landing-word-giant {
-    font-size: clamp(2.4rem, 9vw, 4.2rem);
+    display: none;
   }
 }
 
@@ -589,20 +579,20 @@
   text-align: center;
   z-index: 15;
   pointer-events: auto;
-  margin-bottom: clamp(16px, 4vh, 40px);
+  margin-bottom: clamp(12px, 2.5vh, 26px);
 }
 
 @media (max-width: 768px) {
   .landing-hero-bottom {
-    margin-bottom: clamp(72px, 11vh, 96px);
+    margin-bottom: clamp(64px, 9.5vh, 88px);
   }
 }
 
 .landing-word-center {
   font-family: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  font-size: clamp(1.8rem, 3.6vw, 3.2rem);
+  font-size: clamp(1.5rem, 2.8vw, 2.6rem);
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--landing-champagne-gold);
   margin: 0 0 6px;
@@ -610,13 +600,13 @@
 }
 
 .landing-word-subhead {
-  font-size: clamp(0.88rem, 1.25vw, 1.1rem);
-  line-height: 1.45;
+  font-size: clamp(0.85rem, 1.1vw, 1.0rem);
+  line-height: 1.4;
   font-weight: 400;
   color: var(--landing-warm-white);
-  max-width: 520px;
+  max-width: 480px;
   text-align: center;
-  margin: 0 auto 16px;
+  margin: 0 auto 14px;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
 }
 
@@ -626,12 +616,12 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  padding: 14px 38px;
+  padding: 12px 34px;
   border-radius: 9999px;
   background: var(--landing-gold-solid);
   color: var(--landing-deep-black);
   text-decoration: none;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;

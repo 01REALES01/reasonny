@@ -2,21 +2,23 @@
 
 import React, { useEffect, useRef } from 'react';
 
+const TOTAL_MOBILE_FRAMES = 60;
+
 /**
- * Fixed cinematic backdrop, scrubbed smoothly by scroll.
+ * Cinematic backdrop scrubber.
  *
- * Implements a double-buffered Canvas rendering pipeline for mobile:
- *  - On iOS Safari, setting `video.currentTime` on a visible <video> during scroll
- *    causes WebKit to clear the display surface to black while seeking.
- *  - By drawing decoded frames into a <canvas>, the canvas retains the last valid frame
- *    continuously, completely eliminating any black flashes or tearing.
- *  - Seeking is serialized via an `isSeeking` mutex with `pendingProgress` to prevent
- *    seek abort loops in the browser hardware decoder.
- *  - On desktop, the centered intra-frame video scrubs directly on the GPU.
+ * Architecture:
+ * - Mobile / Safari PWA:
+ *   Uses an optimized Canvas Image Sequence (60 intra-frames).
+ *   On iOS Safari and PWA standalone mode, scrubbing <video> via `currentTime`
+ *   frequently causes WebKit to suspend decoding, stay in permanent seeking state,
+ *   or flash black. An image sequence rendered to <canvas> provides 100% reliable,
+ *   instant 60fps/120fps hardware-accelerated scrubbing without video decoder overhead.
+ * - Desktop:
+ *   Uses centered intra-frame landscape video, scrubbed on GPU with RAF throttling.
  */
 export function CinematicVideoCanvas(): React.ReactElement {
   const desktopVideoRef = useRef<HTMLVideoElement | null>(null);
-  const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -26,73 +28,134 @@ export function CinematicVideoCanvas(): React.ReactElement {
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isMobile = window.innerWidth <= 768;
-    const video = isMobile ? mobileVideoRef.current : desktopVideoRef.current;
-    const ctx = canvas?.getContext('2d', { alpha: false });
+    const desktopVideo = desktopVideoRef.current;
 
-    // Paint mobile poster to canvas immediately on mount so frame 0 is instant
-    if (canvas && ctx && isMobile) {
-      const poster = new Image();
-      poster.src = '/images/hero-mobile.jpeg';
-      poster.onload = () => {
-        canvas.width = poster.naturalWidth || 720;
-        canvas.height = poster.naturalHeight || 1280;
-        ctx.drawImage(poster, 0, 0, canvas.width, canvas.height);
-      };
-    }
+    // ------------------------------------------------------------------
+    // MOBILE: Canvas Frame Sequence
+    // ------------------------------------------------------------------
+    let mobileFrames: HTMLImageElement[] = [];
+    let currentFrameIndex = 0;
+    let isMobileInitialized = false;
 
-    if (!video) return;
-    video.muted = true;
-    video.playsInline = true;
-    video.pause();
+    function renderMobileFrame(index: number): void {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) return;
 
-    let isSeeking = false;
-    let pendingProgress: number | null = null;
-
-    function renderToCanvas(): void {
-      if (!isMobile || !canvas || !ctx || !video) return;
-      if (video.videoWidth > 0) {
-        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+      const img = mobileFrames[index];
+      if (!img || !img.complete || img.naturalWidth === 0) {
+        // Fallback to frame 0 (poster) if requested frame hasn't loaded yet
+        const poster = mobileFrames[0];
+        if (poster && poster.complete && poster.naturalWidth > 0) {
+          drawCover(ctx, poster, canvas.width, canvas.height);
         }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      }
-    }
-
-    function onSeeked(): void {
-      isSeeking = false;
-      renderToCanvas();
-
-      if (pendingProgress !== null) {
-        const next = pendingProgress;
-        pendingProgress = null;
-        applyProgress(next);
-      }
-    }
-
-    video.addEventListener('seeked', onSeeked);
-
-    function applyProgress(progress: number): void {
-      if (!video || !video.duration || Number.isNaN(video.duration) || video.duration <= 0) {
-        return;
-      }
-      const target = Math.min(Math.max(progress * video.duration, 0), Math.max(0, video.duration - 0.04));
-      if (Math.abs(video.currentTime - target) < 0.015) return;
-
-      if (isSeeking || video.seeking) {
-        pendingProgress = progress;
         return;
       }
 
-      isSeeking = true;
-      video.currentTime = target;
+      currentFrameIndex = index;
+      drawCover(ctx, img, canvas.width, canvas.height);
     }
 
+    function drawCover(
+      ctx: CanvasRenderingContext2D,
+      img: HTMLImageElement,
+      cw: number,
+      ch: number,
+    ): void {
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const canvasRatio = cw / ch;
+      let rw = cw;
+      let rh = ch;
+      let x = 0;
+      let y = 0;
+
+      if (canvasRatio > imgRatio) {
+        rw = cw;
+        rh = cw / imgRatio;
+        x = 0;
+        y = (ch - rh) / 2;
+      } else {
+        rw = ch * imgRatio;
+        rh = ch;
+        x = (cw - rw) / 2;
+        y = 0;
+      }
+
+      ctx.drawImage(img, x, y, rw, rh);
+    }
+
+    function resizeCanvas(): void {
+      if (!canvas || !isMobile) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      renderMobileFrame(currentFrameIndex);
+    }
+
+    if (isMobile && canvas) {
+      // 1. Initialize frame array
+      mobileFrames = new Array(TOTAL_MOBILE_FRAMES);
+
+      // 2. Load frame 0 immediately for instant paint
+      const frame0 = new Image();
+      frame0.src = '/frames/mobile/frame_001.jpg';
+      frame0.onload = () => {
+        isMobileInitialized = true;
+        resizeCanvas();
+      };
+      mobileFrames[0] = frame0;
+
+      // 3. Preload all remaining frames in background
+      for (let i = 1; i < TOTAL_MOBILE_FRAMES; i++) {
+        const frameImg = new Image();
+        const frameNum = String(i + 1).padStart(3, '0');
+        frameImg.src = `/frames/mobile/frame_${frameNum}.jpg`;
+        mobileFrames[i] = frameImg;
+      }
+
+      resizeCanvas();
+    }
+
+    // ------------------------------------------------------------------
+    // DESKTOP: Centered Intra-Frame Video
+    // ------------------------------------------------------------------
+    if (!isMobile && desktopVideo) {
+      desktopVideo.muted = true;
+      desktopVideo.playsInline = true;
+      desktopVideo.pause();
+    }
+
+    function applyDesktopProgress(progress: number): void {
+      if (!desktopVideo || !desktopVideo.duration || Number.isNaN(desktopVideo.duration)) {
+        return;
+      }
+      const target = Math.min(
+        Math.max(progress * desktopVideo.duration, 0),
+        Math.max(0, desktopVideo.duration - 0.04),
+      );
+      if (Math.abs(desktopVideo.currentTime - target) < 0.015) return;
+      desktopVideo.currentTime = target;
+    }
+
+    // ------------------------------------------------------------------
+    // Scroll Progress Handler (RAF-batched)
+    // ------------------------------------------------------------------
     function update(): void {
       const rect = track!.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
       const progress = scrollable > 0 ? Math.min(Math.max(-rect.top / scrollable, 0), 1) : 0;
-      applyProgress(progress);
+
+      if (isMobile) {
+        const targetIndex = Math.min(
+          Math.max(Math.floor(progress * (TOTAL_MOBILE_FRAMES - 1)), 0),
+          TOTAL_MOBILE_FRAMES - 1,
+        );
+        renderMobileFrame(targetIndex);
+      } else {
+        applyDesktopProgress(progress);
+      }
     }
 
     let rafId = 0;
@@ -105,45 +168,43 @@ export function CinematicVideoCanvas(): React.ReactElement {
       }
     }
 
+    function onResize(): void {
+      if (isMobile) {
+        resizeCanvas();
+      }
+      onScroll();
+    }
+
     if (!prefersReducedMotion) {
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('touchmove', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll, { passive: true });
+      window.addEventListener('resize', onResize, { passive: true });
 
-      if (video.readyState >= 1) {
+      if (isMobile) {
         update();
-      } else {
-        video.addEventListener('loadedmetadata', update, { once: true });
+      } else if (desktopVideo) {
+        if (desktopVideo.readyState >= 1) {
+          update();
+        } else {
+          desktopVideo.addEventListener('loadedmetadata', update, { once: true });
+        }
       }
     }
 
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('touchmove', onScroll);
-      window.removeEventListener('resize', onScroll);
-      video.removeEventListener('seeked', onSeeked);
+      window.removeEventListener('resize', onResize);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
   }, []);
 
   return (
     <div className="cinematic-video-canvas" aria-hidden="true">
-      {/* Mobile Canvas Viewport: double-buffered to guarantee zero black frame flicker */}
+      {/* Mobile Frame-Sequence Canvas (Zero WebKit video decoder issues) */}
       <canvas ref={canvasRef} className="cinematic-canvas-layer cinematic-canvas-mobile" />
 
-      {/* Hidden Mobile Video Decoder: kept in viewport to preserve WebKit hardware decoding */}
-      <video
-        ref={mobileVideoRef}
-        className="cinematic-video-layer cinematic-video-mobile-source"
-        src="/videos/hero-mobile.mp4"
-        poster="/images/hero-mobile.jpeg"
-        muted
-        playsInline
-        preload="auto"
-        tabIndex={-1}
-      />
-
-      {/* Desktop Video Layer */}
+      {/* Desktop Centered Video Layer */}
       <video
         ref={desktopVideoRef}
         className="cinematic-video-layer cinematic-video-desktop"

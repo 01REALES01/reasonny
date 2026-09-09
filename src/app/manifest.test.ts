@@ -11,7 +11,10 @@ describe('Web App Manifest (PWA — B8)', () => {
     expect(config.display).toBe('standalone');
     expect(config.background_color).toBe('#09090b');
     expect(config.theme_color).toBe('#09090b');
-    expect(config.start_url).toBe('/');
+    // The installed icon opens the app itself. Landing on '/' put the
+    // marketing page in front of a signed-in user on every launch.
+    expect(config.start_url).toBe('/dashboard');
+    expect(config.scope).toBe('/');
     expect(config.icons).toBeDefined();
     expect(config.icons?.length).toBeGreaterThanOrEqual(2);
 

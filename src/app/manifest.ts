@@ -10,7 +10,20 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Reasonny — Finanzas Personales con IA',
     short_name: 'Reasonny',
     description: 'App de finanzas personales con ingesta asistida por IA.',
-    start_url: '/',
+    /**
+     * The app, not the sales page.
+     *
+     * Launching the installed icon straight into the marketing landing meant
+     * the only way forward was its "Entrar" button, which points at /sign-in -
+     * so every launch looked like a request to sign in again. The dashboard
+     * bounces a signed-out visitor to /sign-in on its own, so nothing is lost
+     * for someone who really is signed out.
+     */
+    start_url: '/dashboard',
+    // Explicit, because scope defaults to start_url's parent path. Without it
+    // a tap on the brand logo (/) could count as leaving the app and open
+    // Safari on top of the installed window.
+    scope: '/',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#09090b',

@@ -5,12 +5,13 @@
  * with network-first resilience for authenticated financial data.
  */
 
-const CACHE_NAME = 'realmoney-v1';
+const CACHE_NAME = 'reasonny-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/frames/mobile/frame_001.jpg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -44,11 +45,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for fonts and icons
+  // Cache-first for fonts, images, frames and icons
   if (
     request.destination === 'font' ||
     request.destination === 'image' ||
-    url.pathname.startsWith('/icons/')
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/frames/')
   ) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {

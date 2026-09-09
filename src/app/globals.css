@@ -1613,6 +1613,12 @@ textarea:focus-visible {
   max-width: 440px;
   margin: 0 auto;
   min-height: 100svh;
+  /* The viewport is `viewport-fit: cover` and the iOS status bar is
+     black-translucent, so the page starts at y=0 - underneath the notch. Every
+     other screen clears it through .entry-page; the home screen was the one
+     that did not, and the hero's top bar sat behind the cutout. Zero on any
+     device without one. */
+  padding-top: env(safe-area-inset-top);
   padding-bottom: 110px;
   position: relative;
   display: flex;

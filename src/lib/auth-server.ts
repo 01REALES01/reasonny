@@ -87,9 +87,22 @@ async function requestContext(): Promise<RequestContext> {
 }
 
 type AuthRouteHandlers = ReturnType<NeonAuth['handler']>;
+type AuthProxy = ReturnType<NeonAuth['middleware']>;
 
 let server: NeonAuthServer | undefined;
+let neonAuth: NeonAuth | undefined;
 let handlers: AuthRouteHandlers | undefined;
+let proxy: AuthProxy | undefined;
+
+/**
+ * The SDK's Next.js instance, built once. Both the catch-all route handlers and
+ * the proxy come off it, so they share one config and one validation of the
+ * cookie secret.
+ */
+function getNeonAuth(): NeonAuth {
+  neonAuth ??= createNeonAuth(authConfig());
+  return neonAuth;
+}
 
 /**
  * Reads the session for the current request. Safe to call while a Server
@@ -118,6 +131,33 @@ export function getAuthServer(): NeonAuthServer {
  * cookie signing key to emit static assets.
  */
 export function getAuthHandlers(): AuthRouteHandlers {
-  handlers ??= createNeonAuth(authConfig()).handler();
+  handlers ??= getNeonAuth().handler();
   return handlers;
+}
+
+/**
+ * The request proxy mounted at src/proxy.ts.
+ *
+ * WHY THIS EXISTS AT ALL - IT IS WHAT KEEPS THE USER SIGNED IN
+ * ------------------------------------------------------------
+ * Better Auth slides the session forward: past `updateAge` it re-issues the
+ * SAME token with a later expiry, as a Set-Cookie on the get-session response.
+ * That refresh only counts if the cookie reaches the browser.
+ *
+ * Every read of the session in this app happened inside a Server Component
+ * render, and a render cannot write cookies - requestContext above swallows the
+ * write, correctly, because throwing would cost the user the page. So the
+ * refresh was minted and dropped on every single navigation, and the cookie
+ * kept the expiry it was born with. The session died a fixed number of days
+ * after sign-in no matter how much the app was used. That is the "it asks me to
+ * sign in again" bug, and no amount of caching fixes it.
+ *
+ * A proxy runs before the render, where writing cookies is legal. It refreshes
+ * the session token and re-mints the signed session_data cache on each
+ * navigation, so the window actually slides and the render reads it locally
+ * instead of paying a round trip to Neon.
+ */
+export function getAuthProxy(): AuthProxy {
+  proxy ??= getNeonAuth().middleware({ loginUrl: '/sign-in' });
+  return proxy;
 }
