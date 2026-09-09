@@ -135,6 +135,40 @@ describe('Bank SMS parsers', () => {
      * so the spend would be filed on the wrong day and, at a month boundary,
      * in the wrong month.
      */
+    /**
+     * The dot is how half of Colombia writes thousands, and the pattern that
+     * only knew the comma read "$45.000" as forty-five pesos with two decimals.
+     * Nothing threw: a 1000x undercount landed in the ledger looking plausible.
+     */
+    it.each([
+      ['$45.000', 4500000n],
+      ['$45,000', 4500000n],
+      ['$1.000.000', 100000000n],
+      ['$1,000,000', 100000000n],
+      ['$1,000,000.00', 100000000n],
+      ['$7,500.50', 750050n],
+    ])('reads %s as the same amount whichever separator groups it', (written, expected) => {
+      const result = parseBankSms(
+        `Bancolombia: NOMBRE, pagaste ${written} desde tu cuenta *9999 a la llave 3000000001 el 21/08/2026 a las 17:09.`,
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.ok === true && result.transaction.amountMinor).toBe(expected);
+    });
+
+    /**
+     * The old pattern let the "$" be optional, so it took whatever digits came
+     * first. In a template that names the card before the figure, that is the
+     * card.
+     */
+    it('takes the amount and not the card number that precedes it', () => {
+      const result = parseBankSms(
+        'Bancolombia: NOMBRE, con tu Tarjeta 1111 pagaste $45,000 desde tu cuenta *9999 a la llave 3000000001 el 21/08/2026 a las 17:09.',
+      );
+
+      expect(result.ok === true && result.transaction.amountMinor).toBe(4500000n);
+    });
+
     it('anchors the wall clock to Bogotá, not to UTC', () => {
       expect(ok(SMS.bogotaCard).transactionDate.toISOString()).toBe(
         '2026-08-27T01:18:00.000Z',

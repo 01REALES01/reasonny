@@ -21,8 +21,35 @@ import { parseMoney } from '@/core/money';
  */
 const BOGOTA_UTC_OFFSET_HOURS = 5;
 
-/** `20,900` · `$1,000,000.00` · `$275,000` · `$4,000.00` */
-const AMOUNT = /\$?\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/;
+/**
+ * The digits of an amount, grouping separator included, for parseMoney to read.
+ *
+ * TWO PATTERNS, NOT ONE, AND NEITHER IS OPTIONAL-DOLLAR
+ * ----------------------------------------------------
+ * The single pattern this replaces made the `$` optional, so in a message that
+ * names the card before the amount it matched the card: "Tarjeta 1111 por
+ * $45,000" captured "111" and the ledger recorded eleven pesos ten. Requiring
+ * the symbol fixes that, but Banco de Bogotá writes "Tu compra por 45,000" with
+ * no symbol at all - hence the second pattern, anchored on the word both banks
+ * use to introduce the figure. A message with neither yields null and goes to
+ * the review queue as an unreadable format, which is the correct answer: this
+ * parser does not guess amounts.
+ *
+ * BOTH SEPARATORS GROUP
+ * ---------------------
+ * The old pattern accepted only the comma. Colombia writes thousands with a
+ * dot at least as often, and "$45.000" fell into the DECIMAL branch: it
+ * captured "45.00" and stored forty-five pesos for a forty-five thousand peso
+ * purchase. A thousandfold undercount, silent, in a money app. Which separator
+ * is decimal and which is grouping is parseMoney's job - it already resolves it
+ * by position and group length - so the pattern's only duty is to hand over the
+ * whole number instead of half of it.
+ *
+ * `$45.000` · `$1.000.000` · `20,900` · `$1,000,000.00` · `$4,000.00`
+ */
+const AMOUNT_DIGITS = '\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{1,2})?';
+const AMOUNT_WITH_SYMBOL = new RegExp(`\\$\\s?(${AMOUNT_DIGITS})`);
+const AMOUNT_AFTER_POR = new RegExp(`\\bpor\\s+(${AMOUNT_DIGITS})`, 'i');
 
 /** `26/08/26` and `25/08/2026` both appear, from the same bank. */
 const DATE = /(\d{2})\/(\d{2})\/(\d{2}(?:\d{2})?)/;
@@ -37,7 +64,9 @@ export function extractAmountMinor(
   text: string,
   currency: string,
 ): bigint | null {
-  const match = AMOUNT.exec(text);
+  // Symbol first: when a message has both a "$" figure and a "por" figure they
+  // are the same number, and the symbol is the less ambiguous anchor.
+  const match = AMOUNT_WITH_SYMBOL.exec(text) ?? AMOUNT_AFTER_POR.exec(text);
   if (!match?.[1]) {
     return null;
   }
