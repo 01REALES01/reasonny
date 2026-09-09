@@ -531,23 +531,22 @@
   right: 0;
   transform: translateY(-50%);
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   pointer-events: none;
   user-select: none;
   z-index: 5;
-  padding: 0 clamp(16px, 3vw, 48px);
+  padding: 0 16px;
 }
 
 .landing-phone-spacer {
-  width: clamp(320px, 28vw, 420px);
+  width: clamp(260px, 30vw, 380px);
   flex-shrink: 0;
-  margin-left: clamp(24px, 5.5vw, 84px);
 }
 
 .landing-word-giant {
   font-family: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  font-size: clamp(2.4rem, 4.8vw, 5.2rem);
+  font-size: clamp(2.4rem, 5.2vw, 5.5rem);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.04em;
@@ -559,12 +558,10 @@
 }
 
 .landing-word-left {
-  flex: 1;
   text-align: right;
 }
 
 .landing-word-right {
-  flex: 0 0 auto;
   text-align: left;
 }
 
@@ -577,18 +574,7 @@
   }
 
   .landing-phone-spacer {
-    width: clamp(190px, 54vw, 240px);
-    margin-left: 0;
-  }
-
-  .landing-word-left {
-    flex: 1;
-    text-align: right;
-  }
-
-  .landing-word-right {
-    flex: 1;
-    text-align: left;
+    width: clamp(180px, 52vw, 240px);
   }
 
   .landing-word-giant {
