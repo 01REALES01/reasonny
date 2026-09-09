@@ -111,11 +111,16 @@ export function BalanceHero({
         <span className="balance-hero-label">{t('balance_available')}</span>
 
         <div className="balance-hero-amount">
-          {isHidden ? (
-            <span className="balance-hero-masked">$ ••••••••</span>
-          ) : (
-            <Money amountMinor={totalBalanceMinor} currency={currency} />
-          )}
+          <span
+            key={isHidden ? 'masked' : 'revealed'}
+            className="balance-hero-amount-val"
+          >
+            {isHidden ? (
+              <span className="balance-hero-masked">$ ••••••••</span>
+            ) : (
+              <Money amountMinor={totalBalanceMinor} currency={currency} />
+            )}
+          </span>
         </div>
 
         {/* The pill next to the toggle used to read "2.4% este mes". That

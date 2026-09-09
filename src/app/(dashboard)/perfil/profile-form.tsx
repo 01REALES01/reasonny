@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useState, useTransition } from 'react';
 
 import { updateDisplayNameAction } from '@/app/actions/profile';
+import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { t } from '@/lib/i18n';
 
@@ -54,7 +55,10 @@ export function ProfileForm({
 
         {saved && (
           <div role="status" className="entry-banner entry-banner--success">
-            <span>{t('profile_saved')}</span>
+            <span className="entry-banner-msg">
+              <AnimatedCheck size={20} />
+              <span>{t('profile_saved')}</span>
+            </span>
           </div>
         )}
 
@@ -85,8 +89,21 @@ export function ProfileForm({
             <span className="entry-hint">{t('profile_name_hint')}</span>
           </div>
 
-          <button type="submit" disabled={isPending} className="entry-submit">
-            {isPending ? t('profile_saving') : t('profile_save')}
+          <button
+            type="submit"
+            disabled={isPending}
+            className={`entry-submit${saved ? ' entry-submit--saved' : ''}`}
+          >
+            {isPending ? (
+              t('profile_saving')
+            ) : saved ? (
+              <span className="entry-submit-success">
+                <AnimatedCheck size={18} />
+                <span>{t('profile_saved')}</span>
+              </span>
+            ) : (
+              t('profile_save')
+            )}
           </button>
         </form>
       </div>

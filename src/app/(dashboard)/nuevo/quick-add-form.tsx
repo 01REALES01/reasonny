@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 
 import { createQuickTransactionAction } from '@/app/actions/transactions';
+import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import { parseMoney } from '@/core/money';
@@ -141,7 +142,10 @@ export function QuickAddForm({
       <div className="step-slide entry-card">
         {success && (
           <div role="status" className="entry-banner entry-banner--success">
-            <span>✓ {t('transaction_created_success')}</span>
+            <span className="entry-banner-msg">
+              <AnimatedCheck size={20} />
+              <span>{t('transaction_created_success')}</span>
+            </span>
             <Link href="/dashboard">
               {t('view_on_home')} <CategoryIcon name="ArrowRight" size={13} />
             </Link>
@@ -171,7 +175,10 @@ export function QuickAddForm({
                 autoFocus
                 placeholder="0"
                 value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
+                onChange={(e) => {
+                  setAmountInput(e.target.value);
+                  if (success) setSuccess(false);
+                }}
                 className="entry-hero-input"
               />
             </div>
@@ -182,7 +189,10 @@ export function QuickAddForm({
                 <button
                   key={val}
                   type="button"
-                  onClick={() => setAmountInput(val)}
+                  onClick={() => {
+                    setAmountInput(val);
+                    if (success) setSuccess(false);
+                  }}
                   className="entry-chip"
                 >
                   +
@@ -290,13 +300,22 @@ export function QuickAddForm({
           <button
             type="submit"
             disabled={isPending}
-            className={`entry-submit${isIncome ? ' entry-submit--income' : ''}`}
+            className={`entry-submit${isIncome ? ' entry-submit--income' : ''}${
+              success ? ' entry-submit--saved' : ''
+            }`}
           >
-            {isPending
-              ? t('saving')
-              : isIncome
-              ? '+ Registrar Ingreso'
-              : '+ Registrar Gasto'}
+            {isPending ? (
+              t('saving')
+            ) : success ? (
+              <span className="entry-submit-success">
+                <AnimatedCheck size={18} />
+                <span>¡Registrado con éxito!</span>
+              </span>
+            ) : isIncome ? (
+              '+ Registrar Ingreso'
+            ) : (
+              '+ Registrar Gasto'
+            )}
           </button>
         </form>
       </div>

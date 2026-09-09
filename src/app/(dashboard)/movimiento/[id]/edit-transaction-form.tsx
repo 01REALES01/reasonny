@@ -8,6 +8,7 @@ import {
   deleteTransactionAction,
   editTransactionAction,
 } from '@/app/actions/edit-transaction';
+import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { toDecimalString } from '@/core/money';
 import type { CategoryRow } from '@/core/repositories/category.repository';
@@ -51,6 +52,7 @@ export function EditTransactionForm({
   const [note, setNote] = useState(transaction.note ?? '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isIncome = transaction.type === 'income';
@@ -72,7 +74,10 @@ export function EditTransactionForm({
       });
 
       if (result.success) {
-        router.push('/dashboard');
+        setIsSaved(true);
+        window.setTimeout(() => {
+          router.push('/dashboard');
+        }, 650);
       } else {
         setError(result.error ?? null);
       }
@@ -110,6 +115,15 @@ export function EditTransactionForm({
 
       <div className="step-slide entry-card">
         <h1 className="profile-heading">{t('edit_title')}</h1>
+
+        {isSaved && (
+          <div role="status" className="entry-banner entry-banner--success">
+            <span className="entry-banner-msg">
+              <AnimatedCheck size={20} />
+              <span>{t('transaction_updated_success')}</span>
+            </span>
+          </div>
+        )}
 
         {error && (
           <div role="alert" className="entry-banner entry-banner--error">
@@ -183,8 +197,21 @@ export function EditTransactionForm({
             />
           </div>
 
-          <button type="submit" disabled={isPending} className="entry-submit">
-            {isPending ? t('saving') : t('save')}
+          <button
+            type="submit"
+            disabled={isPending || isSaved}
+            className={`entry-submit${isSaved ? ' entry-submit--saved' : ''}`}
+          >
+            {isPending ? (
+              t('saving')
+            ) : isSaved ? (
+              <span className="entry-submit-success">
+                <AnimatedCheck size={18} />
+                <span>¡Guardado con éxito!</span>
+              </span>
+            ) : (
+              t('save')
+            )}
           </button>
         </form>
       </div>

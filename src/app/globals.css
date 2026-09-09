@@ -815,6 +815,13 @@ textarea:focus-visible {
   color: var(--ink-secondary);
   font-size: var(--text-label);
   font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.entry-segment:active {
+  transform: scale(0.97);
 }
 
 /* aria-pressed carries the selected state, so the style follows the attribute
@@ -847,6 +854,15 @@ textarea:focus-visible {
   border-radius: var(--radius-md);
   font-size: var(--text-label);
   font-weight: 500;
+  transition: transform var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out);
+}
+
+@starting-style {
+  .entry-banner {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
 }
 
 .entry-banner--success {
@@ -855,12 +871,71 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.15);
+}
+
+.entry-banner-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .entry-banner--success a {
   color: var(--positive);
   font-weight: 600;
   text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Animated Drawing Checkmark (Chulito Verde) & Success States */
+.animated-check-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.animated-check-svg {
+  display: block;
+  animation: checkPop 320ms var(--ease-out) both;
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0.75);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-check-svg {
+    animation: none;
+  }
+}
+
+.entry-submit--saved {
+  background: var(--positive) !important;
+  color: var(--on-accent) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(46, 125, 50, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.entry-submit-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .entry-banner--error {
@@ -960,7 +1035,7 @@ textarea:focus-visible {
 }
 
 .entry-chip:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
 
 .entry-preview {
@@ -1003,7 +1078,7 @@ textarea:focus-visible {
 }
 
 .entry-category-tile:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 .entry-category-tile[aria-pressed='true'] {
@@ -1460,6 +1535,22 @@ textarea:focus-visible {
   margin-bottom: 18px;
 }
 
+.balance-hero-amount-val {
+  display: inline-block;
+  animation: balanceCrossfade 180ms var(--ease-out) both;
+}
+
+@keyframes balanceCrossfade {
+  from {
+    opacity: 0.3;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .balance-hero-masked {
   letter-spacing: 0.14em;
   color: rgba(255, 255, 255, 0.9);
@@ -1500,7 +1591,7 @@ textarea:focus-visible {
 }
 
 .balance-hero-mask-toggle:active {
-  transform: scale(0.94);
+  transform: scale(0.97);
 }
 
 /* 3. Floating Boxless Financial Stats */
@@ -1742,8 +1833,10 @@ textarea:focus-visible {
   transition: opacity var(--duration-fast) var(--ease-out);
 }
 
-.phone-tx-row:hover::before {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .phone-tx-row:hover::before {
+    opacity: 1;
+  }
 }
 
 .phone-tx-row:active {
@@ -2681,6 +2774,9 @@ textarea:focus-visible {
   font-size: var(--text-caption);
   font-weight: 700;
   color: var(--landing-champagne-gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .ingest-warning {
