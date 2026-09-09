@@ -8,6 +8,7 @@ import {
   createAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
+import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.repository';
 import { getProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { toAccountId, type UserId } from '@/core/types';
@@ -25,6 +26,43 @@ import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
  * Edge runtime cannot do.
  */
 export const runtime = 'nodejs';
+
+const SOURCE = 'sms_shortcut';
+
+/**
+ * Every outcome leaves a trace, and the ones that store nothing leave two.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * A transfer was made, the SMS arrived, the Shortcut fired, and the app had
+ * nothing to show and nothing to say about why. Every non-2xx and every
+ * `stored: false` was returned to a caller that discards the body - Shortcuts
+ * does not surface a response - so the reason existed for the length of one
+ * HTTP response and then did not exist at all.
+ *
+ * The row carries the raw message, which is what makes it worth having: it is
+ * the only artefact that can tell you which template a bank changed. The
+ * console line deliberately does NOT carry it - platform logs are the least
+ * controlled place this data could sit, and the reason alone is enough to see
+ * the shape of a problem from the outside.
+ */
+async function refuse(
+  userId: UserId | null,
+  status: number,
+  body: Record<string, unknown>,
+  rawPayload: unknown,
+  error: string,
+): Promise<NextResponse> {
+  console.warn('[quick-add] not stored:', error, 'status:', status);
+  try {
+    await recordIngestionFailure(userId, { source: SOURCE, rawPayload, error });
+  } catch (cause) {
+    // A failure to record a failure must not turn into a 500 the Shortcut
+    // will retry forever. The console line above already happened.
+    console.error('[quick-add] could not record the failure:', cause);
+  }
+  return NextResponse.json(body, { status });
+}
 
 const BodySchema = z.object({
   /** The SMS, exactly as it arrived. Parsing happens here, not in the Shortcut. */
@@ -90,19 +128,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   if (!userId) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    // No user to attribute it to, and that is precisely why it is recorded: a
+    // token that does not verify is the failure hardest to diagnose from the
+    // phone, because the Shortcut shows the same nothing either way.
+    return refuse(null, 401, { error: 'unauthorized' }, { authorization: 'invalid' }, 'unauthorized');
   }
+
+  const rawText = await request.text();
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(rawText);
   } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+    return refuse(userId, 400, { error: 'invalid_json' }, { raw: rawText }, 'invalid_json');
   }
 
   const parsedBody = BodySchema.safeParse(body);
   if (!parsedBody.success) {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    // The commonest real cause: the Shortcut's JSON field is named something
+    // other than `text`, or its value was left empty.
+    return refuse(userId, 400, { error: 'invalid_body' }, body, 'invalid_body');
   }
 
   const { text } = parsedBody.data;
@@ -112,10 +157,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 200, not an error status. A declined purchase and an unreadable format
     // are both things the endpoint handled correctly, and the Shortcut must not
     // retry either of them - a non-2xx would make Apple send the same message
-    // again and again.
-    return NextResponse.json(
+    // again and again. It is still a failure worth keeping: 'unknown_bank' on
+    // a real message is a bank nobody has written a parser for yet, and
+    // 'unrecognized_format' is a template that changed under one that exists.
+    return refuse(
+      userId,
+      200,
       { stored: false, reason: result.reason, bank: result.bank },
-      { status: 200 },
+      { text, bank: result.bank },
+      result.reason,
     );
   }
 
@@ -126,7 +176,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // email this request does not have - it would write an empty one.
   const profile = await getProfile(userId);
   if (!profile) {
-    return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
+    return refuse(userId, 404, { error: 'profile_not_found' }, { text }, 'profile_not_found');
   }
 
   const { accountId } = await resolveAccount(userId, profile.baseCurrency);
@@ -146,13 +196,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     merchant: tx.merchant,
     merchantNormalized: tx.merchant.toLowerCase(),
     transactionDate: tx.transactionDate,
-    source: 'sms_shortcut',
+    source: SOURCE,
     idempotencyKey: parsedBody.data.idempotencyKey ?? idempotencyKeyFor(userId, text),
     categorizedBy: null,
   });
 
+  console.info(
+    '[quick-add] stored:', !isDuplicate,
+    'duplicate:', isDuplicate,
+    'bank:', tx.bank,
+    'type:', tx.type,
+  );
+
   revalidatePath('/dashboard');
   revalidatePath('/revisar');
+  revalidatePath('/captura');
+  revalidatePath('/perfil');
 
   return NextResponse.json(
     {
