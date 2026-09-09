@@ -75,7 +75,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       <FinancialActions />
 
       {/* 4. Stream of Recent Transactions */}
-      <PhoneLedger transactions={data.recentTransactions} />
+      <PhoneLedger transactions={data.recentTransactions} timeZone={profile.timezone} />
     </div>
   );
 }

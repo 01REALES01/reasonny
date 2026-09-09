@@ -8,6 +8,8 @@ import { formatDate, t } from '@/lib/i18n';
 
 interface PhoneLedgerProps {
   readonly transactions: EnrichedTransactionRow[];
+  /** The profile's zone. Dates are grouped in it, so they must be read in it. */
+  readonly timeZone: string;
 }
 
 /**
@@ -17,7 +19,10 @@ interface PhoneLedgerProps {
  * - Merchant name in bold, relative time subline.
  * - Tabular amounts on right (negative for expense, positive green for income).
  */
-export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElement {
+export function PhoneLedger({
+  transactions,
+  timeZone,
+}: PhoneLedgerProps): React.ReactElement {
   return (
     <section className="phone-ledger">
       {/* Header */}
@@ -44,7 +49,7 @@ export function PhoneLedger({ transactions }: PhoneLedgerProps): React.ReactElem
             // 'es', not 'en': the surrounding UI is Spanish, and an English
             // month abbreviation next to "Restaurantes y Café" is the kind of
             // detail that makes a product feel translated rather than built.
-            const timeFormatted = formatDate(tx.transactionDate, 'es', {
+            const timeFormatted = formatDate(tx.transactionDate, timeZone, 'es', {
               month: 'short',
               day: 'numeric',
             });

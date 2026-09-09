@@ -14,11 +14,14 @@ import { formatDate, t } from '@/lib/i18n';
 interface ReviewQueueProps {
   readonly transactions: EnrichedTransactionRow[];
   readonly categories: CategoryRow[];
+  /** The profile's zone. Dates are grouped in it, so they must be read in it. */
+  readonly timeZone: string;
 }
 
 export function ReviewQueue({
   transactions,
   categories,
+  timeZone,
 }: ReviewQueueProps): React.ReactElement {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +95,7 @@ export function ReviewQueue({
                 <div className="review-card-id">
                   <span className="review-card-merchant">{tx.merchant}</span>
                   <span className="review-card-date">
-                    {formatDate(tx.transactionDate, 'es', {
+                    {formatDate(tx.transactionDate, timeZone, 'es', {
                       day: 'numeric',
                       month: 'short',
                     })}

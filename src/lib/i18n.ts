@@ -331,20 +331,35 @@ export function t(key: TranslationKey, locale: Locale = DEFAULT_LOCALE): string 
   return (DICTIONARY[locale] ?? DICTIONARY[DEFAULT_LOCALE])[key];
 }
 
+/**
+ * WHY timeZone IS A SEPARATE, REQUIRED ARGUMENT
+ * --------------------------------------------
+ * It used to be one optional field inside `options`, and every caller omitted
+ * it. Intl then falls back to the HOST's zone, which on a Server Component
+ * render is the server's - UTC on Vercel. So the totals grouped by the user's
+ * timezone in SQL (CLAUDE.md rule 4) while the rows beside them were labelled
+ * in UTC, and a spend on 31 August at 20:18 in Bogotá appeared as "1 sept"
+ * inside the August view. The same date, disagreeing with itself on one screen.
+ *
+ * Pulling it out of the bag makes it a type error to forget. Rule 4 says every
+ * aggregation carries the timezone; a date the user reads is the same promise,
+ * and an optional field is not a promise.
+ */
 export function formatDate(
   date: Date | string | number,
+  timeZone: string,
   locale: Locale = DEFAULT_LOCALE,
   options?: Intl.DateTimeFormatOptions,
 ): string {
   // new Date() accepts a Date as well as a string or a number, so no branch.
   const d = new Date(date);
   const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
-  return new Intl.DateTimeFormat(
-    localeTag,
-    options ?? {
+  return new Intl.DateTimeFormat(localeTag, {
+    ...(options ?? {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-    },
-  ).format(d);
+    }),
+    timeZone,
+  }).format(d);
 }

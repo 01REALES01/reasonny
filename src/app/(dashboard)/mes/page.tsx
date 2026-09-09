@@ -30,7 +30,7 @@ export default async function MonthPage(props: {
     await props.searchParams,
     toUserId(session.id),
   ];
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   // Number() on an absent or malformed param yields NaN, which would propagate
   // into the month arithmetic as an Invalid Date; 0 is the sane fallback.
@@ -104,7 +104,7 @@ export default async function MonthPage(props: {
           currency={data.baseCurrency}
         />
 
-        <PhoneLedger transactions={data.transactions} />
+        <PhoneLedger transactions={data.transactions} timeZone={profile.timezone} />
       </div>
     </main>
   );

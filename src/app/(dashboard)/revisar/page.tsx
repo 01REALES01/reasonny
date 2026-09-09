@@ -22,7 +22,7 @@ export default async function ReviewPage(): Promise<React.ReactElement> {
   }
 
   const userId = toUserId(session.id);
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   const [transactions, categories] = await Promise.all([
     listUncategorizedTransactions(userId),
@@ -31,7 +31,11 @@ export default async function ReviewPage(): Promise<React.ReactElement> {
 
   return (
     <main className="entry-page">
-      <ReviewQueue transactions={transactions} categories={categories} />
+      <ReviewQueue
+        transactions={transactions}
+        categories={categories}
+        timeZone={profile.timezone}
+      />
     </main>
   );
 }
