@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const TOTAL_MOBILE_FRAMES = 60;
 
@@ -20,14 +20,32 @@ const TOTAL_MOBILE_FRAMES = 60;
 export function CinematicVideoCanvas(): React.ReactElement {
   const desktopVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  /**
+   * Which layer is live. null until the browser has been asked, so the setup
+   * effect below does not run once against a guess and then again for real.
+   *
+   * It used to be a plain `const isMobile = window.innerWidth <= 768` read once
+   * inside the setup effect, which never re-ran. Rotating a phone past the
+   * breakpoint left the desktop <video> showing with nothing scrubbing it -
+   * frozen on its first frame for the rest of the visit.
+   */
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const query = window.matchMedia('(max-width: 768px)');
+    const apply = (): void => setIsMobile(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile === null) return;
     const track = document.getElementById('cinematic-track');
     const canvas = canvasRef.current;
     if (!track) return;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobile = window.innerWidth <= 768;
     const desktopVideo = desktopVideoRef.current;
 
     // ------------------------------------------------------------------
@@ -35,7 +53,6 @@ export function CinematicVideoCanvas(): React.ReactElement {
     // ------------------------------------------------------------------
     let mobileFrames: HTMLImageElement[] = [];
     let currentFrameIndex = 0;
-    let isMobileInitialized = false;
 
     function renderMobileFrame(index: number): void {
       if (!canvas) return;
@@ -44,10 +61,23 @@ export function CinematicVideoCanvas(): React.ReactElement {
 
       const img = mobileFrames[index];
       if (!img || !img.complete || img.naturalWidth === 0) {
-        // Fallback to frame 0 (poster) if requested frame hasn't loaded yet
-        const poster = mobileFrames[0];
-        if (poster && poster.complete && poster.naturalWidth > 0) {
-          drawCover(ctx, poster, canvas.width, canvas.height);
+        // Fallback to nearest loaded frame, never flashing back to frame 0
+        let found: HTMLImageElement | null = null;
+        for (let offset = 1; offset < TOTAL_MOBILE_FRAMES; offset++) {
+          const prev = mobileFrames[index - offset];
+          if (prev && prev.complete && prev.naturalWidth > 0) {
+            found = prev;
+            break;
+          }
+          const next = mobileFrames[index + offset];
+          if (next && next.complete && next.naturalWidth > 0) {
+            found = next;
+            break;
+          }
+        }
+        const fallback = found || mobileFrames[0];
+        if (fallback && fallback.complete && fallback.naturalWidth > 0) {
+          drawCover(ctx, fallback, canvas.width, canvas.height);
         }
         return;
       }
@@ -102,7 +132,6 @@ export function CinematicVideoCanvas(): React.ReactElement {
       const frame0 = new Image();
       frame0.src = '/frames/mobile/frame_001.jpg';
       frame0.onload = () => {
-        isMobileInitialized = true;
         resizeCanvas();
       };
       mobileFrames[0] = frame0;
@@ -112,6 +141,11 @@ export function CinematicVideoCanvas(): React.ReactElement {
         const frameImg = new Image();
         const frameNum = String(i + 1).padStart(3, '0');
         frameImg.src = `/frames/mobile/frame_${frameNum}.jpg`;
+        frameImg.onload = () => {
+          if (currentFrameIndex === i) {
+            renderMobileFrame(i);
+          }
+        };
         mobileFrames[i] = frameImg;
       }
 
@@ -197,7 +231,7 @@ export function CinematicVideoCanvas(): React.ReactElement {
       window.removeEventListener('resize', onResize);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [isMobile]);
 
   return (
     <div className="cinematic-video-canvas" aria-hidden="true">
