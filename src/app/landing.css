@@ -567,7 +567,19 @@
 
 @media (max-width: 768px) {
   .landing-hand-flank-row {
-    display: none;
+    display: flex;
+    top: 38%;
+    padding: 0 8px;
+  }
+
+  .landing-phone-spacer {
+    width: clamp(190px, 54vw, 240px);
+  }
+
+  .landing-word-giant {
+    font-size: clamp(1.8rem, 8vw, 2.8rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
   }
 }
 
@@ -584,7 +596,7 @@
 
 @media (max-width: 768px) {
   .landing-hero-bottom {
-    margin-bottom: clamp(64px, 9.5vh, 88px);
+    margin-bottom: clamp(58px, 8.5vh, 74px);
   }
 }
 
@@ -599,6 +611,14 @@
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
 }
 
+@media (max-width: 768px) {
+  .landing-word-center {
+    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+}
+
 .landing-word-subhead {
   font-size: clamp(0.85rem, 1.1vw, 1.0rem);
   line-height: 1.4;
@@ -608,6 +628,15 @@
   text-align: center;
   margin: 0 auto 14px;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+
+@media (max-width: 768px) {
+  .landing-word-subhead {
+    font-size: clamp(0.74rem, 2.7vw, 0.84rem);
+    line-height: 1.3;
+    max-width: 310px;
+    margin: 0 auto;
+  }
 }
 
 /* Gold CTA Button from the Real Money Palette */
@@ -629,6 +658,13 @@
   box-shadow: 0 8px 30px rgba(212, 179, 130, 0.4), 0 0 20px rgba(120, 29, 50, 0.5);
   transition: transform 200ms ease, opacity 200ms ease;
   cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  /* On mobile, the floating bottom dock already has 'Probar ahora ->', avoid duplicate button over phone */
+  .landing-gold-cta-btn {
+    display: none;
+  }
 }
 
 .landing-gold-cta-btn:hover {
