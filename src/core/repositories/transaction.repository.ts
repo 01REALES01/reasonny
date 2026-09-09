@@ -152,6 +152,33 @@ export async function hasAnyTransaction(userId: UserId): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Turns whatever the driver hands back for a timestamptz into a Date.
+ *
+ * `sql<Date>` is an ASSERTION, not a conversion: it tells TypeScript what to
+ * believe and does nothing at runtime. The neon-serverless driver returns a
+ * bare aggregate as text, so the value arrived as
+ * "2026-09-09 23:42:44.225699+00" while every caller had been promised a Date -
+ * and the first `.toISOString()` on it took the profile page down with a 500.
+ * It could only ever fail once a row existed, which is why it shipped: with no
+ * captured transaction, MAX returns null and the optional chain skips it.
+ *
+ * The string is normalised rather than handed straight to `new Date`: a space
+ * instead of the T and a two-digit offset make it non-ISO, and Date's handling
+ * of non-ISO input is implementation-defined. It parses today in V8. That is
+ * not the same as being specified to.
+ *
+ * Exported for its test.
+ */
+export function toDateOrNull(value: unknown): Date | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value;
+
+  const iso = String(value).replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+  const parsed = new Date(iso);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export interface AutomaticCaptureStatus {
   /** Transactions this user has received from the SMS automation, ever. */
   readonly count: number;
@@ -180,7 +207,9 @@ export async function getAutomaticCaptureStatus(
   const [row] = await db
     .select({
       count: sql<number>`COUNT(*)::int`,
-      lastAt: sql<Date | null>`MAX(${transactions.createdAt})`,
+      // mapWith, like every other aggregate in this file. Without it the
+      // declared type is a promise the runtime does not keep.
+      lastAt: sql<Date | null>`MAX(${transactions.createdAt})`.mapWith(toDateOrNull),
     })
     .from(transactions)
     .where(
