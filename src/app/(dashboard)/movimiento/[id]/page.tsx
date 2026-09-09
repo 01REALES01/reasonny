@@ -9,6 +9,9 @@ import { getCurrentUser } from '@/lib/session';
 
 import { EditTransactionForm } from './edit-transaction-form';
 
+/** Any version, because the column accepts any version the database generated. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // P8: Authenticated app is strictly noindex
 export const metadata: Metadata = {
   title: 'Movimiento — Reasonny',
@@ -24,8 +27,17 @@ export default async function TransactionDetailPage(props: {
   }
 
   const { id } = await props.params;
+
+  // The segment is whatever was typed in the address bar, and it goes into a
+  // WHERE against a uuid column. Postgres does not reject a malformed uuid with
+  // an empty result - it raises 22P02, which Next renders as a 500. A wrong id
+  // is a page that is not there, so it has to be answered before the query.
+  if (!UUID.test(id)) {
+    notFound();
+  }
+
   const userId = toUserId(session.id);
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   const [transaction, categories] = await Promise.all([
     getEnrichedTransaction(userId, id),
@@ -41,7 +53,11 @@ export default async function TransactionDetailPage(props: {
 
   return (
     <main className="entry-page">
-      <EditTransactionForm transaction={transaction} categories={categories} />
+      <EditTransactionForm
+        transaction={transaction}
+        categories={categories}
+        timeZone={profile.timezone}
+      />
     </main>
   );
 }
