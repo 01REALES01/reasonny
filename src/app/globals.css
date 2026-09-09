@@ -2731,6 +2731,45 @@ textarea:focus-visible {
   animation: ingestCheer 400ms var(--ease-overshoot) both;
 }
 
+/* Language switch for the wizard. Two pills rather than a menu: with two
+   options a menu is a tap for nothing, and the labels stay in their own
+   language so the pill is legible to someone who cannot read the other one. */
+.ingest-lang {
+  align-self: center;
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--app-panel-border);
+}
+
+.ingest-lang-pill {
+  min-height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ingest-lang-pill--on {
+  background: rgba(228, 204, 166, 0.14);
+  color: var(--landing-champagne-gold);
+}
+
+/* The same disc, drained of the celebration. The steps are done but nothing has
+   arrived yet, and a green tick there would be the app congratulating itself
+   for work it has not verified. */
+.ingest-trophy--waiting {
+  color: var(--ink-muted);
+  background: rgba(255, 255, 255, 0.06);
+  animation: none;
+}
+
 .ingest-restart {
   min-height: 44px;
   padding: 0 var(--space-4);

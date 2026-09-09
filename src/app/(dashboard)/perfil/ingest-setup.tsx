@@ -4,9 +4,48 @@ import React, { useEffect, useState } from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
 
+type Ui = 'es' | 'en';
+
 interface IngestSetupProps {
   readonly token: string;
   readonly endpoint: string;
+  /** Transactions the SMS automation has actually delivered, ever. */
+  readonly receivedCount: number;
+  /** ISO instant of the most recent arrival, or null if none. */
+  readonly lastReceivedAt: string | null;
+}
+
+/**
+ * "hace 4 minutos", from an instant.
+ *
+ * Intl.RelativeTimeFormat rather than a hand-rolled ladder of ifs, per the
+ * design rule that no date is assembled by concatenation - it gets the plural
+ * and the preposition right in both of the app's languages for free.
+ *
+ * Exported for its test. `now` is a parameter so the test does not have to
+ * fake the clock.
+ */
+export function formatSince(iso: string, now: Date, locale: Ui = 'es'): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+
+  const seconds = Math.round((then - now.getTime()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+
+  const units: readonly (readonly [Intl.RelativeTimeFormatUnit, number])[] = [
+    ['second', 60],
+    ['minute', 60],
+    ['hour', 24],
+    ['day', 30],
+    ['month', 12],
+  ];
+
+  let value = seconds;
+  for (const [unit, step] of units) {
+    if (Math.abs(value) < step) return rtf.format(value, unit);
+    value = Math.trunc(value / step);
+  }
+  return rtf.format(value, 'year');
 }
 
 interface Step {
@@ -22,10 +61,250 @@ interface Step {
 }
 
 const STORAGE_KEY = 'reasonny.ingest.progress';
+const LOCALE_KEY = 'reasonny.ingest.locale';
 const EXIT_MS = 200;
 
-function buildSteps(): Step[] {
+/**
+ * WHY THESE STRINGS ARE NOT IN THE TRANSLATION CATALOGUE
+ * -----------------------------------------------------
+ * The catalogue in lib/i18n.ts maps a key to a STRING, and these are not
+ * strings: every step body carries markup that is load-bearing - the field name
+ * the user has to find is bold, the literal they have to type is code. Flatten
+ * that to text and the instruction stops being followable, which for a wizard
+ * whose whole job is being followed is the wrong trade. They live here, beside
+ * the only screen that renders them, in both languages.
+ *
+ * Both languages matter more here than anywhere else in the app: this screen
+ * tells the user which buttons to tap in Apple's Shortcuts app, and those
+ * buttons are named in the PHONE's language, not the app's. Someone with an
+ * iPhone in English is hunting for "Automation" while being told to tap
+ * «Automatización». The toggle is what makes the instructions usable at all.
+ */
+interface ScreenCopy {
+  readonly badge: string;
+  readonly hook: React.ReactNode;
+  readonly lede: string;
+  readonly start: string;
+  readonly stepCount: (current: number, total: number) => string;
+  readonly copyIdle: string;
+  readonly copyDone: string;
+  readonly tokenWarning: string;
+  readonly backLabel: string;
+  readonly restart: string;
+  readonly liveHook: React.ReactNode;
+  readonly liveLede: (count: number, since: string | null) => string;
+  readonly waitingHook: React.ReactNode;
+  readonly waitingLede: React.ReactNode;
+  readonly languageLabel: string;
+}
+
+const COPY: Readonly<Record<Ui, ScreenCopy>> = {
+  es: {
+    badge: 'Guardado automático',
+    hook: (
+      <>
+        Que tus gastos se guarden <strong>solos</strong>.
+      </>
+    ),
+    lede: 'Cuando te llegue el SMS del banco, la transacción entra sola. Son 8 pasos cortos en tu iPhone y se hace una sola vez.',
+    start: 'Empezar',
+    stepCount: (current, total) => `${current} de ${total}`,
+    copyIdle: 'Copiar',
+    copyDone: 'Copiado',
+    tokenWarning:
+      'Esto escribe transacciones en tu cuenta. No lo pegues en un chat ni lo muestres en una captura.',
+    backLabel: 'Volver al paso anterior',
+    restart: 'Volver a ver los pasos',
+    liveHook: (
+      <>
+        Está <strong>funcionando</strong>.
+      </>
+    ),
+    liveLede: (count, since) =>
+      (count === 1
+        ? 'Ha entrado 1 pago solo, sin que hicieras nada.'
+        : `Han entrado ${count} pagos solos, sin que hicieras nada.`) +
+      (since ? ` El último, ${since}.` : ''),
+    waitingHook: (
+      <>
+        Falta <strong>la prueba</strong>.
+      </>
+    ),
+    waitingLede: (
+      <>
+        Los pasos están hechos, pero todavía no ha llegado ningún SMS. Haz una
+        compra o una transferencia pequeña y vuelve a esta pantalla: si la
+        automatización quedó bien, aquí va a decir que está funcionando.
+      </>
+    ),
+    languageLabel: 'Idioma de los pasos',
+  },
+  en: {
+    badge: 'Automatic capture',
+    hook: (
+      <>
+        Let your spending record <strong>itself</strong>.
+      </>
+    ),
+    lede: 'When your bank texts you, the transaction lands on its own. Eight short steps on your iPhone, once.',
+    start: 'Start',
+    stepCount: (current, total) => `${current} of ${total}`,
+    copyIdle: 'Copy',
+    copyDone: 'Copied',
+    tokenWarning:
+      'This writes transactions to your account. Do not paste it into a chat or show it in a screenshot.',
+    backLabel: 'Back to the previous step',
+    restart: 'See the steps again',
+    liveHook: (
+      <>
+        It is <strong>working</strong>.
+      </>
+    ),
+    liveLede: (count, since) =>
+      (count === 1
+        ? '1 payment has come in on its own, with nothing from you.'
+        : `${count} payments have come in on their own, with nothing from you.`) +
+      (since ? ` The last one ${since}.` : ''),
+    waitingHook: (
+      <>
+        Still <strong>unproven</strong>.
+      </>
+    ),
+    waitingLede: (
+      <>
+        The steps are done, but no text message has arrived yet. Make a small
+        purchase or transfer and come back to this screen: if the automation is
+        set up right, this will say it is working.
+      </>
+    ),
+    languageLabel: 'Language of the steps',
+  },
+};
+
+function buildSteps(locale: Ui): Step[] {
+  if (locale === 'en') {
+    return [
+      {
+        id: 'open',
+        eyebrow: 'Let us start',
+        title: 'Open the Shortcuts app',
+        body: (
+          <>
+            It comes with your iPhone. If you cannot see it, swipe down on the
+            home screen and type <strong>Shortcuts</strong>.
+          </>
+        ),
+        cta: 'It is open',
+        cheer: 'Off to a good start.',
+      },
+      {
+        id: 'automation',
+        eyebrow: 'Step 2',
+        title: 'Tap «Automation», at the bottom',
+        body: (
+          <>
+            It is the middle tab. Then tap the <strong>+</strong> at the top
+            right.
+          </>
+        ),
+        cta: 'Done',
+        cheer: 'That was the hidden part.',
+      },
+      {
+        id: 'trigger',
+        eyebrow: 'Step 3',
+        title: 'Find «Message» and choose it',
+        body: <>In the list of triggers. It is the one that fires on an SMS.</>,
+        cta: 'Chosen',
+        cheer: 'That is the heart of it.',
+      },
+      {
+        id: 'sender',
+        eyebrow: 'Step 4',
+        title: 'Use the sender, not the bank name',
+        body: (
+          <>
+            Banks do not text from a name: they send from a{' '}
+            <strong>five digit short code</strong>. Open Messages, go into your
+            bank&apos;s conversation and copy that number from the top. Paste it
+            into <em>Sender</em>.
+            <br />
+            <br />
+            If you also put the bank&apos;s name in <em>Message contains</em>,
+            the verification codes that same number sends never leave the phone.
+          </>
+        ),
+        cta: 'Sender set',
+        cheer: 'Now no message slips past.',
+      },
+      {
+        id: 'immediate',
+        eyebrow: 'Step 5',
+        title: 'Tick «Run immediately»',
+        body: (
+          <>
+            And if it lets you, turn off <strong>Notify when run</strong>. That
+            makes the capture invisible: no banner on every payment.
+          </>
+        ),
+        cta: 'Ticked',
+        cheer: 'That makes it invisible.',
+      },
+      {
+        id: 'action',
+        eyebrow: 'Step 6',
+        title: 'Add «Get contents of URL»',
+        body: <>Search for it in the actions and paste this address:</>,
+        copy: 'url',
+        cta: 'URL pasted',
+        cheer: 'Almost there. The technical bit is next.',
+      },
+      {
+        id: 'method',
+        eyebrow: 'Step 7',
+        title: 'Expand «Show more» and set POST',
+        body: (
+          <>
+            Change the method from <em>GET</em> to <strong>POST</strong>. It is
+            right under the URL.
+          </>
+        ),
+        cta: 'Changed',
+        cheer: 'The hard half is behind you.',
+      },
+      {
+        id: 'header',
+        eyebrow: 'Step 8',
+        title: 'Add the access header',
+        body: (
+          <>
+            Under <em>Headers</em>, field <code>Authorization</code>. As the
+            value, paste this exactly as it is, including the word «Bearer»:
+          </>
+        ),
+        copy: 'token',
+        cta: 'Header set',
+        cheer: 'That is your key. Nobody else gets in.',
+      },
+      {
+        id: 'body',
+        eyebrow: 'Last step',
+        title: 'Set up the request body',
+        body: (
+          <>
+            Under <em>Request Body</em> choose <strong>JSON</strong>. Add a{' '}
+            <strong>text</strong> field named <code>text</code> and, as its
+            value, pick the <strong>Message Content</strong> variable. Save.
+          </>
+        ),
+        cta: 'Saved',
+        cheer: '',
+      },
+    ];
+  }
+
   return [
+
     {
       id: 'open',
       eyebrow: 'Empecemos',
@@ -166,19 +445,46 @@ function buildSteps(): Step[] {
  *
  * The token is never on screen until the step that needs it.
  */
-export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactElement {
-  const steps = buildSteps();
+export function IngestSetup({
+  token,
+  endpoint,
+  receivedCount,
+  lastReceivedAt,
+}: IngestSetupProps): React.ReactElement {
+  /**
+   * Spanish until the browser says otherwise, then whatever the user picks.
+   *
+   * The default follows navigator.language rather than the app's locale on
+   * purpose: what these steps describe is the Shortcuts app, whose menus are
+   * labelled in the PHONE's language. Someone reading the app in Spanish on an
+   * English iPhone needs the English instructions, and that is the common case
+   * for a phone bought abroad.
+   */
+  const [ui, setUi] = useState<Ui>('es');
+  const steps = buildSteps(ui);
+  const copy = COPY[ui];
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const [exiting, setExiting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // Lets the confirmed state be dismissed to reach the steps behind it. It is
+  // not persisted: reopening the instructions is a one-off, and remembering the
+  // choice would hide the confirmation the next time the page is opened.
+  const [showSteps, setShowSteps] = useState(false);
 
   // Read after mount, never during render: the server has no localStorage, and
   // seeding state from it directly makes the first client render disagree with
   // the server's and React throws away the tree.
   useEffect(() => {
     try {
+      const savedLocale = window.localStorage.getItem(LOCALE_KEY);
+      if (savedLocale === 'en' || savedLocale === 'es') {
+        setUi(savedLocale);
+      } else if (navigator.language.toLowerCase().startsWith('en')) {
+        setUi('en');
+      }
+
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved !== null) {
         const parsed = Number(saved);
@@ -192,6 +498,15 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
     }
     setHydrated(true);
   }, [steps.length]);
+
+  function chooseUi(next: Ui): void {
+    setUi(next);
+    try {
+      window.localStorage.setItem(LOCALE_KEY, next);
+    } catch {
+      // Same as the progress: a convenience, not state the flow depends on.
+    }
+  }
 
   function persist(next: number): void {
     try {
@@ -231,6 +546,7 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
   function restart(): void {
     setIndex(0);
     setStarted(false);
+    setShowSteps(true);
     persist(0);
   }
 
@@ -251,44 +567,96 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
   const done = index >= steps.length;
   const progress = done ? 100 : Math.round((index / steps.length) * 100);
 
+  /**
+   * A pair of pills, not a <select>: two options do not need a menu, and this
+   * has to be readable by someone who cannot read the language it is currently
+   * showing - which is exactly the person who needs it.
+   */
+  const languageToggle = (
+    <div className="ingest-lang" role="group" aria-label={copy.languageLabel}>
+      {(['es', 'en'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => chooseUi(option)}
+          className={`ingest-lang-pill${option === ui ? ' ingest-lang-pill--on' : ''}`}
+          aria-pressed={option === ui}
+        >
+          {option === 'es' ? 'Español' : 'English'}
+        </button>
+      ))}
+    </div>
+  );
+
+  /**
+   * Proof beats progress.
+   *
+   * This comes before every other state on purpose, including the eight-step
+   * wizard. If transactions have arrived, the automation is running - whether
+   * or not this browser's localStorage remembers the taps that set it up, and
+   * whether or not it was this phone that did. A user who reinstalled, or who
+   * set it up months ago, should not be shown a pitch for something they
+   * already have.
+   */
+  if (receivedCount > 0 && !showSteps) {
+    return (
+      <section className="ingest ingest--done">
+        <span className="ingest-trophy" aria-hidden="true">
+          <CategoryIcon name="ShieldCheck" size={28} />
+        </span>
+        <h2 className="ingest-hook">{copy.liveHook}</h2>
+        <p className="ingest-lede">
+          {copy.liveLede(
+            receivedCount,
+            lastReceivedAt ? formatSince(lastReceivedAt, new Date(), ui) : null,
+          )}
+        </p>
+        <button type="button" onClick={restart} className="ingest-restart">
+          {copy.restart}
+        </button>
+      </section>
+    );
+  }
+
   if (!started && index === 0) {
     return (
       <section className="ingest">
         <span className="ingest-badge">
           <CategoryIcon name="Nfc" size={13} />
-          <span>Guardado automático</span>
+          <span>{copy.badge}</span>
         </span>
 
-        <h2 className="ingest-hook">
-          Que tus gastos se guarden <strong>solos</strong>.
-        </h2>
-        <p className="ingest-lede">
-          Cuando te llegue el SMS del banco, la transacción entra sola. Son 8
-          pasos cortos en tu iPhone y se hace una sola vez.
-        </p>
+        <h2 className="ingest-hook">{copy.hook}</h2>
+        <p className="ingest-lede">{copy.lede}</p>
+
+        {languageToggle}
 
         <button type="button" onClick={() => setStarted(true)} className="ingest-start">
-          <span>Empezar</span>
+          <span>{copy.start}</span>
           <CategoryIcon name="ArrowRight" size={16} />
         </button>
       </section>
     );
   }
 
+  /**
+   * Finishing the steps is not the same as it working, and this screen used to
+   * say "Quedó andando" on the strength of eight taps. It had no way of knowing:
+   * a mistyped token or the wrong sender number ends here too, and the user
+   * would only find out weeks later by noticing an empty ledger. Now the claim
+   * waits for the first real message, and the page says plainly that it is
+   * still waiting.
+   */
   if (done) {
     return (
       <section className="ingest ingest--done">
-        <span className="ingest-trophy" aria-hidden="true">
-          <CategoryIcon name="ShieldCheck" size={28} />
+        <span className="ingest-trophy ingest-trophy--waiting" aria-hidden="true">
+          <CategoryIcon name="Clock" size={28} />
         </span>
-        <h2 className="ingest-hook">Quedó andando.</h2>
-        <p className="ingest-lede">
-          Haz una compra o una transferencia pequeña. En cuanto llegue el SMS,
-          la vas a ver aparecer en <strong>Por revisar</strong> sin que hagas
-          nada.
-        </p>
+        <h2 className="ingest-hook">{copy.waitingHook}</h2>
+        <p className="ingest-lede">{copy.waitingLede}</p>
         <button type="button" onClick={restart} className="ingest-restart">
-          Volver a ver los pasos
+          {copy.restart}
         </button>
       </section>
     );
@@ -306,7 +674,7 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
             type="button"
             onClick={goBack}
             className="ingest-back"
-            aria-label="Volver al paso anterior"
+            aria-label={copy.backLabel}
           >
             <CategoryIcon name="ArrowLeft" size={15} />
           </button>
@@ -314,9 +682,7 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
           <span className="ingest-back ingest-back--placeholder" aria-hidden="true" />
         )}
 
-        <span className="ingest-count">
-          {index + 1} de {steps.length}
-        </span>
+        <span className="ingest-count">{copy.stepCount(index + 1, steps.length)}</span>
 
         {previousCheer && <span className="ingest-cheer">{previousCheer}</span>}
       </div>
@@ -349,22 +715,24 @@ export function IngestSetup({ token, endpoint }: IngestSetupProps): React.ReactE
           >
             <code>{secret}</code>
             <span className="ingest-secret-action">
-              {copied ? 'Copiado' : 'Copiar'}
+              {copied ? copy.copyDone : copy.copyIdle}
             </span>
           </button>
         )}
 
         {step.copy === 'token' && (
-          <p className="ingest-warning">
-            Esto escribe transacciones en tu cuenta. No lo pegues en un chat ni
-            lo muestres en una captura.
-          </p>
+          <p className="ingest-warning">{copy.tokenWarning}</p>
         )}
 
         <button type="button" onClick={advance} className="ingest-start">
           <span>{step.cta}</span>
           <CategoryIcon name="ArrowRight" size={16} />
         </button>
+
+        {/* Also here, not only on the first screen: which language the phone
+            speaks is something the reader discovers at step two, when the menu
+            they were told to tap is named something else. */}
+        {languageToggle}
       </div>
     </section>
   );

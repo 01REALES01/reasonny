@@ -152,6 +152,48 @@ export async function hasAnyTransaction(userId: UserId): Promise<boolean> {
   return rows.length > 0;
 }
 
+export interface AutomaticCaptureStatus {
+  /** Transactions this user has received from the SMS automation, ever. */
+  readonly count: number;
+  /** When the most recent one ARRIVED, not when the bank says it happened. */
+  readonly lastAt: Date | null;
+}
+
+/**
+ * Whether the automatic capture pipe has ever actually delivered.
+ *
+ * The setup wizard used to declare itself finished on the strength of eight
+ * taps stored in localStorage, which proves the user read eight screens and
+ * nothing else. A mistyped token, the wrong sender number, or a shortcut left
+ * unsaved all end at the same congratulation. This is the only version of the
+ * question the server can answer: rows exist, or they do not.
+ *
+ * created_at rather than transaction_date, because the question is when the
+ * message reached us. A bank SMS can describe a purchase from yesterday, and
+ * dating the health of the pipe by the purchase would report an outage that is
+ * not happening - or hide one that is.
+ */
+export async function getAutomaticCaptureStatus(
+  userId: UserId,
+): Promise<AutomaticCaptureStatus> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      count: sql<number>`COUNT(*)::int`,
+      lastAt: sql<Date | null>`MAX(${transactions.createdAt})`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.source, 'sms_shortcut'),
+        isNull(transactions.deletedAt),
+      ),
+    );
+
+  return { count: row?.count ?? 0, lastAt: row?.lastAt ?? null };
+}
+
 export async function countUncategorizedTransactions(userId: UserId): Promise<number> {
   const db = getDb();
   const [row] = await db

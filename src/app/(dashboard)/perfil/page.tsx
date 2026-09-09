@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { ensureProfile } from '@/core/repositories/profile.repository';
+import { getAutomaticCaptureStatus } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
 import { mintIngestToken } from '@/lib/ingest-token';
 import { getCurrentUser } from '@/lib/session';
@@ -24,6 +25,10 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
   const userId = toUserId(session.id);
   const profile = await ensureProfile(userId, session.email);
 
+  // What the server has actually received, so the setup screen can stop taking
+  // the user's word for it.
+  const capture = await getAutomaticCaptureStatus(userId);
+
   // A missing secret must not take the whole profile page down with it - the
   // name form has nothing to do with ingestion.
   let ingest: { token: string; endpoint: string } | null = null;
@@ -44,7 +49,14 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
         baseCurrency={profile.baseCurrency}
         timezone={profile.timezone}
       />
-      {ingest && <IngestSetup token={ingest.token} endpoint={ingest.endpoint} />}
+      {ingest && (
+        <IngestSetup
+          token={ingest.token}
+          endpoint={ingest.endpoint}
+          receivedCount={capture.count}
+          lastReceivedAt={capture.lastAt?.toISOString() ?? null}
+        />
+      )}
     </main>
   );
 }
