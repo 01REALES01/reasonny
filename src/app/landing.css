@@ -848,6 +848,8 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
+  position: relative;
+  z-index: 20;
 }
 
 .landing-horizon-headline {
@@ -857,6 +859,7 @@
   line-height: 0.92;
   letter-spacing: -0.04em;
   color: var(--landing-warm-white);
+  text-shadow: 0 8px 40px rgba(0, 0, 0, 0.9);
   margin: 0 0 var(--space-6);
 }
 
@@ -868,17 +871,16 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 520px;
+  height: 380px;
   background: linear-gradient(
     to bottom,
-    rgba(14, 7, 12, 0) 0%,
-    rgba(21, 9, 18, 0.45) 30%,
-    rgba(92, 20, 36, 0.28) 65%,
-    rgba(8, 4, 11, 0.92) 88%,
+    rgba(8, 4, 11, 0) 0%,
+    rgba(14, 7, 12, 0.35) 40%,
+    rgba(8, 4, 11, 0.88) 80%,
     #08040b 100%
   );
   pointer-events: none;
-  z-index: 15;
+  z-index: 1;
 }
 
 /* ==========================================================================
@@ -3298,13 +3300,18 @@ h1.landing-word-center {
   background: rgba(10, 5, 9, 0.88);
 }
 
-/* 10 — chapter 02/03 no longer run JS; give them normal section padding
-   instead of the full-viewport height the scroll effects needed. */
+/* 10 — chapters 02, 03, 04 provide equal, balanced viewport pacing for cinematic video scrubbing */
 .landing-chapter--observe,
-.landing-chapter--understand {
-  min-height: auto;
-  padding-top: clamp(80px, 14vh, 160px);
-  padding-bottom: clamp(80px, 14vh, 160px);
+.landing-chapter--understand,
+.landing-chapter--trust {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  padding-top: clamp(80px, 12vh, 140px);
+  padding-bottom: clamp(80px, 12vh, 140px);
 }
 
 /* 11 — the reveal statement is plain wrapping text now (real spaces between

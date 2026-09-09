@@ -4,10 +4,10 @@ import React from 'react';
 export function LandingSectionTrust(): React.ReactElement {
   return (
     <section id="chapter-trust" className="landing-chapter landing-chapter--trust" aria-label="04 Trust">
-      <div className="landing-horizon-stage" style={{ alignItems: 'center', textAlign: 'center' }}>
+      <div className="landing-horizon-stage" style={{ alignItems: 'center', textAlign: 'center', position: 'relative', zIndex: 20 }}>
         <h2 className="landing-horizon-headline" style={{ textAlign: 'center' }}>
           Comprende exactamente<br />
-          <span style={{ color: 'var(--landing-champagne-gold)' }}>dónde estás.</span>
+          <span className="landing-thesis-gold-highlight" style={{ color: 'var(--landing-champagne-gold)' }}>dónde estás.</span>
         </h2>
 
         <p className="landing-word-subhead" style={{ margin: '0 auto 36px auto', maxWidth: '580px' }}>
@@ -20,8 +20,8 @@ export function LandingSectionTrust(): React.ReactElement {
         </Link>
       </div>
 
-      {/* Seamless Diffuse Transition Mist into the rest of the page */}
-      <div className="landing-diffuse-transition" aria-hidden="true" />
+      {/* Seamless Diffuse Transition Mist into the rest of the page (behind stage) */}
+      <div className="landing-diffuse-transition" aria-hidden="true" style={{ zIndex: 1 }} />
     </section>
   );
 }
