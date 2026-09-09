@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Asking for a code from someone who is already signed in is the single most
  * common way this app "logs you out": every call to action on the landing page
