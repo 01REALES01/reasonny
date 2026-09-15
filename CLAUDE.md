@@ -81,6 +81,30 @@ No adelantar bloques. No implementar fases futuras "de paso".
 - Mensajes de commit en **inglés**, formato convencional (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
 - Nunca commitear `.env`, claves, tokens ni capturas con datos financieros reales.
 
+### Cuentas — cuál usar en cada servicio
+
+Esta máquina tiene sesiones de trabajo iniciadas junto a las personales, y **cada CLI usa por defecto la que no es**. Comprobar la cuenta antes de actuar: un push, un deploy o un branch hechos con la cuenta equivocada no dan un error claro, fallan en silencio o crean recursos donde nadie los busca.
+
+| Servicio | Cuenta de Reasonny | Por defecto en la máquina | Cómo usar la correcta |
+| :--- | :--- | :--- | :--- |
+| GitHub | `01REALES01`, dueña de `01REALES01/reasonny` | `jeanignia` | `gh auth switch --user 01REALES01` |
+| Vercel | `realesasuncion-2650` (realesasuncion@gmail.com), equipo `reales`, proyecto `reasonny` | ya es la correcta | comprobar con `vercel whoami` |
+| Neon | perfil `personal` (realesjean12@gmail.com), proyecto `damp-dream-60270311` (`realmoney`) | `DEFAULT`, la cuenta de trabajo | añadir `--profile personal --project-id damp-dream-60270311` a cada comando |
+
+Cómo falla cada una cuando es la equivocada, para reconocerlo:
+
+- **GitHub** responde `Repository not found`, no un error de permisos: el repo es privado y para la otra cuenta no existe.
+- **Neon** lista los proyectos de la organización de trabajo y `realmoney` no aparece. Un branch creado ahí nace vacío y sin relación con la app.
+- **Vercel** despliega bien, pero el dominio no se mueve solo. Después de cada `vercel --prod` hay que reasignarlo a mano:
+
+```bash
+vercel alias set <url-del-deploy> reasonny.vercel.app
+```
+
+Ese dominio no es cosmético: `NEXT_PUBLIC_APP_URL` no está definida en producción, así que es la dirección que el asistente de `/captura` le dicta al Atajo. Si queda apuntando a un deploy viejo, los SMS llegan a código viejo.
+
+**Producción en Neon es el endpoint `ep-muddy-dew-awae3i6m`**, rama `main`. Para migrar contra un branch de prueba se exporta `DATABASE_URL_UNPOOLED` en la shell con la cadena del branch: `process.loadEnvFile` no pisa variables ya definidas, así que la shell gana sobre `.env.local`. Comprobar el host resuelto antes de ejecutar, nunca asumirlo.
+
 ### Una rama por cambio — sin excepciones
 
 Nunca se commitea directo a `main`. **Cada cambio o feature nueva vive en su propia rama**, nombrada de forma descriptiva por lo que hace (sin abreviaturas crípticas ni números de bloque como `b3`, `b4`; el nombre debe ser legible y autoexplicativo):
