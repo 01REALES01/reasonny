@@ -282,6 +282,23 @@ export const categorizationRules = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: 'cascade' }),
     merchantPattern: varchar('merchant_pattern', { length: 255 }).notNull(),
+    /**
+     * Which direction of money this rule is for, mirroring categories.type.
+     *
+     * WHY IT IS DENORMALISED HERE INSTEAD OF JOINED
+     * ---------------------------------------------
+     * The unique constraint below is the whole argument. A Postgres unique
+     * index cannot reference another table, so without this column the only
+     * possible key is (user_id, merchant_pattern) - and then teaching a
+     * merchant as income would overwrite the expense rule for the same name.
+     * That is not hypothetical here: the Bancolombia parser writes the
+     * counterparty's name for both directions of a transfer, so one string
+     * legitimately needs one rule each way.
+     *
+     * It cannot drift: updateCategory never writes `type`, so a category's
+     * direction is immutable once created.
+     */
+    type: varchar({ length: 10 }).notNull(),
     // When true the pattern is user-supplied regex, and it is executed ONLY
     // through node-re2. The native engine backtracks and a crafted pattern
     // blocks the event loop.
@@ -292,8 +309,24 @@ export const categorizationRules = pgTable(
     hitCount: integer('hit_count').notNull().default(0),
     createdAt: createdAt(),
   },
-  // The engine reads this on EVERY ingestion, ordered by priority.
-  (t) => [index('idx_rules_user').on(t.userId, t.priority.desc())],
+  (t) => [
+    // The engine reads this on EVERY ingestion, ordered by priority.
+    index('idx_rules_user').on(t.userId, t.priority.desc()),
+
+    /**
+     * The upsert target, and the index the lookup rides on.
+     *
+     * Learning is an INSERT ... ON CONFLICT DO UPDATE, never a SELECT followed
+     * by an INSERT (rule 6): two taps on the same merchant at once must
+     * collide on a constraint, not both insert. That needs this to exist.
+     *
+     * It doubles as the seek for the ingestion path, which is an equality on
+     * exactly these three columns, so the engine never joins and never scans.
+     */
+    unique('uq_rules_merchant').on(t.userId, t.merchantPattern, t.type),
+
+    check('categorization_rules_type_check', sql`${t.type} IN ('expense','income')`),
+  ],
 );
 
 // 8. Achievements ────────────────────────────────────────────────────────────
