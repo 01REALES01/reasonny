@@ -3,26 +3,19 @@ import React from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
-import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
+import type { DayGroup } from '@/core/services/analytics.service';
 import { formatDate, t } from '@/lib/i18n';
 
 interface PhoneLedgerProps {
-  readonly transactions: EnrichedTransactionRow[];
-  /** The profile's zone. Dates are grouped in it, so they must be read in it. */
-  readonly timeZone: string;
+  readonly days: DayGroup[];
+  readonly currency: string;
 }
 
 /**
- * Obsidian Ledger matching Reference Photo 1:
- * - "Recent Transactions" title in warm champagne gold + "View All" on right.
- * - Circular icon tiles (44px) for each merchant.
- * - Merchant name in bold, relative time subline.
- * - Tabular amounts on right (negative for expense, positive green for income).
+ * Transactions under one header per day, the way a fixtures list reads:
+ * the date first, then what happened on it, with the day's spending beside it.
  */
-export function PhoneLedger({
-  transactions,
-  timeZone,
-}: PhoneLedgerProps): React.ReactElement {
+export function PhoneLedger({ days, currency }: PhoneLedgerProps): React.ReactElement {
   return (
     <section className="phone-ledger">
       {/* Header */}
@@ -33,8 +26,7 @@ export function PhoneLedger({
         </Link>
       </div>
 
-      {/* Transaction List */}
-      {transactions.length === 0 ? (
+      {days.length === 0 ? (
         <div className="phone-ledger-empty">
           <p>{t('dashboard_empty')}</p>
           <Link href="/nuevo" className="phone-ledger-empty-cta">
@@ -43,58 +35,77 @@ export function PhoneLedger({
         </div>
       ) : (
         <div className="phone-ledger-list">
-          {transactions.map((tx) => {
-            const isIncome = tx.type === 'income';
-            const categoryName = tx.category?.name ?? t('uncategorized');
-            // 'es', not 'en': the surrounding UI is Spanish, and an English
-            // month abbreviation next to "Restaurantes y Café" is the kind of
-            // detail that makes a product feel translated rather than built.
-            const timeFormatted = formatDate(tx.transactionDate, timeZone, 'es', {
-              month: 'short',
-              day: 'numeric',
-            });
-
-            // The row is a link now: a spend recorded with the wrong category
-            // or a typo in the merchant used to be permanent, because there was
-            // nowhere to open it from.
-            return (
-              <Link key={tx.id} href={`/movimiento/${tx.id}`} className="phone-tx-row">
-                <div className="phone-tx-lead">
-                  <div
-                    className="phone-tx-icon"
-                    style={
-                      (tx.category?.color
-                        ? { '--tx-icon-ink': tx.category.color }
-                        : {}) as React.CSSProperties
-                    }
-                  >
-                    <CategoryIcon
-                      name={isIncome ? 'TrendingUp' : tx.category?.icon}
-                      size={18}
-                    />
-                  </div>
-
-                  <div className="phone-tx-info">
-                    <span className="phone-tx-merchant">{tx.merchant}</span>
-                    <span className="phone-tx-meta">
-                      {categoryName} · {timeFormatted}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={`phone-tx-amount${
-                    isIncome ? ' phone-tx-amount--income' : ''
-                  }`}
-                >
-                  <span>
-                    {isIncome ? '+' : '-'}
-                    <Money amountMinor={tx.amountMinor} currency={tx.currency} />
+          {days.map((group) => (
+            <section key={group.day} className="ledger-day">
+              <header className="ledger-day-header">
+                <h3 className="ledger-day-label">
+                  {group.relative === 'today'
+                    ? t('day_today')
+                    : group.relative === 'yesterday'
+                      ? t('day_yesterday')
+                      : // The key is already the local day, so it is read back
+                        // at midday UTC: no zone can move it across midnight.
+                        // 'es' for the same reason the rows used it - the
+                        // surrounding UI is Spanish.
+                        formatDate(`${group.day}T12:00:00Z`, 'UTC', 'es', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                </h3>
+                {group.totalExpenseMinor > 0n && (
+                  <span className="ledger-day-total">
+                    -<Money amountMinor={group.totalExpenseMinor} currency={currency} />
                   </span>
-                </div>
-              </Link>
-            );
-          })}
+                )}
+              </header>
+
+              {group.transactions.map((tx) => {
+                const isIncome = tx.type === 'income';
+
+                // The row is a link: a spend recorded with the wrong category
+                // or a typo in the merchant used to be permanent, because
+                // there was nowhere to open it from.
+                return (
+                  <Link key={tx.id} href={`/movimiento/${tx.id}`} className="phone-tx-row">
+                    <div className="phone-tx-lead">
+                      <div
+                        className="phone-tx-icon"
+                        style={
+                          (tx.category?.color
+                            ? { '--tx-icon-ink': tx.category.color }
+                            : {}) as React.CSSProperties
+                        }
+                      >
+                        <CategoryIcon
+                          name={isIncome ? 'TrendingUp' : tx.category?.icon}
+                          size={18}
+                        />
+                      </div>
+
+                      <div className="phone-tx-info">
+                        <span className="phone-tx-merchant">{tx.merchant}</span>
+                        <span className="phone-tx-meta">
+                          {tx.category?.name ?? t('uncategorized')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`phone-tx-amount${
+                        isIncome ? ' phone-tx-amount--income' : ''
+                      }`}
+                    >
+                      <span>
+                        {isIncome ? '+' : '-'}
+                        <Money amountMinor={tx.amountMinor} currency={tx.currency} />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </section>
+          ))}
         </div>
       )}
     </section>

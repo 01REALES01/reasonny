@@ -15,6 +15,7 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   getRecentEnrichedTransactions: vi.fn(),
   getEnrichedTransactionsInMonth: vi.fn(),
   countUncategorizedTransactions: vi.fn(),
+  getDailyExpenseTotals: vi.fn(),
 }));
 
 import {
@@ -28,6 +29,8 @@ import {
   getRecentEnrichedTransactions,
   getEnrichedTransactionsInMonth,
   countUncategorizedTransactions,
+  getDailyExpenseTotals,
+  type EnrichedTransactionRow,
 } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
 
@@ -35,7 +38,25 @@ import {
   getDashboardData,
   getMonthDateBounds,
   getMonthViewData,
+  getWeekDayKeys,
+  groupByDay,
 } from './analytics.service';
+
+function row(id: string, isoDate: string): EnrichedTransactionRow {
+  return {
+    id,
+    amountMinor: 4500000n,
+    currency: 'COP',
+    type: 'expense',
+    status: 'confirmed',
+    merchant: 'Éxito',
+    note: null,
+    transactionDate: new Date(isoDate),
+    categorizedBy: null,
+    category: null,
+    account: null,
+  };
+}
 
 describe('Analytics Service & Timezone Boundaries', () => {
   const userId = toUserId('11111111-1111-4111-8111-111111111111');
@@ -79,6 +100,7 @@ describe('Analytics Service & Timezone Boundaries', () => {
       });
       (getCategorySpendingBreakdown as any).mockResolvedValue([]);
       (getEnrichedTransactionsInMonth as any).mockResolvedValue([]);
+      (getDailyExpenseTotals as any).mockResolvedValue([]);
     }
 
     /**
@@ -209,6 +231,13 @@ describe('Analytics Service & Timezone Boundaries', () => {
 
       (countUncategorizedTransactions as any).mockResolvedValue(0);
 
+      (getDailyExpenseTotals as any).mockResolvedValue([
+        { day: '2026-08-20', totalExpenseMinor: 9000000n },
+        { day: '2026-08-25', totalExpenseMinor: 2000000n },
+        { day: '2026-08-27', totalExpenseMinor: 1000000n },
+      ]);
+
+      // Thursday 27 August in Bogotá: the week runs Monday 24 to Sunday 30.
       const data = await getDashboardData(userId, new Date('2026-08-27T12:00:00Z'));
 
       expect(data.baseCurrency).toBe('COP');
@@ -216,8 +245,61 @@ describe('Analytics Service & Timezone Boundaries', () => {
       expect(data.totalBalanceMinor).toBe(200000000n);
       expect(data.monthlyTotals.totalExpenseMinor).toBe(45000000n);
       expect(data.categoryBreakdown).toHaveLength(1);
-      expect(data.recentTransactions).toHaveLength(1);
       expect(data.uncategorizedCount).toBe(0);
+
+      // The oldest listed row is older than the week, so the totals reach it.
+      expect(getDailyExpenseTotals).toHaveBeenCalledWith(
+        userId,
+        'America/Bogota',
+        '2026-08-20 00:00:00',
+      );
+      expect(data.recentDays).toHaveLength(1);
+      // The day's SQL total, not the one row the list happened to fetch.
+      expect(data.recentDays[0]?.totalExpenseMinor).toBe(9000000n);
+
+      expect(data.week.today).toBe('2026-08-27');
+      expect(data.week.days.map((d) => d.day)).toEqual([
+        '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27',
+        '2026-08-28', '2026-08-29', '2026-08-30',
+      ]);
+      expect(data.week.todayExpenseMinor).toBe(1000000n);
+      expect(data.week.weekExpenseMinor).toBe(3000000n);
+    });
+  });
+
+  describe('Days and weeks', () => {
+    it('starts the week on Monday, including from a Sunday', () => {
+      expect(getWeekDayKeys('2026-08-30')[0]).toBe('2026-08-24');
+      expect(getWeekDayKeys('2026-08-24')[0]).toBe('2026-08-24');
+    });
+
+    it('crosses a month boundary', () => {
+      expect(getWeekDayKeys('2026-09-01')).toEqual([
+        '2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03',
+        '2026-09-04', '2026-09-05', '2026-09-06',
+      ]);
+    });
+
+    /** 02:00 UTC on 1 September is 21:00 on 31 August in Bogotá. */
+    it('groups by the local day and labels today and yesterday', () => {
+      const groups = groupByDay(
+        [
+          row('a', '2026-09-01T15:00:00Z'),
+          row('b', '2026-09-01T02:00:00Z'),
+          row('c', '2026-08-29T15:00:00Z'),
+        ],
+        'America/Bogota',
+        '2026-09-01',
+        [{ day: '2026-08-31', totalExpenseMinor: 4500000n }],
+      );
+
+      expect(groups.map((g) => [g.day, g.relative, g.transactions.length])).toEqual([
+        ['2026-09-01', 'today', 1],
+        ['2026-08-31', 'yesterday', 1],
+        ['2026-08-29', null, 1],
+      ]);
+      expect(groups[1]?.totalExpenseMinor).toBe(4500000n);
+      expect(groups[0]?.totalExpenseMinor).toBe(0n);
     });
   });
 });

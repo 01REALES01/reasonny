@@ -298,6 +298,63 @@ export async function getMonthlyTotals(
   };
 }
 
+export interface DailyExpenseTotal {
+  /** Calendar day in the profile's zone, 'YYYY-MM-DD'. */
+  readonly day: string;
+  readonly totalExpenseMinor: bigint;
+}
+
+/**
+ * Confirmed spending per local calendar day, from `startLocalIso` on.
+ *
+ * The day is cut in SQL, in the user's zone (CLAUDE.md rule 4): a spend at
+ * 21:00 in Bogotá is already the next day in UTC.
+ *
+ * With no end bound the query also covers future-dated rows, which the
+ * dashboard lists too - so every day header it draws has a total behind it.
+ *
+ * GROUP BY 1 rather than repeating the expression: Drizzle binds the timezone
+ * as a fresh parameter each time it appears, and Postgres does not treat
+ * `AT TIME ZONE $1` and `AT TIME ZONE $6` as the same grouping expression.
+ *
+ * Like getMonthlyTotals, this adds amount_minor across currencies and the
+ * caller renders it in the base one. Correct while every row is in the base
+ * currency, which is all Fase 1 has; the day and the month have to be fixed
+ * together, or the headers would stop summing to the total above them.
+ */
+export async function getDailyExpenseTotals(
+  userId: UserId,
+  timezone: string,
+  startLocalIso: string,
+  endLocalIso?: string,
+): Promise<DailyExpenseTotal[]> {
+  const db = getDb();
+
+  const localDate = sql`(${transactions.transactionDate} AT TIME ZONE ${timezone})`;
+
+  const rows = await db
+    .select({
+      day: sql<string>`to_char(${localDate}, 'YYYY-MM-DD')`,
+      total: sql<bigint>`COALESCE(SUM(${transactions.amountMinor}), 0)`.mapWith((val) =>
+        typeof val === 'bigint' ? val : BigInt(val ?? 0),
+      ),
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        isNull(transactions.deletedAt),
+        eq(transactions.status, 'confirmed'),
+        eq(transactions.type, 'expense'),
+        sql`${localDate} >= ${startLocalIso}::timestamp`,
+        endLocalIso ? sql`${localDate} < ${endLocalIso}::timestamp` : undefined,
+      ),
+    )
+    .groupBy(sql`1`);
+
+  return rows.map((r) => ({ day: r.day, totalExpenseMinor: r.total }));
+}
+
 export interface CategorySpendingBreakdown {
   readonly categoryId: string | null;
   /**

@@ -13,14 +13,35 @@ import { getProfile } from '@/core/repositories/profile.repository';
 import {
   countUncategorizedTransactions,
   getCategorySpendingBreakdown,
+  getDailyExpenseTotals,
   getEnrichedTransactionsInMonth,
   getMonthlyTotals,
   getRecentEnrichedTransactions,
   type CategorySpendingBreakdown,
+  type DailyExpenseTotal,
   type EnrichedTransactionRow,
   type MonthlyTotals,
 } from '@/core/repositories/transaction.repository';
 import { toAccountId, type UserId } from '@/core/types';
+
+/** Transactions of one local calendar day, newest first, under its header. */
+export interface DayGroup {
+  /** 'YYYY-MM-DD' in the profile's zone. */
+  readonly day: string;
+  readonly relative: 'today' | 'yesterday' | null;
+  /** The whole day's confirmed spending, from SQL - not just the rows listed. */
+  readonly totalExpenseMinor: bigint;
+  readonly transactions: EnrichedTransactionRow[];
+}
+
+export interface WeekSpending {
+  /** 'YYYY-MM-DD' in the profile's zone. */
+  readonly today: string;
+  /** Monday to Sunday of the current local week, always seven entries. */
+  readonly days: DailyExpenseTotal[];
+  readonly todayExpenseMinor: bigint;
+  readonly weekExpenseMinor: bigint;
+}
 
 export interface DashboardData {
   readonly baseCurrency: string;
@@ -28,7 +49,8 @@ export interface DashboardData {
   readonly totalBalanceMinor: bigint;
   readonly monthlyTotals: MonthlyTotals;
   readonly categoryBreakdown: CategorySpendingBreakdown[];
-  readonly recentTransactions: EnrichedTransactionRow[];
+  readonly recentDays: DayGroup[];
+  readonly week: WeekSpending;
   readonly uncategorizedCount: number;
   readonly currentMonthLabel: string;
 }
@@ -86,12 +108,87 @@ export function getMonthDateBounds(
   };
 }
 
+const isoDate = (year: number, monthIndex: number, day: number): string =>
+  new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10);
+
+/**
+ * Returns a reader for the local 'YYYY-MM-DD' a Date falls on.
+ *
+ * A reader rather than a plain function so a list of 200 rows builds one
+ * Intl.DateTimeFormat, not 200.
+ */
+export function dayKeyReader(timezone: string): (date: Date) => string {
+  const format = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  });
+
+  return (date) => {
+    const parts = format.formatToParts(date);
+    const get = (type: Intl.DateTimeFormatPartTypes): number =>
+      Number(parts.find((p) => p.type === type)!.value);
+    return isoDate(get('year'), get('month') - 1, get('day'));
+  };
+}
+
+/**
+ * Moves a day key by whole days. The key is already local, so this is plain
+ * calendar arithmetic in UTC: no zone or DST change can shift it.
+ */
+function shiftDayKey(day: string, days: number): string {
+  const [year, month, date] = day.split('-').map(Number);
+  return isoDate(year!, month! - 1, date! + days);
+}
+
+/** Monday to Sunday of the week containing `today` - Monday, as the Colombian calendar has it. */
+export function getWeekDayKeys(today: string): string[] {
+  const mondayOffset = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+  return Array.from({ length: 7 }, (_, i) => shiftDayKey(today, i - mondayOffset));
+}
+
+/**
+ * Splits rows ordered newest first into one group per local day.
+ *
+ * The day comes from the profile's zone, like the totals beside it: grouped in
+ * UTC, a 21:00 spend in Bogotá would sit under tomorrow's header.
+ */
+export function groupByDay(
+  rows: readonly EnrichedTransactionRow[],
+  timezone: string,
+  today: string,
+  dailyTotals: readonly DailyExpenseTotal[],
+): DayGroup[] {
+  const readDay = dayKeyReader(timezone);
+  const yesterday = shiftDayKey(today, -1);
+  const totals = new Map(dailyTotals.map((d) => [d.day, d.totalExpenseMinor]));
+  const groups: DayGroup[] = [];
+
+  for (const tx of rows) {
+    const day = readDay(tx.transactionDate);
+    const current = groups.at(-1);
+    if (current?.day === day) {
+      current.transactions.push(tx);
+      continue;
+    }
+    groups.push({
+      day,
+      relative: day === today ? 'today' : day === yesterday ? 'yesterday' : null,
+      totalExpenseMinor: totals.get(day) ?? 0n,
+      transactions: [tx],
+    });
+  }
+
+  return groups;
+}
+
 export interface MonthViewData {
   readonly baseCurrency: string;
   readonly timezone: string;
   readonly monthlyTotals: MonthlyTotals;
   readonly categoryBreakdown: CategorySpendingBreakdown[];
-  readonly transactions: EnrichedTransactionRow[];
+  readonly days: DayGroup[];
   readonly monthLabel: string;
   /** 0 is the current month, -1 the previous one. Never positive. */
   readonly offset: number;
@@ -142,7 +239,7 @@ export async function getMonthViewData(
   const target = shiftMonths(referenceDate, timezone, safeOffset);
   const bounds = getMonthDateBounds(target, timezone);
 
-  const [monthlyTotals, categoryBreakdown, transactions] = await Promise.all([
+  const [monthlyTotals, categoryBreakdown, transactions, dailyTotals] = await Promise.all([
     getMonthlyTotals(
       userId,
       timezone,
@@ -161,6 +258,12 @@ export async function getMonthViewData(
       bounds.startOfMonthIso,
       bounds.startOfNextMonthIso,
     ),
+    getDailyExpenseTotals(
+      userId,
+      timezone,
+      bounds.startOfMonthIso,
+      bounds.startOfNextMonthIso,
+    ),
   ]);
 
   const capitalizedMonth =
@@ -171,7 +274,7 @@ export async function getMonthViewData(
     timezone,
     monthlyTotals,
     categoryBreakdown,
-    transactions,
+    days: groupByDay(transactions, timezone, dayKeyReader(timezone)(referenceDate), dailyTotals),
     monthLabel: `${capitalizedMonth} ${bounds.year}`,
     offset: safeOffset,
     isCurrentMonth: safeOffset === 0,
@@ -190,6 +293,9 @@ export async function getDashboardData(
   const baseCurrency = profile?.baseCurrency ?? 'COP';
 
   const bounds = getMonthDateBounds(referenceDate, timezone);
+  const readDay = dayKeyReader(timezone);
+  const today = readDay(referenceDate);
+  const weekDays = getWeekDayKeys(today);
 
   const [
     accounts,
@@ -215,17 +321,30 @@ export async function getDashboardData(
     countUncategorizedTransactions(userId),
   ]);
 
+  // The daily totals ride in the second round trip the balances already need,
+  // so they cost no extra latency. They wait for the list because the range
+  // has to reach its oldest day: summing only the 20 rows fetched would print
+  // a wrong total under the last header whenever that day had more.
+  const oldestListed = recentTransactions.at(-1);
+  const oldestDay = oldestListed ? readDay(oldestListed.transactionDate) : today;
+  const since = oldestDay < weekDays[0]! ? oldestDay : weekDays[0]!;
+
   // toAccountId, not `as any`. The cast defeated the branded type at exactly
   // the boundary it exists to guard: `as any` would have let a userId, a
   // categoryId or a malformed string through to a balance query without a
   // word from the compiler. The constructor validates the uuid instead.
-  const balances = await Promise.all(
-    accounts.map((acc) => getAccountBalance(userId, toAccountId(acc.id))),
-  );
+  const [balances, dailyTotals] = await Promise.all([
+    Promise.all(accounts.map((acc) => getAccountBalance(userId, toAccountId(acc.id)))),
+    getDailyExpenseTotals(userId, timezone, `${since} 00:00:00`),
+  ]);
   const totalBalanceMinor = balances.reduce(
     (total, balance) => total + (balance?.balanceMinor ?? 0n),
     0n,
   );
+
+  const totalFor = (day: string): bigint =>
+    dailyTotals.find((d) => d.day === day)?.totalExpenseMinor ?? 0n;
+  const weekTotals = weekDays.map((day) => ({ day, totalExpenseMinor: totalFor(day) }));
 
   const capitalizedMonth =
     bounds.monthName.charAt(0).toUpperCase() + bounds.monthName.slice(1);
@@ -236,7 +355,13 @@ export async function getDashboardData(
     totalBalanceMinor,
     monthlyTotals,
     categoryBreakdown,
-    recentTransactions,
+    recentDays: groupByDay(recentTransactions, timezone, today, dailyTotals),
+    week: {
+      today,
+      days: weekTotals,
+      todayExpenseMinor: totalFor(today),
+      weekExpenseMinor: weekTotals.reduce((total, d) => total + d.totalExpenseMinor, 0n),
+    },
     uncategorizedCount,
     currentMonthLabel: `${capitalizedMonth} ${bounds.year}`,
   };
