@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { Money } from './money';
 
 describe('Money Component & Formatting', () => {
-  it('renders standard COP amounts with thousands formatting', () => {
-    const el = Money({ amountMinor: 4500000n, currency: 'COP', locale: 'es' }) as React.ReactElement<{ className?: string }>;
-    expect(el).toBeDefined();
+  it('renders COP whole, without shrinking the thousands', () => {
+    const el = Money({ amountMinor: 4500000n, currency: 'COP', locale: 'es' }) as React.ReactElement<{ className?: string; children?: unknown }>;
     expect(el.props.className).toContain('money');
+    // A plain string child means no .money__fraction span split it.
+    expect(el.props.children).toMatch(/^\$\s45\.000$/);
   });
 
   it('renders USD amounts with cent fraction de-emphasis', () => {
