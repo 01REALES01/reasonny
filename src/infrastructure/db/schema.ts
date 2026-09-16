@@ -323,7 +323,11 @@ export const categorizationRules = pgTable(
      * It doubles as the seek for the ingestion path, which is an equality on
      * exactly these three columns, so the engine never joins and never scans.
      */
-    unique('uq_rules_merchant').on(t.userId, t.merchantPattern, t.type),
+    // is_regex belongs in the key, not hanging off it: `envio*` stored as a
+    // literal and `envio*` stored as a regex are two different rules. Without
+    // it the documented ON CONFLICT DO UPDATE would silently overwrite one
+    // with the other, turning a literal into a pattern behind the user's back.
+    unique('uq_rules_merchant').on(t.userId, t.merchantPattern, t.type, t.isRegex),
 
     check('categorization_rules_type_check', sql`${t.type} IN ('expense','income')`),
   ],

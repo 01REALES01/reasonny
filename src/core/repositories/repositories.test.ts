@@ -222,13 +222,23 @@ describe('Repository Layer Unit Tests', () => {
         amountMinor: 1200000n,
         currency: 'COP',
         type: 'expense',
-        merchant: 'Juan Valdez',
+        merchant: 'Café  Juan Valdez ',
         source: 'manual',
         transactionDate: new Date(),
       });
 
       expect(transaction.id).toBe(transactionId);
       expect(isDuplicate).toBe(false);
+
+      // The key is derived here, never passed in. Three callers used to compute
+      // it themselves and disagreed, so the same shop typed by a person and
+      // shouted by a bank SMS produced two keys and deduplication missed it.
+      expect(mockChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          merchant: 'Café  Juan Valdez ',
+          merchantNormalized: 'cafe juan valdez',
+        }),
+      );
     });
 
     it('countUncategorizedTransactions returns the count, not a row list', async () => {

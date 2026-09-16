@@ -6,6 +6,7 @@
  */
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
+import { normalizeMerchant } from '@/core/categorization';
 import type { AccountId, CategoryId, UserId } from '@/core/types';
 import { getDb } from '@/infrastructure/db/client';
 import { accounts, categories, transactions } from '@/infrastructure/db/schema';
@@ -40,7 +41,11 @@ export interface CreateTransactionInput {
   readonly type: TransactionType;
   readonly status?: TransactionStatus;
   readonly merchant: string;
-  readonly merchantNormalized?: string | null;
+  // No merchantNormalized here on purpose: it is derived from `merchant`, and a
+  // caller that could pass it could pass one that disagrees. Every write path
+  // did exactly that - three hand-rolled variants, none of them stripping
+  // accents - so "Café Juan Valdez" and "CAFE JUAN VALDEZ" became two keys and
+  // idx_tx_dedupe never saw the duplicate.
   readonly note?: string | null;
   readonly transactionDate: Date;
   readonly source: TransactionSource;
@@ -86,7 +91,9 @@ export async function createTransaction(
       type: input.type,
       status: input.status ?? 'confirmed',
       merchant: input.merchant,
-      merchantNormalized: input.merchantNormalized,
+      // '' means "no key" (see normalizeMerchant): as a rule pattern it would
+      // match every blank merchant at once, so it is stored as absent.
+      merchantNormalized: normalizeMerchant(input.merchant) || null,
       note: input.note,
       transactionDate: input.transactionDate,
       source: input.source,
@@ -620,7 +627,7 @@ export async function updateTransaction(
     // match on. Writing one without the other leaves the row claiming to be
     // one merchant and matching as another, and nothing would ever surface the
     // disagreement - createTransaction sets both, so only edits drifted.
-    patch.merchantNormalized = input.merchant.toLowerCase();
+    patch.merchantNormalized = normalizeMerchant(input.merchant) || null;
   }
   if (input.amountMinor !== undefined) patch.amountMinor = input.amountMinor;
   if (input.note !== undefined) patch.note = input.note;
