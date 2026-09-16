@@ -188,7 +188,7 @@ Las dos referencias coinciden en esto y es lo más distintivo que tienen. **Todo
 }
 ```
 
-**Caso COP.** El peso colombiano no usa centavos en la práctica. Para COP, la "fracción" de-enfatizada son **los tres últimos dígitos** (los miles), que es donde cae la lectura rápida: `$1.847` **`,300`**. El componente decide según el locale; nunca se hardcodea.
+**Caso COP.** El peso colombiano no usa centavos en la práctica, así que **no hay fracción que de-enfatizar: el importe se muestra entero** (`$1.847.300`). Antes se achicaban los tres últimos dígitos, y `$45.000` se leía como `$45` — en COP los miles *son* el importe (cambiado el 15-sep-2026).
 
 Aplica en: saldo héroe, total del mes, importes de fila de transacción, tarjetas de presupuesto.
 No aplica en: ejes de gráfica, tablas densas, CSV exportado.

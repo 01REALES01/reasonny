@@ -12,27 +12,13 @@ interface MoneyProps {
 
 /**
  * Splits a formatted currency string into the prominent integer part
- * and the de-emphasized fraction/thousand part according to DESIGN_SYSTEM.md 3.3.
+ * and the de-emphasized cents according to DESIGN_SYSTEM.md 3.3.
+ *
+ * COP has no cents on screen, so nothing matches and the amount renders whole.
+ * It used to shrink the last three digits instead, and "$ 45.000" read as
+ * "$ 45" - in a currency where the thousands ARE the amount.
  */
-function splitMoneyParts(
-  formatted: string,
-  currency: string,
-): { integerPart: string; fractionPart: string } {
-  if (currency === 'COP') {
-    // For COP without cents: if amount is >= 10,000, de-emphasize the last 3 digits
-    // e.g. "$ 1.847.300" -> integer "$ 1.847", fraction ".300"
-    // Find the last separator (. or ,) before the final 3 digits
-    const match = formatted.match(/^(.*)([.,]\d{3})$/);
-    if (match && match[1] && match[2]) {
-      return {
-        integerPart: match[1],
-        fractionPart: match[2],
-      };
-    }
-    return { integerPart: formatted, fractionPart: '' };
-  }
-
-  // Standard currencies with cents (USD, EUR)
+function splitMoneyParts(formatted: string): { integerPart: string; fractionPart: string } {
   // e.g. "$ 1,847.50" -> integer "$ 1,847", fraction ".50"
   const match = formatted.match(/^(.*)([.,]\d{2})$/);
   if (match && match[1] && match[2]) {
@@ -61,7 +47,7 @@ export function Money({
   const formatted = formatMoney({ minor: amountMinor, currency }, localeTag);
 
   const { integerPart, fractionPart } = showFractionDeEmphasis
-    ? splitMoneyParts(formatted, currency)
+    ? splitMoneyParts(formatted)
     : { integerPart: formatted, fractionPart: '' };
 
   if (!fractionPart) {
