@@ -5,8 +5,8 @@ import { after } from 'next/server';
 import { BalanceHero } from '@/components/dashboard/balance-hero';
 import { CaptureCallout } from '@/components/dashboard/capture-callout';
 import { FinancialActions } from '@/components/dashboard/financial-actions';
-import { FinancialStats } from '@/components/dashboard/financial-stats';
 import { PhoneLedger } from '@/components/dashboard/phone-ledger';
+import { WeekSpendingCard } from '@/components/dashboard/week-spending';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getAutomaticCaptureStatus } from '@/core/repositories/transaction.repository';
 import { getDashboardData } from '@/core/services/analytics.service';
@@ -71,11 +71,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         uncategorizedCount={data.uncategorizedCount}
       />
 
-      {/* 2. Three Boxless Floating Financial Metrics (Gastos, Ingresos, Movimientos) */}
-      <FinancialStats
-        totalExpenseMinor={data.monthlyTotals.totalExpenseMinor}
-        totalIncomeMinor={data.monthlyTotals.totalIncomeMinor}
-        transactionCount={data.monthlyTotals.transactionCount}
+      {/* 2. This week's spending, day by day, with today and the month */}
+      <WeekSpendingCard
+        week={data.week}
+        monthExpenseMinor={data.monthlyTotals.totalExpenseMinor}
         currency={data.baseCurrency}
       />
 
@@ -86,8 +85,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           the component for why it leaves rather than turning into a tick. */}
       {capture.count === 0 && <CaptureCallout />}
 
-      {/* 4. Stream of Recent Transactions */}
-      <PhoneLedger transactions={data.recentTransactions} timeZone={profile.timezone} />
+      {/* 4. Recent transactions, one header per day */}
+      <PhoneLedger days={data.recentDays} currency={data.baseCurrency} />
     </div>
   );
 }

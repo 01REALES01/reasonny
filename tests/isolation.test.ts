@@ -258,6 +258,10 @@ suite('Tenant isolation against a real database', () => {
         '2100-01-01 00:00:00',
       );
       expect(breakdown).toEqual([]);
+
+      expect(
+        await repos.getDailyExpenseTotals(a, 'America/Bogota', '2020-01-01 00:00:00'),
+      ).toEqual([]);
     }, TIMEOUT);
 
     it('telemetry percentiles and usage are per tenant', async () => {

@@ -33,7 +33,17 @@ export function PhoneDock(): React.ReactElement {
         <CategoryIcon name="LayoutGrid" size={20} />
       </Link>
 
-      {/* 2. Nuevo Registro (+) */}
+      {/* 2. El mes: totales, distribución por categoría e histórico */}
+      <Link
+        href="/mes"
+        className={`phone-dock-item${pathname === '/mes' ? ' phone-dock-item--active' : ''}`}
+        aria-label={t('nav_month')}
+        aria-current={pathname === '/mes' ? 'page' : undefined}
+      >
+        <CategoryIcon name="PieChart" size={19} />
+      </Link>
+
+      {/* 3. Nuevo Registro (+) */}
       <Link
         href="/nuevo"
         className={`phone-dock-item phone-dock-item--highlight${
