@@ -134,7 +134,6 @@ export async function createQuickTransactionAction(
       currency,
       type,
       merchant: merchant.trim(),
-      merchantNormalized: merchant.trim().toLowerCase(),
       note: note?.trim() || null,
       transactionDate: txDate,
       source: 'manual',

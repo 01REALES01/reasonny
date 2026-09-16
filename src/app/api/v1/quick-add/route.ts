@@ -194,7 +194,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     currency: tx.currency,
     type: tx.type,
     merchant: tx.merchant,
-    merchantNormalized: tx.merchant.toLowerCase(),
     transactionDate: tx.transactionDate,
     source: SOURCE,
     idempotencyKey: parsedBody.data.idempotencyKey ?? idempotencyKeyFor(userId, text),

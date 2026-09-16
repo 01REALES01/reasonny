@@ -1,5 +1,5 @@
 {
-  "id": "4af846b5-8287-4fc3-84f8-ba23363e8ca3",
+  "id": "1168eebd-e33a-4cf2-a6a2-551ff865088c",
   "prevId": "9d1525f5-1a78-42ee-8f4e-99c0d5f9ca57",
   "version": "7",
   "dialect": "postgresql",
@@ -616,7 +616,8 @@
           "columns": [
             "user_id",
             "merchant_pattern",
-            "type"
+            "type",
+            "is_regex"
           ]
         }
       },
