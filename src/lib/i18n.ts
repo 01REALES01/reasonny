@@ -80,6 +80,33 @@ export const DICTIONARY = {
     profile_currency: 'Moneda base',
     profile_timezone: 'Zona horaria',
 
+    // Ubicación
+    location_title: 'Dónde fue',
+    location_at_home: 'En casa',
+    location_away: 'Fuera de casa',
+    location_recorded_here: 'Registrado aquí',
+    location_paid_here: 'Pagado aquí',
+    location_open_maps: 'Abrir en Maps',
+    location_accuracy_approx: 'Precisión aproximada:',
+    location_settings_title: 'Ubicación de tus gastos',
+    location_enable: 'Guardar dónde registro cada gasto',
+    location_enable_hint:
+      'Queda apagado hasta que lo enciendas. Sirve para distinguir una compra en línea hecha en casa de una hecha en la calle. Nunca sale de tu base de datos.',
+    location_home_title: 'Tu casa',
+    location_home_hint:
+      'Un solo punto, sin dirección. Solo se usa para decir si un gasto fue en casa o fuera.',
+    location_home_set: 'Usar mi ubicación actual',
+    location_home_saved: 'Casa guardada',
+    location_home_none: 'Sin definir',
+    location_home_clear: 'Olvidar mi casa',
+    location_clear: 'Borrar todas las ubicaciones guardadas',
+    location_clear_confirm:
+      '¿Borrar la ubicación de todos tus movimientos? No se puede deshacer.',
+    location_cleared: 'Ubicaciones borradas:',
+    location_permission_denied:
+      'Tu navegador no dio permiso de ubicación. Puedes activarlo en los ajustes del sitio.',
+    location_unavailable: 'No se pudo obtener la ubicación.',
+
     // Detalle y edición
     edit_title: 'Editar movimiento',
     delete_transaction: 'Eliminar este movimiento',
@@ -232,6 +259,33 @@ export const DICTIONARY = {
     profile_email: 'Email',
     profile_currency: 'Base currency',
     profile_timezone: 'Time zone',
+
+    // Location
+    location_title: 'Where it happened',
+    location_at_home: 'At home',
+    location_away: 'Away from home',
+    location_recorded_here: 'Recorded here',
+    location_paid_here: 'Paid here',
+    location_open_maps: 'Open in Maps',
+    location_accuracy_approx: 'Approximate accuracy:',
+    location_settings_title: 'Location on your spending',
+    location_enable: 'Save where I record each expense',
+    location_enable_hint:
+      'Off until you turn it on. It tells an online purchase made at home apart from one made out in the world. It never leaves your database.',
+    location_home_title: 'Your home',
+    location_home_hint:
+      'A single point, no address. Only used to say whether a spend happened at home or away.',
+    location_home_set: 'Use my current location',
+    location_home_saved: 'Home saved',
+    location_home_none: 'Not set',
+    location_home_clear: 'Forget my home',
+    location_clear: 'Erase every stored location',
+    location_clear_confirm:
+      'Erase the location on all your transactions? This cannot be undone.',
+    location_cleared: 'Locations erased:',
+    location_permission_denied:
+      'Your browser did not grant location permission. You can enable it in site settings.',
+    location_unavailable: 'Location could not be read.',
 
     // Detail and editing
     edit_title: 'Edit transaction',

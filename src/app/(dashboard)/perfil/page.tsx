@@ -30,12 +30,23 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
   const capture = await getAutomaticCaptureStatus(userId);
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--perfil">
       <ProfileForm
         email={profile.email}
         initialName={profile.fullName ?? ''}
         baseCurrency={profile.baseCurrency}
         timezone={profile.timezone}
+        locationEnabled={profile.locationEnabled}
+        // Numbers at the edge, not in the form: the column is numeric and the
+        // driver hands it over as a string.
+        home={
+          profile.homeLatitude !== null && profile.homeLongitude !== null
+            ? {
+                latitude: Number(profile.homeLatitude),
+                longitude: Number(profile.homeLongitude),
+              }
+            : null
+        }
       />
       {/* The wizard is a page now, not a panel at the bottom of this form. The
           link stays here for the user who already set it up: the dashboard

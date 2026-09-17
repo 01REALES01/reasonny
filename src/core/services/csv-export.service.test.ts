@@ -63,6 +63,9 @@ describe('CSV Export Service', () => {
           name: 'Bancolombia Débito',
           currency: 'COP',
         },
+        // Present on the row, absent from the export on purpose: a CSV with
+        // coordinates in it is a movement history, and it leaves the app.
+        location: null,
       };
 
       const row = formatTransactionToCsvRow(mockTx);

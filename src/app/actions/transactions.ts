@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { MAX_USABLE_ACCURACY_M } from '@/core/geo';
 import { parseMoney } from '@/core/money';
 import {
   createAccount,
@@ -26,6 +27,12 @@ const QuickAddSchema = z.object({
   accountId: z.uuid().optional().nullable(),
   note: z.string().max(1000).optional().nullable(),
   transactionDate: z.string().optional(),
+  // Optional and bounded: it comes from navigator.geolocation in the browser,
+  // which is a trust boundary. Absent is the normal case - the user may have
+  // the feature off, denied the permission, or be indoors with no fix.
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  locationAccuracyM: z.number().min(0).max(100_000).optional().nullable(),
 });
 
 export type QuickAddInput = z.infer<typeof QuickAddSchema>;
@@ -55,7 +62,18 @@ export async function createQuickTransactionAction(
       return { success: false, error: issue ? issue.message : 'Invalid transaction data.' };
     }
 
-    const { amount, merchant, type, categoryId, accountId, note, transactionDate } = parsed.data;
+    const {
+      amount,
+      merchant,
+      type,
+      categoryId,
+      accountId,
+      note,
+      transactionDate,
+      latitude,
+      longitude,
+      locationAccuracyM,
+    } = parsed.data;
 
     // Ensure user profile exists and resolve base currency
     const profile = await ensureProfile(userId, session.email);
@@ -127,6 +145,30 @@ export async function createQuickTransactionAction(
 
     const txDate = transactionDate ? new Date(transactionDate) : new Date();
 
+    // Three conditions, all of them on the server. The browser can send a
+    // coordinate whenever it likes; whether one is stored is decided here,
+    // against the profile - a client that stops asking politely must not be
+    // able to start a location history on its own.
+    const location =
+      profile.locationEnabled &&
+      latitude !== null &&
+      latitude !== undefined &&
+      longitude !== null &&
+      longitude !== undefined &&
+      (locationAccuracyM === null ||
+        locationAccuracyM === undefined ||
+        locationAccuracyM <= MAX_USABLE_ACCURACY_M)
+        ? {
+            latitude,
+            longitude,
+            accuracyM: locationAccuracyM ?? null,
+            // Not 'shortcut': this is where the spend was WRITTEN DOWN, which
+            // is only the same place as where it was paid when the user
+            // records it on the spot.
+            source: 'device_pwa' as const,
+          }
+        : null;
+
     const { transaction } = await createTransaction(userId, {
       accountId: targetAccountId,
       categoryId: targetCategoryId,
@@ -138,6 +180,7 @@ export async function createQuickTransactionAction(
       transactionDate: txDate,
       source: 'manual',
       categorizedBy: targetCategoryId ? 'manual' : null,
+      location,
     });
 
     revalidatePath('/');
