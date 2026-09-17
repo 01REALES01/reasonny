@@ -4,15 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import {
-  createAccount,
-  listAccounts,
-} from '@/core/repositories/account.repository';
 import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.repository';
 import { getProfile } from '@/core/repositories/profile.repository';
-import { createTransaction } from '@/core/repositories/transaction.repository';
-import { toAccountId, type UserId } from '@/core/types';
-import { MAX_USABLE_ACCURACY_M } from '@/core/geo';
+import { recordTransaction } from '@/core/services/transaction.service';
+import { type UserId } from '@/core/types';
 import { parseBankSms } from '@/infrastructure/sms-parsers';
 import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
 
@@ -65,20 +60,53 @@ async function refuse(
   return NextResponse.json(body, { status });
 }
 
-const CoordinateValue = z.preprocess(
-  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
-  z.number().min(-90).max(90).optional().nullable(),
-);
+/**
+ * A coordinate as Shortcuts sends it: a string, a localised string, or nothing.
+ *
+ * WHY AN UNUSABLE VALUE BECOMES `undefined` AND NEVER A VALIDATION ERROR
+ * ---------------------------------------------------------------------
+ * The guided setup in /captura tells the user to add `latitude` and
+ * `longitude` fields filled from "Current Location". Three things go wrong out
+ * in the world, and every one of them used to fail the WHOLE body with 400
+ * invalid_body - throwing away a perfectly readable bank SMS:
+ *
+ *   - no fix (indoors, permission denied, airplane mode): Shortcuts sends the
+ *     fields anyway, with an empty string in them;
+ *   - a Spanish locale: the magic variable reads "4,7110", and Number() of
+ *     that is NaN;
+ *   - a nonsense reading: out of range, or not a number at all.
+ *
+ * The location is optional. The transaction is not. So anything unusable is
+ * read as "no reading" and the SMS is still stored. `.catch(undefined)` is
+ * what guarantees that: these three fields can no longer reject a body.
+ */
+const toCoordinateNumber = (val: unknown): unknown => {
+  if (typeof val !== 'string') {
+    return val;
+  }
+  const trimmed = val.trim();
+  if (trimmed === '') {
+    return undefined;
+  }
+  // A decimal comma, not a thousands separator: no coordinate on Earth reaches
+  // four figures, so "4,7110" can only mean 4.7110. Converted only when there
+  // is no dot already, so a value that is correctly formatted is left alone.
+  const normalized =
+    trimmed.includes(',') && !trimmed.includes('.') ? trimmed.replace(',', '.') : trimmed;
+  return Number(normalized);
+};
 
-const LongitudeValue = z.preprocess(
-  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
-  z.number().min(-180).max(180).optional().nullable(),
-);
+const CoordinateValue = z
+  .preprocess(toCoordinateNumber, z.number().min(-90).max(90).optional().nullable())
+  .catch(undefined);
 
-const AccuracyValue = z.preprocess(
-  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
-  z.number().min(0).max(100_000).optional().nullable(),
-);
+const LongitudeValue = z
+  .preprocess(toCoordinateNumber, z.number().min(-180).max(180).optional().nullable())
+  .catch(undefined);
+
+const AccuracyValue = z
+  .preprocess(toCoordinateNumber, z.number().min(0).max(100_000).optional().nullable())
+  .catch(undefined);
 
 const BodySchema = z.object({
   /** The SMS, exactly as it arrived. Parsing happens here, not in the Shortcut. */
@@ -121,24 +149,6 @@ function idempotencyKeyFor(userId: string, text: string): string {
     ((parseInt(hex.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20),
     hex.slice(20, 32),
   ].join('-');
-}
-
-async function resolveAccount(
-  userId: UserId,
-  baseCurrency: string,
-): Promise<{ accountId: ReturnType<typeof toAccountId> }> {
-  const accounts = await listAccounts(userId);
-  const first = accounts[0];
-  if (first) {
-    return { accountId: toAccountId(first.id) };
-  }
-
-  const created = await createAccount(userId, {
-    name: 'Efectivo',
-    type: 'cash',
-    currency: baseCurrency,
-  });
-  return { accountId: toAccountId(created.id) };
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -202,39 +212,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return refuse(userId, 404, { error: 'profile_not_found' }, { text }, 'profile_not_found');
   }
 
-  const { accountId } = await resolveAccount(userId, profile.baseCurrency);
-
-  const location =
-    profile.locationEnabled &&
-    latitude !== null &&
-    latitude !== undefined &&
-    !Number.isNaN(latitude) &&
-    longitude !== null &&
-    longitude !== undefined &&
-    !Number.isNaN(longitude) &&
-    (locationAccuracyM === null ||
-      locationAccuracyM === undefined ||
-      Number.isNaN(locationAccuracyM) ||
-      locationAccuracyM <= MAX_USABLE_ACCURACY_M)
-      ? {
-          latitude,
-          longitude,
-          accuracyM:
-            locationAccuracyM !== null &&
-            locationAccuracyM !== undefined &&
-            !Number.isNaN(locationAccuracyM)
-              ? locationAccuracyM
-              : null,
-          source: 'shortcut' as const,
-        }
-      : null;
-
-  const { transaction, isDuplicate } = await createTransaction(userId, {
-    accountId,
-    // No category. The rule engine does not exist yet, and guessing one would
-    // put a wrong colour in the breakdown that nobody would think to correct.
-    // Uncategorised is exactly what /revisar is for.
-    categoryId: null,
+  const result_ = await recordTransaction(userId, profile, {
     amountMinor: tx.amountMinor,
     // The parser's currency, not the account's: the amount was read from a
     // message written in that currency, and relabelling it would change what
@@ -245,9 +223,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     transactionDate: tx.transactionDate,
     source: SOURCE,
     idempotencyKey: parsedBody.data.idempotencyKey ?? idempotencyKeyFor(userId, text),
-    categorizedBy: null,
-    location,
+    // No category. The rule engine does not exist yet, and guessing one would
+    // put a wrong colour in the breakdown that nobody would think to correct.
+    // Uncategorised is exactly what /revisar is for.
+    categoryId: null,
+    location: { latitude, longitude, accuracyM: locationAccuracyM },
+    // 'shortcut', not 'device_pwa': this is where the card was PAID, which is
+    // a different claim from where a spend was written down.
+    locationSource: 'shortcut',
   });
+
+  if (!result_.ok) {
+    // Only reachable if the profile's own account or category vanished
+    // mid-request. There is nothing the Shortcut can do about it, so it is
+    // recorded rather than retried into a loop.
+    return refuse(userId, 200, { stored: false, reason: result_.reason }, { text }, result_.reason);
+  }
+
+  const { transaction, isDuplicate } = result_;
 
   console.info(
     '[quick-add] stored:', !isDuplicate,
