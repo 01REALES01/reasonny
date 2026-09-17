@@ -14,6 +14,11 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   createTransaction: vi.fn(),
 }));
 
+vi.mock('@/core/services/categorization.service', () => ({
+  suggestCategory: vi.fn(),
+  confirmSuggestionUsed: vi.fn(),
+}));
+
 import {
   createAccount,
   getAccount,
@@ -22,6 +27,10 @@ import {
 import { getCategory } from '@/core/repositories/category.repository';
 import type { ProfileRow } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
+import {
+  confirmSuggestionUsed,
+  suggestCategory,
+} from '@/core/services/categorization.service';
 import { toUserId } from '@/core/types';
 
 import { recordTransaction } from './transaction.service';
@@ -70,6 +79,7 @@ describe('recordTransaction', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(suggestCategory).mockResolvedValue(null);
     vi.mocked(createTransaction).mockResolvedValue({
       transaction: { id: 'tx-1' } as never,
       isDuplicate: false,
@@ -352,6 +362,74 @@ describe('recordTransaction', () => {
 
       expect(writtenInput()?.idempotencyKey).toBe('55555555-5555-4555-8555-555555555555');
       expect(result).toMatchObject({ ok: true, isDuplicate: true });
+    });
+  });
+
+  describe('the rule engine', () => {
+    const suggestion = { ruleId: 'rule-1', categoryId: CATEGORY_ID as never };
+
+    beforeEach(() => {
+      vi.mocked(listAccounts).mockResolvedValue([
+        { id: ACCOUNT_ID, currency: 'COP' } as never,
+      ]);
+    });
+
+    it('files the spend on its own when a rule knows the merchant', async () => {
+      // Level 1: zero gestures. This is the destination, not the scaffolding.
+      vi.mocked(suggestCategory).mockResolvedValue(suggestion);
+
+      const result = await recordTransaction(userId, profileFixture(), baseInput());
+
+      expect(writtenInput()?.categoryId).toBe(CATEGORY_ID);
+      expect(writtenInput()?.categorizedBy).toBe('rule_engine');
+      expect(result).toMatchObject({ ok: true, autoCategorized: true });
+      expect(confirmSuggestionUsed).toHaveBeenCalledWith(userId, suggestion);
+    });
+
+    it('does not ask the engine when the caller already named a category', async () => {
+      // An explicit choice is a statement of fact. The engine does not get a
+      // vote on it, and must not quietly replace it.
+      vi.mocked(getCategory).mockResolvedValue({ id: CATEGORY_ID } as never);
+
+      await recordTransaction(userId, profileFixture(), {
+        ...baseInput(),
+        categoryId: CATEGORY_ID,
+      });
+
+      expect(suggestCategory).not.toHaveBeenCalled();
+      expect(writtenInput()?.categorizedBy).toBe('manual');
+    });
+
+    it('can be told to stay out of it', async () => {
+      await recordTransaction(userId, profileFixture(), {
+        ...baseInput(),
+        skipRuleEngine: true,
+      });
+
+      expect(suggestCategory).not.toHaveBeenCalled();
+      expect(writtenInput()?.categoryId).toBeNull();
+    });
+
+    it('does not count a firing on a duplicate it never decided', async () => {
+      // hit_count is how METRICS.md reports whether level 1 is learning. A
+      // retry of a message already stored decided nothing.
+      vi.mocked(suggestCategory).mockResolvedValue(suggestion);
+      vi.mocked(createTransaction).mockResolvedValue({
+        transaction: { id: 'tx-1' } as never,
+        isDuplicate: true,
+      });
+
+      await recordTransaction(userId, profileFixture(), baseInput());
+
+      expect(confirmSuggestionUsed).not.toHaveBeenCalled();
+    });
+
+    it('leaves the transaction uncategorised when no rule matches', async () => {
+      const result = await recordTransaction(userId, profileFixture(), baseInput());
+
+      expect(writtenInput()?.categoryId).toBeNull();
+      expect(writtenInput()?.categorizedBy).toBeNull();
+      expect(result).toMatchObject({ autoCategorized: false });
     });
   });
 });

@@ -70,6 +70,7 @@ describe('POST /api/v1/quick-add', () => {
       ok: true,
       transaction: { id: 'tx-1' } as never,
       isDuplicate: false,
+      autoCategorized: false,
     });
   });
 
@@ -174,6 +175,7 @@ describe('POST /api/v1/quick-add', () => {
       ok: true,
       transaction: { id: 'tx-1' } as never,
       isDuplicate: true,
+      autoCategorized: false,
     });
 
     const res = await POST(request({ text: CARD_SMS }, mintIngestToken(userId)));

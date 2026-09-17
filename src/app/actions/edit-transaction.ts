@@ -10,6 +10,10 @@ import {
   softDeleteTransaction,
   updateTransaction,
 } from '@/core/repositories/transaction.repository';
+import {
+  categorizeTransaction,
+  learnFromTransaction,
+} from '@/core/services/categorization.service';
 import { toCategoryId, toUserId } from '@/core/types';
 import { requireCurrentUser } from '@/lib/session';
 
@@ -92,6 +96,12 @@ export async function editTransactionAction(
     return { success: false, error: 'No se encontró la transacción.' };
   }
 
+  // Correcting a category here is the same statement as tapping one in the
+  // review queue, so it teaches the engine the same way. From the returned row,
+  // not from the input: an edit may rename the shop and recategorise it in one
+  // go, and the rule belongs under the name the row ended up with.
+  await learnFromTransaction(userId, updated);
+
   revalidatePath('/dashboard');
   revalidatePath('/revisar');
 
@@ -120,17 +130,23 @@ export async function categorizeTransactionAction(
     return { success: false, error: 'Datos inválidos.' };
   }
 
-  const category = await getCategory(userId, toCategoryId(parsed.data.categoryId));
-  if (!category) {
-    return { success: false, error: 'Esa categoría no existe.' };
-  }
+  // The engine learns here. Tapping a category in the queue is the clearest
+  // statement a user ever makes about a merchant, and it is what stops the
+  // queue asking about that shop again.
+  const result = await categorizeTransaction(
+    userId,
+    parsed.data.transactionId,
+    parsed.data.categoryId,
+  );
 
-  const updated = await updateTransaction(userId, parsed.data.transactionId, {
-    categoryId: toCategoryId(parsed.data.categoryId),
-  });
-
-  if (!updated) {
-    return { success: false, error: 'No se encontró la transacción.' };
+  if (!result.ok) {
+    return {
+      success: false,
+      error:
+        result.reason === 'unknown_category'
+          ? 'Esa categoría no existe.'
+          : 'No se encontró la transacción.',
+    };
   }
 
   revalidatePath('/dashboard');

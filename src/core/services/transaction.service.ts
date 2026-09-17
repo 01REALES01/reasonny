@@ -13,6 +13,10 @@ import {
   type TransactionSource,
   type TransactionType,
 } from '@/core/repositories/transaction.repository';
+import {
+  confirmSuggestionUsed,
+  suggestCategory,
+} from '@/core/services/categorization.service';
 import { toAccountId, toCategoryId, type UserId } from '@/core/types';
 
 /**
@@ -92,12 +96,24 @@ export interface RecordTransactionInput {
   readonly idempotencyKey?: string | null | undefined;
   /** Defaults to 'manual' when a category was given, null when it was not. */
   readonly categorizedBy?: CategorizedBy | null | undefined;
+  /**
+   * Skips the rule engine. For a caller that already knows the answer is a
+   * human's - the review queue, a Telegram button - where a silent
+   * auto-categorisation would overwrite what the person just said.
+   */
+  readonly skipRuleEngine?: boolean | undefined;
   readonly location?: LocationCandidate | null | undefined;
   readonly locationSource: LocationSource;
 }
 
 export type RecordTransactionResult =
-  | { readonly ok: true; readonly transaction: TransactionRow; readonly isDuplicate: boolean }
+  | {
+      readonly ok: true;
+      readonly transaction: TransactionRow;
+      readonly isDuplicate: boolean;
+      /** True when the rule engine supplied the category: level 1, zero gestures. */
+      readonly autoCategorized: boolean;
+    }
   | { readonly ok: false; readonly reason: 'unknown_account' | 'unknown_category' };
 
 function isUsableCoordinate(value: number | null | undefined): value is number {
@@ -224,9 +240,16 @@ export async function recordTransaction(
     categoryId = toCategoryId(category.id);
   }
 
+  // Level 1. Only when the caller did not already name a category: an explicit
+  // choice is a statement of fact and the engine does not get a vote on it.
+  const suggestion =
+    categoryId || input.skipRuleEngine
+      ? null
+      : await suggestCategory(userId, input.merchant, input.type);
+
   const { transaction, isDuplicate } = await createTransaction(userId, {
     accountId: account.accountId,
-    categoryId,
+    categoryId: categoryId ?? suggestion?.categoryId ?? null,
     amountMinor: input.amountMinor,
     currency: input.currency ?? account.currency,
     type: input.type,
@@ -235,9 +258,18 @@ export async function recordTransaction(
     transactionDate: input.transactionDate,
     source: input.source,
     idempotencyKey: input.idempotencyKey ?? null,
-    categorizedBy: input.categorizedBy ?? (categoryId ? 'manual' : null),
+    categorizedBy:
+      input.categorizedBy ?? (categoryId ? 'manual' : suggestion ? 'rule_engine' : null),
     location: resolveLocation(profile, input.location, input.locationSource),
   });
 
-  return { ok: true, transaction, isDuplicate };
+  // Counted after the insert landed, and not for a duplicate: a rule that
+  // "fired" on a retry of a message already stored never actually decided
+  // anything, and hit_count is the number that says whether level 1 is
+  // learning (P6).
+  if (suggestion && !isDuplicate) {
+    await confirmSuggestionUsed(userId, suggestion);
+  }
+
+  return { ok: true, transaction, isDuplicate, autoCategorized: Boolean(suggestion) };
 }

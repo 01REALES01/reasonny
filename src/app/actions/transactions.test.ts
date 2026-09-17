@@ -23,6 +23,15 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   createTransaction: vi.fn(),
 }));
 
+// The action reaches the rule engine through transaction.service now. The
+// service itself is deliberately NOT mocked - this file's job is to prove the
+// action still behaves - so the engine's repository has to be.
+vi.mock('@/core/repositories/categorization-rule.repository', () => ({
+  findRuleForMerchant: vi.fn().mockResolvedValue(null),
+  learnRule: vi.fn(),
+  recordRuleHit: vi.fn(),
+}));
+
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
