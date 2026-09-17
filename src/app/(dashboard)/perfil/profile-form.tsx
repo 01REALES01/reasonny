@@ -3,6 +3,11 @@
 import Link from 'next/link';
 import React, { useState, useTransition } from 'react';
 
+import {
+  clearLocationsAction,
+  setHomeLocationAction,
+  setLocationEnabledAction,
+} from '@/app/actions/location';
 import { updateDisplayNameAction } from '@/app/actions/profile';
 import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
@@ -13,6 +18,8 @@ interface ProfileFormProps {
   readonly initialName: string;
   readonly baseCurrency: string;
   readonly timezone: string;
+  readonly locationEnabled: boolean;
+  readonly home: { readonly latitude: number; readonly longitude: number } | null;
 }
 
 export function ProfileForm({
@@ -20,11 +27,94 @@ export function ProfileForm({
   initialName,
   baseCurrency,
   timezone,
+  locationEnabled,
+  home,
 }: ProfileFormProps): React.ReactElement {
   const [name, setName] = useState(initialName);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const [locationOn, setLocationOn] = useState(locationEnabled);
+  const [homePoint, setHomePoint] = useState(home);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+
+  function handleToggleLocation(next: boolean): void {
+    setLocationNote(null);
+    // Optimistic, and reverted if the server disagrees: the switch has to feel
+    // instant, but it must never show "on" over a profile that says off - that
+    // is a promise about data collection the database is not keeping.
+    setLocationOn(next);
+    startTransition(async () => {
+      const result = await setLocationEnabledAction(next);
+      if (!result.success) {
+        setLocationOn(!next);
+        setLocationNote(result.error ?? t('error_generic'));
+      }
+    });
+  }
+
+  /** The prompt belongs on this tap: the user asked for it, explicitly. */
+  function handleSetHome(): void {
+    setLocationNote(null);
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationNote(t('location_unavailable'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        startTransition(async () => {
+          const result = await setHomeLocationAction(point);
+          if (result.success) {
+            setHomePoint(point);
+            setLocationNote(t('location_home_saved'));
+          } else {
+            setLocationNote(result.error ?? t('error_generic'));
+          }
+        });
+      },
+      (positionError) => {
+        setLocationNote(
+          positionError.code === positionError.PERMISSION_DENIED
+            ? t('location_permission_denied')
+            : t('location_unavailable'),
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
+  }
+
+  function handleForgetHome(): void {
+    setLocationNote(null);
+    startTransition(async () => {
+      const result = await setHomeLocationAction(null);
+      if (result.success) {
+        setHomePoint(null);
+      } else {
+        setLocationNote(result.error ?? t('error_generic'));
+      }
+    });
+  }
+
+  function handleClearLocations(): void {
+    setLocationNote(null);
+    startTransition(async () => {
+      const result = await clearLocationsAction();
+      setConfirmingClear(false);
+      setLocationNote(
+        result.success
+          ? `${t('location_cleared')} ${result.clearedCount ?? 0}`
+          : (result.error ?? t('error_generic')),
+      );
+    });
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -125,6 +215,107 @@ export function ProfileForm({
           <span className="profile-fact-label">{t('profile_timezone')}</span>
           <span className="profile-fact-value">{timezone}</span>
         </div>
+      </div>
+
+      {/* Location lives at the bottom, off by default, with its own delete.
+          Everything above is about how the app addresses you; this is the only
+          block that decides whether the app records where you were. */}
+      <section className="location-settings" aria-labelledby="location-settings-title">
+        <h2 id="location-settings-title" className="location-settings-title">
+          {t('location_settings_title')}
+        </h2>
+
+        <label className="location-toggle">
+          <input
+            type="checkbox"
+            checked={locationOn}
+            onChange={(e) => handleToggleLocation(e.target.checked)}
+            disabled={isPending}
+          />
+          <span className="location-toggle-text">
+            <span className="location-toggle-label">{t('location_enable')}</span>
+            <span className="entry-hint">{t('location_enable_hint')}</span>
+          </span>
+        </label>
+
+        {locationOn && (
+          <div className="location-home">
+            <span className="location-home-head">
+              <span className="profile-fact-label">{t('location_home_title')}</span>
+              <span className="profile-fact-value">
+                {homePoint
+                  ? `${homePoint.latitude.toFixed(4)}, ${homePoint.longitude.toFixed(4)}`
+                  : t('location_home_none')}
+              </span>
+            </span>
+            <span className="entry-hint">{t('location_home_hint')}</span>
+
+            <div className="location-home-actions">
+              <button
+                type="button"
+                onClick={handleSetHome}
+                disabled={isPending}
+                className="location-btn"
+              >
+                <CategoryIcon name="Home" size={14} />
+                {t('location_home_set')}
+              </button>
+              {homePoint && (
+                <button
+                  type="button"
+                  onClick={handleForgetHome}
+                  disabled={isPending}
+                  className="location-btn location-btn--quiet"
+                >
+                  {t('location_home_clear')}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {locationNote && (
+          <p role="status" className="location-note">
+            {locationNote}
+          </p>
+        )}
+      </section>
+
+      {/* Two steps, like deleting a transaction: this one cannot be undone
+          either, and it is deliberately reachable whether the switch is on or
+          off - turning capture off must never be the only way to ask for what
+          is already stored to be erased. */}
+      <div className="danger-zone">
+        {confirmingClear ? (
+          <>
+            <p className="danger-zone-question">{t('location_clear_confirm')}</p>
+            <div className="danger-zone-actions">
+              <button
+                type="button"
+                onClick={() => setConfirmingClear(false)}
+                className="danger-cancel"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearLocations}
+                disabled={isPending}
+                className="danger-confirm"
+              >
+                {t('delete_confirm_yes')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingClear(true)}
+            className="danger-trigger"
+          >
+            {t('location_clear')}
+          </button>
+        )}
       </div>
     </div>
   );

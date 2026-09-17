@@ -55,6 +55,7 @@ function row(id: string, isoDate: string): EnrichedTransactionRow {
     categorizedBy: null,
     category: null,
     account: null,
+    location: null,
   };
 }
 

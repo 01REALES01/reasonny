@@ -81,6 +81,49 @@ export async function updateProfileName(
   return row ?? null;
 }
 
+export interface LocationSettingsInput {
+  /** Whether new transactions may store where the device was. */
+  readonly enabled?: boolean;
+  /** The saved home point, or null to forget it. */
+  readonly home?: { readonly latitude: number; readonly longitude: number } | null;
+}
+
+/**
+ * Updates the two location settings that live on the profile.
+ *
+ * Turning the switch off stops new writes; it deliberately does NOT erase what
+ * is already stored. Deleting history is a separate, explicit action, because
+ * a toggle that silently destroys data is a toggle nobody can risk flipping.
+ *
+ * Coordinates are stringified for the same reason they are numeric columns: a
+ * JS number would reach Postgres as a float literal.
+ */
+export async function updateLocationSettings(
+  userId: UserId,
+  input: LocationSettingsInput,
+): Promise<ProfileRow | null> {
+  const db = getDb();
+
+  const patch: Record<string, unknown> = {};
+  if (input.enabled !== undefined) patch.locationEnabled = input.enabled;
+  if (input.home !== undefined) {
+    patch.homeLatitude = input.home ? String(input.home.latitude) : null;
+    patch.homeLongitude = input.home ? String(input.home.longitude) : null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return getProfile(userId);
+  }
+
+  const [row] = await db
+    .update(profiles)
+    .set(patch)
+    .where(eq(profiles.id, userId))
+    .returning();
+
+  return row ?? null;
+}
+
 /**
  * Ensures a profile row exists in the profiles table for this authenticated user.
  * Neon Auth manages credentials in `neon_auth.user`; this ensures our domain

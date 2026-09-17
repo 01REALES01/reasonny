@@ -70,6 +70,18 @@ export const profiles = pgTable('profiles', {
   // Telegram chat binding. NULL means the bot is not linked yet. UNIQUE because
   // one chat drives one profile: the webhook resolves the user from it.
   telegramChatId: bigint('telegram_chat_id', { mode: 'bigint' }).unique(),
+
+  // Location is OFF until the user turns it on, and nothing is written while
+  // it is off. This is the most sensitive column set in the database - a
+  // history of coordinates is a record of where somebody goes - so the default
+  // is the one that stores nothing.
+  locationEnabled: boolean('location_enabled').notNull().default(false),
+  // "Home", so a spend can be told apart from one made out in the world. One
+  // saved point, set by the user; no address, no geocoding, nothing leaves the
+  // database.
+  homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
+  homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
+
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -221,6 +233,25 @@ export const transactions = pgTable(
 
     // Key in R2, never a public URL.
     receiptObjectKey: text('receipt_object_key'),
+
+    // Where the phone was when this was recorded. NULL is the normal case: an
+    // SMS and an OCR'd statement carry no location, and the user can leave the
+    // whole feature off (profiles.location_enabled).
+    //
+    // numeric, not double precision. A coordinate is stored, compared and
+    // displayed, never summed, and 6 decimals (~11 cm) is already far finer
+    // than any phone reports - so there is no reason to accept a float's
+    // rounding in a column this app treats as a fact about where someone was.
+    latitude: numeric({ precision: 9, scale: 6 }),
+    longitude: numeric({ precision: 9, scale: 6 }),
+    // The radius the device claimed, in metres. Kept because it is the only
+    // honest way to decide whether a reading may be used: indoors a phone
+    // routinely reports 100 m, and a "you were here" drawn from that is a
+    // guess wearing a fact's clothes.
+    locationAccuracyM: integer('location_accuracy_m'),
+    // 'device_pwa' (where it was RECORDED) vs 'shortcut' (where it was PAID).
+    // They are not the same claim, and the UI must not word them the same way.
+    locationSource: varchar('location_source', { length: 20 }),
     // Soft delete: this is a money app, nothing is hard deleted.
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: createdAt(),
@@ -266,6 +297,21 @@ export const transactions = pgTable(
     check(
       'transactions_categorized_by_check',
       sql`${t.categorizedBy} IN ('rule_engine','telegram','shortcut_menu','manual','ocr')`,
+    ),
+
+    // A coordinate arrives from a browser or from a Shortcut - a trust
+    // boundary - and half a coordinate is worse than none: a latitude with no
+    // longitude would render a map of the Gulf of Guinea. Both or neither, and
+    // both inside the world.
+    check(
+      'transactions_location_check',
+      sql`(${t.latitude} IS NULL) = (${t.longitude} IS NULL)
+          AND (${t.latitude} IS NULL OR (${t.latitude} BETWEEN -90 AND 90))
+          AND (${t.longitude} IS NULL OR (${t.longitude} BETWEEN -180 AND 180))`,
+    ),
+    check(
+      'transactions_location_source_check',
+      sql`${t.locationSource} IS NULL OR ${t.locationSource} IN ('device_pwa','shortcut','manual')`,
     ),
   ],
 );

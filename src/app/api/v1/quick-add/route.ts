@@ -12,6 +12,7 @@ import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.re
 import { getProfile } from '@/core/repositories/profile.repository';
 import { createTransaction } from '@/core/repositories/transaction.repository';
 import { toAccountId, type UserId } from '@/core/types';
+import { MAX_USABLE_ACCURACY_M } from '@/core/geo';
 import { parseBankSms } from '@/infrastructure/sms-parsers';
 import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
 
@@ -64,6 +65,21 @@ async function refuse(
   return NextResponse.json(body, { status });
 }
 
+const CoordinateValue = z.preprocess(
+  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
+  z.number().min(-90).max(90).optional().nullable(),
+);
+
+const LongitudeValue = z.preprocess(
+  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
+  z.number().min(-180).max(180).optional().nullable(),
+);
+
+const AccuracyValue = z.preprocess(
+  (val) => (typeof val === 'string' && val.trim() !== '' ? Number(val) : val),
+  z.number().min(0).max(100_000).optional().nullable(),
+);
+
 const BodySchema = z.object({
   /** The SMS, exactly as it arrived. Parsing happens here, not in the Shortcut. */
   text: z.string().min(1).max(2000),
@@ -72,6 +88,13 @@ const BodySchema = z.object({
    * Shortcuts has no stable per-run uuid - the message itself is the key.
    */
   idempotencyKey: z.uuid().optional(),
+  /**
+   * Optional coordinates sent by the iOS Shortcut if the user added the
+   * "Get Current Location" action to their automation.
+   */
+  latitude: CoordinateValue,
+  longitude: LongitudeValue,
+  locationAccuracyM: AccuracyValue,
 });
 
 /**
@@ -150,7 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return refuse(userId, 400, { error: 'invalid_body' }, body, 'invalid_body');
   }
 
-  const { text } = parsedBody.data;
+  const { text, latitude, longitude, locationAccuracyM } = parsedBody.data;
   const result = parseBankSms(text);
 
   if (!result.ok) {
@@ -181,6 +204,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { accountId } = await resolveAccount(userId, profile.baseCurrency);
 
+  const location =
+    profile.locationEnabled &&
+    latitude !== null &&
+    latitude !== undefined &&
+    !Number.isNaN(latitude) &&
+    longitude !== null &&
+    longitude !== undefined &&
+    !Number.isNaN(longitude) &&
+    (locationAccuracyM === null ||
+      locationAccuracyM === undefined ||
+      Number.isNaN(locationAccuracyM) ||
+      locationAccuracyM <= MAX_USABLE_ACCURACY_M)
+      ? {
+          latitude,
+          longitude,
+          accuracyM:
+            locationAccuracyM !== null &&
+            locationAccuracyM !== undefined &&
+            !Number.isNaN(locationAccuracyM)
+              ? locationAccuracyM
+              : null,
+          source: 'shortcut' as const,
+        }
+      : null;
+
   const { transaction, isDuplicate } = await createTransaction(userId, {
     accountId,
     // No category. The rule engine does not exist yet, and guessing one would
@@ -198,6 +246,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     source: SOURCE,
     idempotencyKey: parsedBody.data.idempotencyKey ?? idempotencyKeyFor(userId, text),
     categorizedBy: null,
+    location,
   });
 
   console.info(

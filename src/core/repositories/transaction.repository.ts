@@ -4,7 +4,7 @@
  * Implements tenant-isolated transaction persistence with client-side
  * idempotency, plus the aggregations the dashboard and the CSV export read.
  */
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { normalizeMerchant } from '@/core/categorization';
 import type { AccountId, CategoryId, UserId } from '@/core/types';
@@ -54,6 +54,16 @@ export interface CreateTransactionInput {
   readonly categorizedBy?: CategorizedBy | null;
   readonly transferGroupId?: string | null;
   readonly receiptObjectKey?: string | null;
+  /**
+   * Where the device was. Written only when the profile has location enabled;
+   * the caller decides that, because the profile is already loaded there.
+   */
+  readonly location?: {
+    readonly latitude: number;
+    readonly longitude: number;
+    readonly accuracyM?: number | null;
+    readonly source: 'device_pwa' | 'shortcut' | 'manual';
+  } | null;
 }
 
 export async function createTransaction(
@@ -102,6 +112,13 @@ export async function createTransaction(
       categorizedBy: input.categorizedBy,
       transferGroupId: input.transferGroupId,
       receiptObjectKey: input.receiptObjectKey,
+      // Written as text because the column is numeric: the driver would hand a
+      // JS number to Postgres as a float literal, which is the one
+      // representation this column exists to avoid.
+      latitude: input.location ? String(input.location.latitude) : null,
+      longitude: input.location ? String(input.location.longitude) : null,
+      locationAccuracyM: input.location?.accuracyM ?? null,
+      locationSource: input.location?.source ?? null,
     })
     .onConflictDoNothing()
     .returning();
@@ -362,6 +379,35 @@ export async function getDailyExpenseTotals(
   return rows.map((r) => ({ day: r.day, totalExpenseMinor: r.total }));
 }
 
+/**
+ * Erases every stored coordinate for one user, and reports how many rows lost
+ * one.
+ *
+ * A real delete, not a soft one. Everything else in this file is soft-deleted
+ * because it is money and money is auditable; a location is the opposite kind
+ * of data - the user asking for it to be gone is the whole point, and a row
+ * that still holds the coordinate in a "deleted" column has not honoured that.
+ *
+ * The count is returned so the interface can say what happened rather than
+ * claiming success over a no-op.
+ */
+export async function clearAllLocations(userId: UserId): Promise<number> {
+  const db = getDb();
+
+  const rows = await db
+    .update(transactions)
+    .set({
+      latitude: null,
+      longitude: null,
+      locationAccuracyM: null,
+      locationSource: null,
+    })
+    .where(and(eq(transactions.userId, userId), isNotNull(transactions.latitude)))
+    .returning({ id: transactions.id });
+
+  return rows.length;
+}
+
 export interface CategorySpendingBreakdown {
   readonly categoryId: string | null;
   /**
@@ -452,6 +498,16 @@ export interface EnrichedTransactionRow {
     readonly name: string;
     readonly currency: string;
   } | null;
+  /**
+   * null when the spend carries no coordinate, which is most of them: SMS and
+   * OCR never have one, and the feature is off until the user turns it on.
+   */
+  readonly location: {
+    readonly latitude: number;
+    readonly longitude: number;
+    readonly accuracyM: number | null;
+    readonly source: string | null;
+  } | null;
 }
 
 // The enriched projection and its row mapping are shared by every screen that
@@ -475,6 +531,10 @@ const ENRICHED_COLUMNS = {
   accId: accounts.id,
   accName: accounts.name,
   accCurrency: accounts.currency,
+  latitude: transactions.latitude,
+  longitude: transactions.longitude,
+  locationAccuracyM: transactions.locationAccuracyM,
+  locationSource: transactions.locationSource,
 } as const;
 
 // Written out rather than mapped over ENRICHED_COLUMNS: a mapped type reads the
@@ -498,6 +558,12 @@ interface EnrichedQueryRow {
   readonly accId: string | null;
   readonly accName: string | null;
   readonly accCurrency: string | null;
+  // numeric columns arrive as strings from the driver, which is exactly why
+  // they are numeric: no float ever touches the value on the way here.
+  readonly latitude: string | null;
+  readonly longitude: string | null;
+  readonly locationAccuracyM: number | null;
+  readonly locationSource: string | null;
 }
 
 function toEnrichedRow(r: EnrichedQueryRow): EnrichedTransactionRow {
@@ -526,6 +592,17 @@ function toEnrichedRow(r: EnrichedQueryRow): EnrichedTransactionRow {
           currency: r.accCurrency ?? 'COP',
         }
       : null,
+    // Both or neither - the CHECK constraint guarantees it, and this reads the
+    // pair the same way rather than trusting one of them alone.
+    location:
+      r.latitude !== null && r.longitude !== null
+        ? {
+            latitude: Number(r.latitude),
+            longitude: Number(r.longitude),
+            accuracyM: r.locationAccuracyM,
+            source: r.locationSource,
+          }
+        : null,
   };
 }
 
