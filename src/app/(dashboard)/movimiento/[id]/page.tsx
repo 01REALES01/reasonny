@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
+import { TransactionMap } from '@/components/dashboard/transaction-map';
 import { listCategories } from '@/core/repositories/category.repository';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getEnrichedTransaction } from '@/core/repositories/transaction.repository';
@@ -52,12 +53,31 @@ export default async function TransactionDetailPage(props: {
   }
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--movimiento">
       <EditTransactionForm
         transaction={transaction}
         categories={categories}
         timeZone={profile.timezone}
       />
+
+      {/* Only when there is a coordinate. Most spends have none - an SMS and a
+          scanned statement never carry one - and an empty map frame saying
+          "unknown" would be a permanent apology on most of these screens. */}
+      {transaction.location && (
+        <TransactionMap
+          point={transaction.location}
+          accuracyM={transaction.location.accuracyM}
+          source={transaction.location.source}
+          home={
+            profile.homeLatitude !== null && profile.homeLongitude !== null
+              ? {
+                  latitude: Number(profile.homeLatitude),
+                  longitude: Number(profile.homeLongitude),
+                }
+              : null
+          }
+        />
+      )}
     </main>
   );
 }

@@ -16,8 +16,13 @@ import { t } from '@/lib/i18n';
  *   2. Nuevo Registro (+) (/nuevo)
  *   3. Exportar CSV (/api/v1/export)
  */
-export function PhoneDock(): React.ReactElement {
+export function PhoneDock(): React.ReactElement | null {
   const pathname = usePathname();
+
+  // Fullscreen flows like /captura suppress the floating dock completely
+  if (pathname === '/captura') {
+    return null;
+  }
 
   return (
     <nav className="phone-dock" aria-label={t('nav_main')}>

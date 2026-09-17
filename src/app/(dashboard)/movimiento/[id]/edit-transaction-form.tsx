@@ -8,6 +8,7 @@ import {
   deleteTransactionAction,
   editTransactionAction,
 } from '@/app/actions/edit-transaction';
+import { CategoryPicker } from '@/components/dashboard/category-picker';
 import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { toDecimalString } from '@/core/money';
@@ -162,25 +163,12 @@ export function EditTransactionForm({
 
           <div className="entry-field">
             <span className="entry-label">{t('field_category')}</span>
-            <div className="entry-categories">
-              {selectable.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  aria-pressed={categoryId === cat.id}
-                  onClick={() =>
-                    setCategoryId(categoryId === cat.id ? null : cat.id)
-                  }
-                  className="entry-category"
-                >
-                  <span
-                    className="entry-category-dot"
-                    style={{ '--dot': cat.color } as React.CSSProperties}
-                  />
-                  {cat.name}
-                </button>
-              ))}
-            </div>
+            <CategoryPicker
+              categories={selectable}
+              selectedId={categoryId}
+              onSelect={(id) => setCategoryId(categoryId === id ? null : id)}
+              ariaLabel={t('field_category')}
+            />
           </div>
 
           <div className="entry-field">

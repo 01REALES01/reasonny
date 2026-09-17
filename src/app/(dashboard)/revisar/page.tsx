@@ -30,7 +30,7 @@ export default async function ReviewPage(): Promise<React.ReactElement> {
   ]);
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--revisar">
       <ReviewQueue
         transactions={transactions}
         categories={categories}

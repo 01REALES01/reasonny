@@ -40,7 +40,7 @@ export default async function MonthPage(props: {
   const data = await getMonthViewData(userId, offset);
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--mes">
       <div className="entry">
         <div className="entry-bar">
           <Link href="/dashboard" className="entry-back">
