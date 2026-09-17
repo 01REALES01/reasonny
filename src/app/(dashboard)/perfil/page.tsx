@@ -28,6 +28,7 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
 
   // Only to word the link below. The wizard itself moved to /captura.
   const capture = await getAutomaticCaptureStatus(userId);
+  const telegramLinked = profile.telegramChatId !== null;
 
   return (
     <main className="entry-page entry-page--perfil">
@@ -59,6 +60,18 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
             {capture.count > 0
               ? `Funcionando · ${capture.count} ${capture.count === 1 ? 'pago recibido' : 'pagos recibidos'}`
               : 'Sin configurar'}
+          </span>
+        </span>
+        <CategoryIcon name="ChevronRight" size={18} />
+      </Link>
+      {/* The other capture surface. Cards arrive by SMS on their own; cash,
+          Nequi and QR only exist if somebody writes them down, and the chat is
+          where that costs the least. */}
+      <Link href="/telegram" className="settings-link">
+        <span className="settings-link-text">
+          <span className="settings-link-title">Telegram</span>
+          <span className="settings-link-sub">
+            {telegramLinked ? 'Conectado' : 'Sin conectar'}
           </span>
         </span>
         <CategoryIcon name="ChevronRight" size={18} />

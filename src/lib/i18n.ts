@@ -189,6 +189,20 @@ export const DICTIONARY = {
     auth_verifying: 'Verificando…',
     auth_code_invalid: 'El código ingresado es incorrecto.',
     auth_change_email: 'Cambiar de correo',
+
+    // Bot de Telegram. Todo lo que el bot dice pasa por aquí: un cliente no
+    // inventa copy, igual que no inventa lógica.
+    bot_linked_title: '✅ Listo, quedamos conectados.',
+    bot_linked_body:
+      'Desde ahora puedes anotar aquí lo que pagues en efectivo. Escríbeme el monto y el comercio, así: 12000 juan valdez',
+    bot_already_linked: 'Este chat ya estaba conectado a tu cuenta. Todo en orden.',
+    bot_link_expired:
+      '⌛ Ese enlace ya caducó. Vuelve a Reasonny, entra en Perfil → Telegram y toca Conectar otra vez. Los enlaces duran 15 minutos a propósito.',
+    bot_link_invalid: 'No pude leer ese enlace. Genéralo de nuevo desde Reasonny, en Perfil → Telegram.',
+    bot_link_no_profile: 'No encuentro esa cuenta. Entra a Reasonny una vez y vuelve a intentarlo.',
+    bot_not_linked:
+      'Hola. Este chat todavía no está conectado a ninguna cuenta de Reasonny. Abre la app, entra en Perfil → Telegram y toca Conectar.',
+    bot_unknown_command: 'Todavía no sé hacer eso. Por ahora escríbeme /start para conectar tu cuenta.',
   },
   en: {
     // Navigation & Common
@@ -368,6 +382,20 @@ export const DICTIONARY = {
     auth_verifying: 'Verifying…',
     auth_code_invalid: 'That code is not correct.',
     auth_change_email: 'Use another email',
+
+    // Telegram bot. Everything the bot says comes through here: a client does
+    // not invent copy, the same way it does not invent logic.
+    bot_linked_title: '✅ Done, we are connected.',
+    bot_linked_body:
+      'From now on you can jot down whatever you pay in cash right here. Send me the amount and the merchant, like this: 12000 juan valdez',
+    bot_already_linked: 'This chat was already connected to your account. All good.',
+    bot_link_expired:
+      '⌛ That link has expired. Go back to Reasonny, open Profile → Telegram and tap Connect again. Links last 15 minutes on purpose.',
+    bot_link_invalid: 'I could not read that link. Generate a new one in Reasonny, under Profile → Telegram.',
+    bot_link_no_profile: 'I cannot find that account. Open Reasonny once and try again.',
+    bot_not_linked:
+      'Hi. This chat is not connected to any Reasonny account yet. Open the app, go to Profile → Telegram and tap Connect.',
+    bot_unknown_command: 'I cannot do that yet. For now, send me /start to connect your account.',
   },
 } as const;
 

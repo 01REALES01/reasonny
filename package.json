@@ -21,7 +21,9 @@
     "db:migrate:raw": "drizzle-kit migrate",
     "metrics:report": "tsx scripts/metrics-report.mts",
     "lighthouse": "lhci autorun",
-    "test:isolation": "vitest run tests/isolation.test.ts"
+    "test:isolation": "vitest run tests/isolation.test.ts",
+    "telegram:dev": "tsx scripts/telegram-dev.mts",
+    "telegram:webhook": "tsx scripts/telegram-webhook.mts"
   },
   "dependencies": {
     "@neon/config": "1.0.4",

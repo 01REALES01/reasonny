@@ -39,16 +39,25 @@ export function TransactionInteractiveMap({
     // Zoom control at bottom-left so it doesn't overlap the "Abrir en Maps" button at bottom-right
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
+    const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY;
     const isRetina = typeof window !== 'undefined' && window.devicePixelRatio > 1;
     const retinaSuffix = isRetina ? '@2x' : '';
 
-    L.tileLayer(
-      `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}${retinaSuffix}.png`,
-      {
-        subdomains: 'abcd',
+    if (cartoKey) {
+      L.tileLayer(
+        `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}${retinaSuffix}.png?api_key=${encodeURIComponent(cartoKey)}`,
+        {
+          subdomains: 'abcd',
+          maxZoom: 19,
+        },
+      ).addTo(map);
+    } else {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        subdomains: 'abc',
         maxZoom: 19,
-      },
-    ).addTo(map);
+        className: 'tx-map-dark-tiles',
+      }).addTo(map);
+    }
 
     const pinIcon = L.divIcon({
       className: 'tx-leaflet-pin-wrapper',

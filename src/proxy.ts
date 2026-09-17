@@ -43,5 +43,6 @@ export const config = {
     '/nuevo/:path*',
     '/perfil/:path*',
     '/revisar/:path*',
+    '/telegram/:path*',
   ],
 };

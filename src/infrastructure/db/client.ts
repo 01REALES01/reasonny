@@ -25,7 +25,11 @@ let instance: NeonDatabase<typeof schema> | undefined;
  */
 export function getDb(): NeonDatabase<typeof schema> {
   if (!instance) {
-    const pool = new Pool({ connectionString: resolveConnectionString('runtime') });
+    const pool = new Pool({
+      connectionString: resolveConnectionString('runtime'),
+      // Allow up to 20s for Neon serverless compute to wake from scale-to-zero suspension
+      connectionTimeoutMillis: 20000,
+    });
     // casing MUST match drizzle.config.ts, or generated queries reference
     // column names that do not exist in the migrated database.
     instance = drizzle(pool, { schema, casing: 'snake_case' });

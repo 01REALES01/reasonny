@@ -3,7 +3,7 @@
  *
  * All operations enforce isolation using UserId as the primary partition key.
  */
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 import type { UserId } from '@/core/types';
 import { getDb } from '@/infrastructure/db/client';
@@ -118,6 +118,72 @@ export async function updateLocationSettings(
   const [row] = await db
     .update(profiles)
     .set(patch)
+    .where(eq(profiles.id, userId))
+    .returning();
+
+  return row ?? null;
+}
+
+/**
+ * The profile a Telegram chat belongs to, or null.
+ *
+ * The ONE function here that legitimately takes no userId, for the same reason
+ * verifyAndTouchApiKey does not: the chat id IS the credential. A webhook
+ * arrives with nothing but a chat, and this is what turns it into a tenant.
+ * telegram_chat_id is UNIQUE, so it can only ever resolve to one.
+ */
+export async function getProfileByTelegramChatId(
+  chatId: bigint,
+): Promise<ProfileRow | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.telegramChatId, chatId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * Binds a chat to this account, or moves it here from another one.
+ *
+ * telegram_chat_id is UNIQUE, so linking a chat that already belongs to a
+ * different profile would violate the constraint rather than silently move it.
+ * That is the safe failure - two accounts answering in one chat would be
+ * ambiguous every time a button was tapped - so the conflict is cleared
+ * deliberately first, by the same person who proved they own this chat.
+ */
+export async function linkTelegramChat(
+  userId: UserId,
+  chatId: bigint,
+): Promise<ProfileRow | null> {
+  const db = getDb();
+
+  return db.transaction(async (tx) => {
+    // Any other profile holding this chat loses it. Reaching here means
+    // somebody pasted a valid, unexpired link token into that chat, which is
+    // proof of ownership of the account being linked TO.
+    await tx
+      .update(profiles)
+      .set({ telegramChatId: null })
+      .where(and(eq(profiles.telegramChatId, chatId), ne(profiles.id, userId)));
+
+    const [row] = await tx
+      .update(profiles)
+      .set({ telegramChatId: chatId })
+      .where(eq(profiles.id, userId))
+      .returning();
+
+    return row ?? null;
+  });
+}
+
+export async function unlinkTelegramChat(userId: UserId): Promise<ProfileRow | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(profiles)
+    .set({ telegramChatId: null })
     .where(eq(profiles.id, userId))
     .returning();
 
