@@ -33,6 +33,12 @@ const SMS = {
     'Bancolombia: Recibiste una transferencia por $180,000 de OTRA PERSONA en tu cuenta **9999, el 24/08/2026 a las 05:54. Si tienes dudas, hablemos: 018000000000. Siempre a tu lado.',
   bancolombiaQr:
     'Bancolombia: NOMBRE APELLIDO EJEMPLO pagaste $7,500.00 por codigo QR desde tu cuenta *9999 a la llave 3000000001 el 21/08/2026 a las 17:09. Con codigo QR es facil y de una. Dudas al 018000000000',
+  bancolombiaPurchaseHannaHops:
+    'Bancolombia: Compraste $46.872,00 en HANNA HOPS USAQUEN con tu T.Deb *5381, el 17/09/2026 a las 16:09. Si tienes dudas, encuentranos aqui: 6045109095 o 018000931987. Estamos cerca.',
+  bancolombiaPurchaseUber:
+    'Bancolombia: Compraste $13.957,00 en UBER*RIDES con tu T.Deb *2621, el 17/09/2026 a las 09:16. Si tienes dudas, encuentranos aqui: 6045109095 o 018000931987. Estamos cerca.',
+  bancolombiaTransferToAccount:
+    'Bancolombia: Transferiste $7,000.00 desde tu cuenta *1724 a la cuenta *3227909149 el 17/09/26 a las 12:10. ¿Dudas? Llamanos al 018000931987. Estamos cerca.',
 } as const;
 
 function ok(text: string) {
@@ -102,6 +108,42 @@ describe('Bank SMS parsers', () => {
       // payment later.
       expect(tx.merchant).toBe('Llave ••0001');
       expect(tx.merchant).not.toContain('3000000001');
+    });
+
+    it('extracts merchant, amount and debit card mask from a physical purchase (HANNA HOPS USAQUEN)', () => {
+      const tx = ok(SMS.bancolombiaPurchaseHannaHops);
+
+      expect(tx.type).toBe('expense');
+      expect(tx.merchant).toBe('HANNA HOPS USAQUEN');
+      expect(tx.amountMinor).toBe(4687200n);
+      expect(tx.accountMask).toBe('5381');
+      expect(tx.currency).toBe('COP');
+      // 17/09/2026 16:09 Bogotá (UTC-5) -> 21:09 UTC
+      expect(tx.transactionDate.toISOString()).toBe('2026-09-17T21:09:00.000Z');
+    });
+
+    it('extracts merchant with special characters from an app purchase (UBER*RIDES)', () => {
+      const tx = ok(SMS.bancolombiaPurchaseUber);
+
+      expect(tx.type).toBe('expense');
+      expect(tx.merchant).toBe('UBER*RIDES');
+      expect(tx.amountMinor).toBe(1395700n);
+      expect(tx.accountMask).toBe('2621');
+      expect(tx.currency).toBe('COP');
+      // 17/09/2026 09:16 Bogotá (UTC-5) -> 14:16 UTC
+      expect(tx.transactionDate.toISOString()).toBe('2026-09-17T14:16:00.000Z');
+    });
+
+    it('masks destination account on an outgoing transfer rather than saving raw phone/account as merchant', () => {
+      const tx = ok(SMS.bancolombiaTransferToAccount);
+
+      expect(tx.type).toBe('expense');
+      expect(tx.merchant).toBe('Cuenta ••9149');
+      expect(tx.merchant).not.toContain('3227909149');
+      expect(tx.amountMinor).toBe(700000n);
+      expect(tx.accountMask).toBe('1724');
+      // 17/09/26 12:10 Bogotá (UTC-5) -> 17:10 UTC
+      expect(tx.transactionDate.toISOString()).toBe('2026-09-17T17:10:00.000Z');
     });
 
     it('parses millions without losing a digit to the grouping commas', () => {

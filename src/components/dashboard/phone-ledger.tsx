@@ -4,18 +4,23 @@ import React from 'react';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import type { DayGroup } from '@/core/services/analytics.service';
-import { formatDate, t } from '@/lib/i18n';
+import { formatDate, formatTime, t } from '@/lib/i18n';
 
 interface PhoneLedgerProps {
   readonly days: DayGroup[];
   readonly currency: string;
+  readonly timeZone?: string;
 }
 
 /**
  * Transactions under one header per day, the way a fixtures list reads:
  * the date first, then what happened on it, with the day's spending beside it.
  */
-export function PhoneLedger({ days, currency }: PhoneLedgerProps): React.ReactElement {
+export function PhoneLedger({
+  days,
+  currency,
+  timeZone = 'America/Bogota',
+}: PhoneLedgerProps): React.ReactElement {
   return (
     <section className="phone-ledger">
       {/* Header */}
@@ -86,7 +91,21 @@ export function PhoneLedger({ days, currency }: PhoneLedgerProps): React.ReactEl
                       <div className="phone-tx-info">
                         <span className="phone-tx-merchant">{tx.merchant}</span>
                         <span className="phone-tx-meta">
-                          {tx.category?.name ?? t('uncategorized')}
+                          <span className="phone-tx-time">
+                            {formatTime(tx.transactionDate, timeZone)}
+                          </span>
+                          <span className="phone-tx-sep">·</span>
+                          <span className="phone-tx-cat">
+                            {tx.category?.name ?? t('uncategorized')}
+                          </span>
+                          {tx.source === 'sms_shortcut' && (
+                            <span
+                              className="phone-tx-source-badge"
+                              title="Capturado automáticamente vía SMS"
+                            >
+                              Auto
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>

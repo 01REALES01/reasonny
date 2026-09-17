@@ -66,6 +66,7 @@ describe('CSV Export Service', () => {
         // Present on the row, absent from the export on purpose: a CSV with
         // coordinates in it is a movement history, and it leaves the app.
         location: null,
+        source: 'sms_shortcut',
       };
 
       const row = formatTransactionToCsvRow(mockTx);

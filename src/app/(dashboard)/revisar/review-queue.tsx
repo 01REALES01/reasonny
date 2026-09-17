@@ -6,11 +6,12 @@ import React, { useState, useTransition } from 'react';
 
 import { categorizeTransactionAction } from '@/app/actions/edit-transaction';
 import { CategoryPicker } from '@/components/dashboard/category-picker';
+import { CreateCategoryDrawer } from '@/components/dashboard/create-category-drawer';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import type { CategoryRow } from '@/core/repositories/category.repository';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
-import { formatDate, t } from '@/lib/i18n';
+import { formatDate, formatTime, t } from '@/lib/i18n';
 
 interface ReviewQueueProps {
   readonly transactions: EnrichedTransactionRow[];
@@ -26,6 +27,8 @@ export function ReviewQueue({
 }: ReviewQueueProps): React.ReactElement {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [categoryList, setCategoryList] = useState<CategoryRow[]>(categories);
+  const [targetTxForNewCategory, setTargetTxForNewCategory] = useState<EnrichedTransactionRow | null>(null);
   // Rows are hidden as soon as their write succeeds instead of waiting for the
   // refresh, so clearing a queue of twenty does not mean twenty round trips of
   // watching the same list not change.
@@ -86,7 +89,7 @@ export function ReviewQueue({
       <div className="review-list">
         {pending.map((tx) => {
           const isIncome = tx.type === 'income';
-          const selectable = categories.filter((c) =>
+          const selectable = categoryList.filter((c) =>
             isIncome ? c.type === 'income' : c.type === 'expense',
           );
 
@@ -101,12 +104,18 @@ export function ReviewQueue({
 
                 <div className="review-card-id">
                   <span className="review-card-merchant">{tx.merchant}</span>
-                  <span className="review-card-date">
-                    {formatDate(tx.transactionDate, timeZone, 'es', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </span>
+                  <div className="review-card-meta">
+                    <span className="review-card-date">
+                      {formatDate(tx.transactionDate, timeZone, 'es', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}{' '}
+                      · {formatTime(tx.transactionDate, timeZone)}
+                    </span>
+                    {tx.source === 'sms_shortcut' && (
+                      <span className="phone-tx-source-badge">Auto</span>
+                    )}
+                  </div>
                 </div>
 
                 <span
@@ -124,6 +133,7 @@ export function ReviewQueue({
                   categories={selectable}
                   selectedId={null}
                   onSelect={(categoryId) => assign(tx.id, categoryId)}
+                  onAddNew={() => setTargetTxForNewCategory(tx)}
                   disabled={isPending}
                   ariaLabel={`Categoría para ${tx.merchant}`}
                 />
@@ -137,6 +147,20 @@ export function ReviewQueue({
           );
         })}
       </div>
+
+      {/* ── Bottom Drawer para Crear Nueva Categoría desde /revisar ─────────── */}
+      <CreateCategoryDrawer
+        isOpen={targetTxForNewCategory !== null}
+        type={targetTxForNewCategory?.type === 'income' ? 'income' : 'expense'}
+        onClose={() => setTargetTxForNewCategory(null)}
+        onCategoryCreated={(newCat) => {
+          setCategoryList((prev) => [newCat, ...prev]);
+          if (targetTxForNewCategory) {
+            assign(targetTxForNewCategory.id, newCat.id);
+          }
+          setTargetTxForNewCategory(null);
+        }}
+      />
     </div>
   );
 }

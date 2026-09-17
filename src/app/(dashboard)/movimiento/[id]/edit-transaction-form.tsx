@@ -9,12 +9,13 @@ import {
   editTransactionAction,
 } from '@/app/actions/edit-transaction';
 import { CategoryPicker } from '@/components/dashboard/category-picker';
+import { CreateCategoryDrawer } from '@/components/dashboard/create-category-drawer';
 import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { toDecimalString } from '@/core/money';
 import type { CategoryRow } from '@/core/repositories/category.repository';
 import type { EnrichedTransactionRow } from '@/core/repositories/transaction.repository';
-import { formatDate, t } from '@/lib/i18n';
+import { formatDate, formatTime, t } from '@/lib/i18n';
 
 interface EditTransactionFormProps {
   readonly transaction: EnrichedTransactionRow;
@@ -47,6 +48,8 @@ export function EditTransactionForm({
     const decimal = toDecimalString(transaction.amountMinor);
     return decimal.endsWith('.00') ? decimal.slice(0, -3) : decimal;
   });
+  const [categoryList, setCategoryList] = useState<CategoryRow[]>(categories);
+  const [isCategoryDrawerOpen, setIsCategoryDrawerOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction.category?.id ?? null,
   );
@@ -57,7 +60,7 @@ export function EditTransactionForm({
   const [isPending, startTransition] = useTransition();
 
   const isIncome = transaction.type === 'income';
-  const selectable = categories.filter((c) =>
+  const selectable = categoryList.filter((c) =>
     isIncome ? c.type === 'income' : c.type === 'expense',
   );
 
@@ -108,14 +111,26 @@ export function EditTransactionForm({
         <span className="entry-date-chip">
           {formatDate(transaction.transactionDate, timeZone, 'es', {
             day: 'numeric',
-            month: 'long',
+            month: 'short',
             year: 'numeric',
-          })}
+          })}{' '}
+          · {formatTime(transaction.transactionDate, timeZone)}
         </span>
       </div>
 
       <div className="step-slide entry-card">
-        <h1 className="profile-heading">{t('edit_title')}</h1>
+        <div className="entry-header-row">
+          <h1 className="profile-heading">{t('edit_title')}</h1>
+          {transaction.source === 'sms_shortcut' ? (
+            <span className="entry-source-badge entry-source-badge--auto">
+              <span>Auto</span>
+            </span>
+          ) : (
+            <span className="entry-source-badge">
+              <span>Manual</span>
+            </span>
+          )}
+        </div>
 
         {isSaved && (
           <div role="status" className="entry-banner entry-banner--success">
@@ -131,6 +146,25 @@ export function EditTransactionForm({
             {error}
           </div>
         )}
+
+        {/* Timestamp de Pago visible y destacado dentro del movimiento */}
+        <div className="entry-tx-timestamp-card">
+          <div className="entry-tx-timestamp-icon" aria-hidden="true">
+            <CategoryIcon name="Calendar" size={16} />
+          </div>
+          <div className="entry-tx-timestamp-info">
+            <span className="entry-tx-timestamp-label">Fecha y hora del pago</span>
+            <span className="entry-tx-timestamp-value">
+              {formatDate(transaction.transactionDate, timeZone, 'es', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}{' '}
+              a las {formatTime(transaction.transactionDate, timeZone)}
+            </span>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="entry-form">
           <div className="entry-field">
@@ -167,6 +201,7 @@ export function EditTransactionForm({
               categories={selectable}
               selectedId={categoryId}
               onSelect={(id) => setCategoryId(categoryId === id ? null : id)}
+              onAddNew={() => setIsCategoryDrawerOpen(true)}
               ariaLabel={t('field_category')}
             />
           </div>
@@ -239,6 +274,18 @@ export function EditTransactionForm({
           </button>
         )}
       </div>
+
+      {/* ── Bottom Drawer para Crear Nueva Categoría dentro de Movimiento ────── */}
+      <CreateCategoryDrawer
+        isOpen={isCategoryDrawerOpen}
+        type={isIncome ? 'income' : 'expense'}
+        onClose={() => setIsCategoryDrawerOpen(false)}
+        onCategoryCreated={(newCat) => {
+          setCategoryList((prev) => [newCat, ...prev]);
+          setCategoryId(newCat.id);
+          setIsCategoryDrawerOpen(false);
+        }}
+      />
     </div>
   );
 }

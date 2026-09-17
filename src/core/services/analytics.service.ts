@@ -12,6 +12,7 @@ import {
 import { getProfile } from '@/core/repositories/profile.repository';
 import {
   countUncategorizedTransactions,
+  getAutomaticCaptureStatus,
   getCategorySpendingBreakdown,
   getDailyExpenseTotals,
   getEnrichedTransactionsInMonth,
@@ -53,6 +54,8 @@ export interface DashboardData {
   readonly week: WeekSpending;
   readonly uncategorizedCount: number;
   readonly currentMonthLabel: string;
+  readonly lastCaptureAt: string | null;
+  readonly autoCaptureCount: number;
 }
 
 /**
@@ -303,6 +306,7 @@ export async function getDashboardData(
     categoryBreakdown,
     recentTransactions,
     uncategorizedCount,
+    captureStatus,
   ] = await Promise.all([
     listAccounts(userId),
     getMonthlyTotals(
@@ -319,6 +323,7 @@ export async function getDashboardData(
     ),
     getRecentEnrichedTransactions(userId, 20),
     countUncategorizedTransactions(userId),
+    getAutomaticCaptureStatus(userId),
   ]);
 
   // The daily totals ride in the second round trip the balances already need,
@@ -364,5 +369,7 @@ export async function getDashboardData(
     },
     uncategorizedCount,
     currentMonthLabel: `${capitalizedMonth} ${bounds.year}`,
+    lastCaptureAt: captureStatus.lastAt ? captureStatus.lastAt.toISOString() : null,
+    autoCaptureCount: captureStatus.count,
   };
 }

@@ -16,6 +16,7 @@ vi.mock('@/core/repositories/transaction.repository', () => ({
   getEnrichedTransactionsInMonth: vi.fn(),
   countUncategorizedTransactions: vi.fn(),
   getDailyExpenseTotals: vi.fn(),
+  getAutomaticCaptureStatus: vi.fn(),
 }));
 
 import {
@@ -30,6 +31,7 @@ import {
   getEnrichedTransactionsInMonth,
   countUncategorizedTransactions,
   getDailyExpenseTotals,
+  getAutomaticCaptureStatus,
   type EnrichedTransactionRow,
 } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
@@ -49,6 +51,7 @@ function row(id: string, isoDate: string): EnrichedTransactionRow {
     currency: 'COP',
     type: 'expense',
     status: 'confirmed',
+    source: 'sms_shortcut',
     merchant: 'Éxito',
     note: null,
     transactionDate: new Date(isoDate),
@@ -216,6 +219,7 @@ describe('Analytics Service & Timezone Boundaries', () => {
           currency: 'COP',
           type: 'expense',
           status: 'confirmed',
+          source: 'sms_shortcut',
           merchant: 'Éxito',
           note: null,
           transactionDate: new Date('2026-08-20T10:00:00Z'),
@@ -229,6 +233,11 @@ describe('Analytics Service & Timezone Boundaries', () => {
           account: { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', name: 'Checking', currency: 'COP' },
         },
       ]);
+
+      (getAutomaticCaptureStatus as any).mockResolvedValue({
+        count: 5,
+        lastAt: new Date('2026-08-27T11:00:00Z'),
+      });
 
       (countUncategorizedTransactions as any).mockResolvedValue(0);
 
@@ -245,6 +254,8 @@ describe('Analytics Service & Timezone Boundaries', () => {
       expect(data.timezone).toBe('America/Bogota');
       expect(data.totalBalanceMinor).toBe(200000000n);
       expect(data.monthlyTotals.totalExpenseMinor).toBe(45000000n);
+      expect(data.autoCaptureCount).toBe(5);
+      expect(data.lastCaptureAt).toBe('2026-08-27T11:00:00.000Z');
       expect(data.categoryBreakdown).toHaveLength(1);
       expect(data.uncategorizedCount).toBe(0);
 

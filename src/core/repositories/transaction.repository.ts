@@ -233,7 +233,7 @@ export async function getAutomaticCaptureStatus(
       count: sql<number>`COUNT(*)::int`,
       // mapWith, like every other aggregate in this file. Without it the
       // declared type is a promise the runtime does not keep.
-      lastAt: sql<Date | null>`MAX(${transactions.createdAt})`.mapWith(toDateOrNull),
+      lastAt: sql<Date | null>`MAX(${transactions.transactionDate})`.mapWith(toDateOrNull),
     })
     .from(transactions)
     .where(
@@ -483,6 +483,7 @@ export interface EnrichedTransactionRow {
   readonly currency: string;
   readonly type: TransactionType;
   readonly status: TransactionStatus;
+  readonly source: TransactionSource;
   readonly merchant: string;
   readonly note: string | null;
   readonly transactionDate: Date;
@@ -520,6 +521,7 @@ const ENRICHED_COLUMNS = {
   currency: transactions.currency,
   type: transactions.type,
   status: transactions.status,
+  source: transactions.source,
   merchant: transactions.merchant,
   note: transactions.note,
   transactionDate: transactions.transactionDate,
@@ -547,6 +549,7 @@ interface EnrichedQueryRow {
   readonly currency: string;
   readonly type: string;
   readonly status: string;
+  readonly source: string;
   readonly merchant: string;
   readonly note: string | null;
   readonly transactionDate: Date;
@@ -573,6 +576,7 @@ function toEnrichedRow(r: EnrichedQueryRow): EnrichedTransactionRow {
     currency: r.currency,
     type: r.type as TransactionType,
     status: r.status as TransactionStatus,
+    source: r.source as TransactionSource,
     merchant: r.merchant,
     note: r.note,
     transactionDate: r.transactionDate,

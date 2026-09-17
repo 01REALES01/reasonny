@@ -67,6 +67,18 @@ export const DICTIONARY = {
     nav_main: 'Navegación principal',
     nav_notifications: 'Notificaciones',
     nav_profile: 'Perfil',
+    sync_active: 'Conectado a Bancolombia',
+    sync_bancolombia_connected: 'Conectado a Bancolombia',
+    sync_idle: 'Sin registros recientes',
+    sync_last_prefix: 'Último registro',
+    review_callout_title: 'por categorizar',
+    review_callout_single: 'gasto por categorizar',
+    review_callout_plural: 'gastos por categorizar',
+    review_callout_action: 'Revisar',
+    all_up_to_date: 'Todo al día',
+    source_auto: 'Auto',
+    source_manual: 'Manual',
+    source_sms: 'SMS Bancario',
 
     // Perfil
     profile_title: 'Tu perfil',
@@ -261,6 +273,18 @@ export const DICTIONARY = {
     nav_main: 'Main navigation',
     nav_notifications: 'Notifications',
     nav_profile: 'Profile',
+    sync_active: 'Connected to Bancolombia',
+    sync_bancolombia_connected: 'Connected to Bancolombia',
+    sync_idle: 'No recent records',
+    sync_last_prefix: 'Last record',
+    review_callout_title: 'to categorize',
+    review_callout_single: 'expense to categorize',
+    review_callout_plural: 'expenses to categorize',
+    review_callout_action: 'Review',
+    all_up_to_date: 'All up to date',
+    source_auto: 'Auto',
+    source_manual: 'Manual',
+    source_sms: 'Bank SMS',
 
     // Profile
     profile_title: 'Your profile',
@@ -450,6 +474,27 @@ export function formatDate(
       month: 'short',
       day: 'numeric',
     }),
+    timeZone,
+  }).format(d);
+}
+
+/**
+ * Formats the time of a transaction (hours:minutes) in the user's timezone.
+ * Defaults to 24-hour format (e.g. '16:09', '09:16') matching Colombian bank SMS notifications.
+ */
+export function formatTime(
+  date: Date | string | number,
+  timeZone: string,
+  locale: Locale = DEFAULT_LOCALE,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  const d = new Date(date);
+  const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
+  return new Intl.DateTimeFormat(localeTag, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    ...(options ?? {}),
     timeZone,
   }).format(d);
 }

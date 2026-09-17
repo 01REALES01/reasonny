@@ -5,6 +5,7 @@ import { after } from 'next/server';
 import { BalanceHero } from '@/components/dashboard/balance-hero';
 import { FinancialActions } from '@/components/dashboard/financial-actions';
 import { PhoneLedger } from '@/components/dashboard/phone-ledger';
+import { ReviewCallout } from '@/components/dashboard/review-callout';
 import { WeekSpendingCard } from '@/components/dashboard/week-spending';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getDashboardData } from '@/core/services/analytics.service';
@@ -54,7 +55,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
   return (
     <div className="phone-screen-container animate-entrance-1">
-      {/* 1. Authentic Luxury Velvet Balance Hero */}
+      {/* 1. Authentic Luxury Velvet Balance Hero with Live Sync Heartbeat */}
       <BalanceHero
         totalBalanceMinor={data.totalBalanceMinor}
         currency={data.baseCurrency}
@@ -62,20 +63,30 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         displayName={profile.fullName}
         monthLabel={data.currentMonthLabel}
         uncategorizedCount={data.uncategorizedCount}
+        lastCaptureAt={data.lastCaptureAt}
+        autoCaptureCount={data.autoCaptureCount}
+        timeZone={data.timezone}
       />
 
-      {/* 2. This week's spending, day by day, with today and the month */}
+      {/* 2. Triage Callout: Appears only when there are items to categorize (Level 2) */}
+      <ReviewCallout uncategorizedCount={data.uncategorizedCount} />
+
+      {/* 3. This week's spending, day by day, with today and the month */}
       <WeekSpendingCard
         week={data.week}
         monthExpenseMinor={data.monthlyTotals.totalExpenseMinor}
         currency={data.baseCurrency}
       />
 
-      {/* 3. Purposeful Financial Actions (+ Registrar gasto, + Ingreso) */}
+      {/* 4. Purposeful Financial Actions (+ Registrar gasto, + Ingreso) */}
       <FinancialActions />
 
-      {/* 4. Recent transactions, one header per day */}
-      <PhoneLedger days={data.recentDays} currency={data.baseCurrency} />
+      {/* 5. Recent transactions with exact payment time and auto-sync badge */}
+      <PhoneLedger
+        days={data.recentDays}
+        currency={data.baseCurrency}
+        timeZone={data.timezone}
+      />
     </div>
   );
 }

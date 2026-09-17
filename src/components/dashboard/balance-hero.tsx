@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import { getAuthClient } from '@/lib/auth-client';
-import { t } from '@/lib/i18n';
+import { formatDate, formatTime, t } from '@/lib/i18n';
 
 interface BalanceHeroProps {
   readonly totalBalanceMinor: bigint;
@@ -16,6 +16,9 @@ interface BalanceHeroProps {
   readonly displayName: string | null;
   readonly monthLabel: string;
   readonly uncategorizedCount: number;
+  readonly lastCaptureAt?: string | null;
+  readonly autoCaptureCount?: number;
+  readonly timeZone?: string;
 }
 
 /**
@@ -45,6 +48,19 @@ function getGreetingName(email: string): string {
     .join(' ');
 }
 
+function formatRelativeSyncTime(isoString: string | null | undefined): string {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return 'hace segundos';
+  if (diffMins < 60) return `hace ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `hace ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `hace ${diffDays} d`;
+}
+
 /**
  * Luxury Velvet Balance Hero.
  *
@@ -62,6 +78,9 @@ export function BalanceHero({
   displayName,
   monthLabel,
   uncategorizedCount,
+  lastCaptureAt,
+  autoCaptureCount,
+  timeZone = 'America/Bogota',
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -315,12 +334,25 @@ export function BalanceHero({
             getDashboardData yet, so the honest version states what the figure
             above actually is, and the delta returns when the query does. */}
         <div className="balance-hero-actions-row">
-          <div className="balance-hero-pill">
-            <CategoryIcon name="ShieldCheck" size={13} />
-            <span>
-              {currency} · {t('hero_realtime')}
+          <Link
+            href="/captura"
+            className="balance-hero-pill balance-hero-pill--sync"
+            title={
+              lastCaptureAt
+                ? `Última transacción recibida: ${formatDate(lastCaptureAt, timeZone, 'es', {
+                    day: 'numeric',
+                    month: 'short',
+                  })} a las ${formatTime(lastCaptureAt, timeZone)}`
+                : 'Conectado a Bancolombia vía SMS automático'
+            }
+          >
+            <span className="sync-pulse-dot" aria-hidden="true" />
+            <span className="sync-pill-text">
+              {lastCaptureAt
+                ? `Bancolombia · Última tx ${formatRelativeSyncTime(lastCaptureAt)}`
+                : 'Conectado a Bancolombia'}
             </span>
-          </div>
+          </Link>
 
           <button
             type="button"

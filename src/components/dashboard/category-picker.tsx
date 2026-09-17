@@ -9,6 +9,7 @@ interface CategoryPickerProps {
   readonly categories: CategoryRow[];
   readonly selectedId: string | null;
   readonly onSelect: (categoryId: string) => void;
+  readonly onAddNew?: () => void;
   readonly disabled?: boolean;
   /** Labels the grid for assistive technology; the visible label is the caller's. */
   readonly ariaLabel: string;
@@ -34,11 +35,26 @@ export function CategoryPicker({
   categories,
   selectedId,
   onSelect,
+  onAddNew,
   disabled = false,
   ariaLabel,
 }: CategoryPickerProps): React.ReactElement {
   return (
     <div className="category-picker" role="group" aria-label={ariaLabel}>
+      {onAddNew && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onAddNew}
+          className="entry-category-tile entry-category-tile--add"
+          aria-label="Crear nueva categoría"
+        >
+          <div className="entry-category-tile-icon entry-category-tile-icon--add">
+            <CategoryIcon name="Plus" size={19} />
+          </div>
+          <span className="entry-category-tile-name">+ Nueva</span>
+        </button>
+      )}
       {categories.map((cat) => {
         const isSelected = selectedId === cat.id;
         return (

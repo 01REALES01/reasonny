@@ -57,8 +57,9 @@ const DATE = /(\d{2})\/(\d{2})\/(\d{2}(?:\d{2})?)/;
 /** `20:18:00` and `13:15` both appear, from the same bank. */
 const TIME = /(\d{1,2}):(\d{2})(?::(\d{2}))?/;
 
-/** `*1724` · `**1724` · `Tarjeta Débito 0655` */
-const ACCOUNT_MASK = /\*{1,2}(\d{4})|(?:Tarjeta\s+[A-Za-zÁ-ú]+\s+)(\d{4})/;
+/** `*1724` · `**1724` · `Tarjeta Débito 0655` · `T.Deb *5381` · `T.Cred *1234` */
+const ACCOUNT_MASK =
+  /\*{1,2}(\d{4})|(?:(?:Tarjeta\s+[A-Za-zÁ-ú]+|T\.(?:Deb|Cred))\s+\*?)(\d{4})/i;
 
 export function extractAmountMinor(
   text: string,
@@ -143,7 +144,8 @@ export function extractAccountMask(text: string): string | null {
  */
 export function cleanCounterparty(raw: string): string {
   return raw
-    .split(/\s*(?:¿|\?|\.|,|Con\s+|Si\s+tienes|Dudas|Estamos|Siempre)/u)[0]!
+    .split(/\s*(?:¿|\?|\.(?:\s+|$)|,(?:\s+|$)|Con\s+|Si\s+tienes|Dudas|Estamos|Siempre)/u)[0]!
+    .replace(/[.,\s]+$/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
