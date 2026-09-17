@@ -31,8 +31,11 @@ export const metadata: Metadata = {
     title: 'Reasonny',
   },
   icons: {
-    icon: '/icon.png',
-    apple: '/apple-icon.png',
+    icon: [
+      { url: '/icon.png?v=3', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon.svg?v=3', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-icon.png?v=3',
   },
 };
 
