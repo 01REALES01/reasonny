@@ -52,31 +52,43 @@ export default async function CapturePage(): Promise<React.ReactElement> {
     ingest = null;
   }
 
-  return (
-    <main className="entry-page">
-      <div className="entry-bar">
-        <Link href="/dashboard" className="entry-back">
-          <CategoryIcon name="ArrowLeft" size={15} />
-          <span>Inicio</span>
-        </Link>
-      </div>
+  if (!ingest) {
+    return (
+      <main className="ingest-fullscreen">
+        <div className="ingest-aurora ingest-aurora--welcome" aria-hidden="true" />
+        <div className="ingest-fullscreen-header">
+          <Link href="/dashboard" className="ingest-fullscreen-back">
+            <CategoryIcon name="ArrowLeft" size={15} />
+            <span>Inicio</span>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="ingest-fullscreen-close"
+            aria-label="Cerrar"
+          >
+            <CategoryIcon name="X" size={17} />
+          </Link>
+        </div>
 
-      {ingest ? (
-        <IngestSetup
-          token={ingest.token}
-          endpoint={ingest.endpoint}
-          receivedCount={capture.count}
-          lastReceivedAt={capture.lastAt?.toISOString() ?? null}
-        />
-      ) : (
-        <section className="ingest">
-          <h2 className="ingest-hook">Todavía no.</h2>
-          <p className="ingest-lede">
-            Falta configurar el servidor para poder emitir tu llave de acceso.
-            Vuelve a intentarlo en un rato.
-          </p>
-        </section>
-      )}
-    </main>
+        <div className="ingest-fullscreen-body">
+          <section className="ingest">
+            <h2 className="ingest-hook">Todavía no.</h2>
+            <p className="ingest-lede">
+              Falta configurar el servidor para poder emitir tu llave de acceso.
+              Vuelve a intentarlo en un rato.
+            </p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <IngestSetup
+      token={ingest.token}
+      endpoint={ingest.endpoint}
+      receivedCount={capture.count}
+      lastReceivedAt={capture.lastAt?.toISOString() ?? null}
+    />
   );
 }

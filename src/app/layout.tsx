@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans, Urbanist } from 'next/font/google';
 
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register';
@@ -8,6 +8,13 @@ import { WebVitalsReporter } from '@/components/telemetry/web-vitals-reporter';
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-sans-loaded',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
+});
+
+const fontUrbanist = Urbanist({
+  subsets: ['latin'],
+  variable: '--font-urbanist',
   display: 'swap',
   weight: ['400', '500', '600', '700', '800'],
 });
@@ -56,7 +63,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={sans.variable}>
+    <html
+      lang="es"
+      className={`${sans.variable} ${fontUrbanist.variable}`}
+    >
       <body>
         <ServiceWorkerRegister />
         <WebVitalsReporter />

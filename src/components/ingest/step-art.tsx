@@ -148,6 +148,13 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, Step
         { label: 'Notificar al ejecutar', toggle: true },
       ],
     },
+    location: {
+      title: 'Acciones',
+      rows: [
+        { label: 'ubicación actual', field: true },
+        { label: 'Obtener ubicación actual', target: true },
+      ],
+    },
     action: {
       title: 'Acciones',
       rows: [
@@ -171,12 +178,27 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, Step
         { label: 'Valor', value: 'Bearer …' },
       ],
     },
-    body: {
+    body_text: {
       title: 'Cuerpo de la petición',
       rows: [
         { label: 'Tipo', value: 'JSON' },
-        { label: 'Añadir campo nuevo', target: true },
-        { label: 'text', value: 'Contenido del mensaje' },
+        { label: 'text', value: 'Entrada del atajo', target: true },
+        { label: 'Añadir campo nuevo' },
+      ],
+    },
+    body_location: {
+      title: 'Cuerpo de la petición',
+      rows: [
+        { label: 'latitude', value: 'Latitud', target: true },
+        { label: 'longitude', value: 'Longitud', target: true },
+        { label: 'Añadir campo nuevo' },
+      ],
+    },
+    save_shortcut: {
+      title: 'Nueva automatización',
+      rows: [
+        { label: 'Listo', value: 'Guardar', target: true },
+        { label: 'Ejecutar inmediatamente', toggle: true },
       ],
     },
   },
@@ -218,6 +240,13 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, Step
         { label: 'Notify When Run', toggle: true },
       ],
     },
+    location: {
+      title: 'Actions',
+      rows: [
+        { label: 'current location', field: true },
+        { label: 'Get Current Location', target: true },
+      ],
+    },
     action: {
       title: 'Actions',
       rows: [
@@ -241,12 +270,27 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, Step
         { label: 'Value', value: 'Bearer …' },
       ],
     },
-    body: {
+    body_text: {
       title: 'Request Body',
       rows: [
         { label: 'Type', value: 'JSON' },
-        { label: 'Add new field', target: true },
-        { label: 'text', value: 'Message Content' },
+        { label: 'text', value: 'Shortcut Input', target: true },
+        { label: 'Add new field' },
+      ],
+    },
+    body_location: {
+      title: 'Request Body',
+      rows: [
+        { label: 'latitude', value: 'Latitude', target: true },
+        { label: 'longitude', value: 'Longitude', target: true },
+        { label: 'Add new field' },
+      ],
+    },
+    save_shortcut: {
+      title: 'New Automation',
+      rows: [
+        { label: 'Done', value: 'Save', target: true },
+        { label: 'Run Immediately', toggle: true },
       ],
     },
   },

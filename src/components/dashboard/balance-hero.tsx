@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
+import { getAuthClient } from '@/lib/auth-client';
 import { t } from '@/lib/i18n';
 
 interface BalanceHeroProps {
@@ -48,7 +49,8 @@ function getGreetingName(email: string): string {
  * Luxury Velvet Balance Hero.
  *
  * Grounded in Reasonny's authentic visual identity:
- * - Warm personal greeting ("Hola, Jean Paul").
+ * - Warm personal greeting ("Hola, Jean Paul") with interactive profile options.
+ * - Prominent shortcuts access pill.
  * - Organic, diffuse imperial vinotinto & champagne gold volumetric lighting.
  * - Monumental available balance with <Money> and tap-to-mask privacy.
  * - Month pacing indicator.
@@ -62,45 +64,227 @@ export function BalanceHero({
   uncategorizedCount,
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
   // What the user chose to be called wins; the handle is only the fallback for
   // an account that has not been through /perfil yet.
   const name = displayName?.trim() || getGreetingName(userEmail);
   const initial = name.slice(0, 2).toUpperCase();
 
+  useEffect(() => {
+    if (!isProfileOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setIsProfileOpen(false);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isProfileOpen]);
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      const authClient = getAuthClient();
+      await authClient.signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      window.location.href = '/sign-in';
+    }
+  }
+
   return (
-    <div className="balance-hero">
-      {/* 1. Top Bar: Avatar, Greeting, Notification */}
+    <div className={`balance-hero${isProfileOpen ? ' balance-hero--menu-open' : ''}`}>
+      {/* 1. Top Bar: Interactive Profile trigger, Shortcut Pill, Notification Bell */}
       <div className="balance-hero-topbar">
-        <div className="balance-hero-avatar" title={userEmail}>
-          <span className="balance-hero-initial">{initial}</span>
-        </div>
-
-        <div className="balance-hero-identity">
-          <h1 className="balance-hero-greeting">
-            {t('greeting')}, {name}
-          </h1>
-          <p className="balance-hero-subline">
-            {t('month_summary')} {monthLabel}
-          </p>
-        </div>
-
-        {/* The bell used to be a button with no handler and a red dot that was
-            always lit, so it promised notifications the app cannot send. It is
-            a status indicator now: it carries the real count of transactions
-            waiting to be categorised, and it is absent when there are none. */}
-        {uncategorizedCount > 0 && (
-          <Link
-            href="/revisar"
-            className="balance-hero-bell"
-            title={`${uncategorizedCount} ${t('dashboard_pending_review')}`}
+        <div className="balance-hero-profile-wrap">
+          <button
+            type="button"
+            onClick={() => setIsProfileOpen((prev) => !prev)}
+            className="balance-hero-profile-trigger"
+            aria-label="Menú de perfil y cuenta"
+            aria-haspopup="menu"
+            aria-expanded={isProfileOpen}
           >
-            <CategoryIcon name="Bell" size={17} />
-            <span className="balance-hero-bell-dot" aria-hidden="true" />
-            <span className="sr-only">
-              {uncategorizedCount} {t('dashboard_pending_review')}
-            </span>
+            <div className="balance-hero-avatar" title={userEmail}>
+              <span className="balance-hero-initial">{initial}</span>
+            </div>
+
+            <div className="balance-hero-identity">
+              <div className="balance-hero-greeting-row">
+                <h1 className="balance-hero-greeting">
+                  {t('greeting')}, {name}
+                </h1>
+                <span className="balance-hero-caret" aria-hidden="true">
+                  <CategoryIcon name="ChevronDown" size={13} />
+                </span>
+              </div>
+              <p className="balance-hero-subline">
+                {t('month_summary')} {monthLabel}
+              </p>
+            </div>
+          </button>
+
+          {/* Menú Desplegable de Perfil */}
+          {isProfileOpen && (
+            <>
+              <div
+                className="profile-dropdown-scrim"
+                onClick={() => setIsProfileOpen(false)}
+                aria-hidden="true"
+              />
+              <div
+                className="profile-dropdown-menu"
+                role="menu"
+                aria-label="Opciones de perfil"
+              >
+                {/* User Card */}
+                <div className="profile-dropdown-user">
+                  <div className="profile-dropdown-avatar">
+                    <span className="profile-dropdown-initial">{initial}</span>
+                  </div>
+                  <div className="profile-dropdown-meta">
+                    <span className="profile-dropdown-name">{name}</span>
+                    <span className="profile-dropdown-email">{userEmail}</span>
+                  </div>
+                </div>
+
+                <div className="profile-dropdown-divider" />
+
+                {/* 1. Vincular app (Tutorial de Atajos) */}
+                <Link
+                  href="/captura"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="profile-dropdown-item profile-dropdown-item--highlight"
+                  role="menuitem"
+                >
+                  <span className="profile-dropdown-icon">
+                    <CategoryIcon name="Zap" size={17} />
+                  </span>
+                  <div className="profile-dropdown-text">
+                    <div className="profile-dropdown-title-row">
+                      <span className="profile-dropdown-title">Vincular la app</span>
+                      <span className="profile-dropdown-badge">Atajos SMS</span>
+                    </div>
+                    <span className="profile-dropdown-desc">
+                      Tutorial paso a paso para conectar tu banco
+                    </span>
+                  </div>
+                  <span className="profile-dropdown-arrow" aria-hidden="true">
+                    <CategoryIcon name="ChevronRight" size={14} />
+                  </span>
+                </Link>
+
+                {/* 2. Mi Perfil */}
+                <Link
+                  href="/perfil"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="profile-dropdown-item"
+                  role="menuitem"
+                >
+                  <span className="profile-dropdown-icon">
+                    <CategoryIcon name="User" size={17} />
+                  </span>
+                  <div className="profile-dropdown-text">
+                    <span className="profile-dropdown-title">Mi Perfil</span>
+                    <span className="profile-dropdown-desc">
+                      Datos de cuenta, moneda y ubicación
+                    </span>
+                  </div>
+                  <span className="profile-dropdown-arrow" aria-hidden="true">
+                    <CategoryIcon name="ChevronRight" size={14} />
+                  </span>
+                </Link>
+
+                {/* 3. Resumen Mensual */}
+                <Link
+                  href="/mes"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="profile-dropdown-item"
+                  role="menuitem"
+                >
+                  <span className="profile-dropdown-icon">
+                    <CategoryIcon name="PieChart" size={17} />
+                  </span>
+                  <div className="profile-dropdown-text">
+                    <span className="profile-dropdown-title">Resumen Mensual</span>
+                    <span className="profile-dropdown-desc">
+                      Desglose por categorías y balance
+                    </span>
+                  </div>
+                  <span className="profile-dropdown-arrow" aria-hidden="true">
+                    <CategoryIcon name="ChevronRight" size={14} />
+                  </span>
+                </Link>
+
+                {/* 4. Exportar CSV */}
+                <a
+                  href="/api/v1/export"
+                  download
+                  onClick={() => setIsProfileOpen(false)}
+                  className="profile-dropdown-item"
+                  role="menuitem"
+                >
+                  <span className="profile-dropdown-icon">
+                    <CategoryIcon name="Download" size={17} />
+                  </span>
+                  <div className="profile-dropdown-text">
+                    <span className="profile-dropdown-title">Exportar Movimientos</span>
+                    <span className="profile-dropdown-desc">
+                      Descarga tu historial en CSV
+                    </span>
+                  </div>
+                  <span className="profile-dropdown-arrow" aria-hidden="true">
+                    <CategoryIcon name="ChevronRight" size={14} />
+                  </span>
+                </a>
+
+                <div className="profile-dropdown-divider" />
+
+                {/* 5. Cerrar Sesión */}
+                <button
+                  type="button"
+                  disabled={isSigningOut}
+                  onClick={handleSignOut}
+                  className="profile-dropdown-signout"
+                  role="menuitem"
+                >
+                  <CategoryIcon name="LogOut" size={15} />
+                  <span>{isSigningOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="balance-hero-topbar-actions">
+          {/* Prominent Shortcut Pill in topbar */}
+          <Link
+            href="/captura"
+            className="balance-hero-shortcut-pill"
+            title="Atajos SMS automáticos"
+          >
+            <CategoryIcon name="Zap" size={13} />
+            <span>Atajos</span>
           </Link>
-        )}
+
+          {/* The bell carries the real count of transactions waiting to be categorised */}
+          {uncategorizedCount > 0 && (
+            <Link
+              href="/revisar"
+              className="balance-hero-bell"
+              title={`${uncategorizedCount} ${t('dashboard_pending_review')}`}
+            >
+              <CategoryIcon name="Bell" size={17} />
+              <span className="balance-hero-bell-dot" aria-hidden="true" />
+              <span className="sr-only">
+                {uncategorizedCount} {t('dashboard_pending_review')}
+              </span>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* 2. Central Monumental Balance Focus */}

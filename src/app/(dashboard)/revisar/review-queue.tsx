@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useTransition } from 'react';
 
 import { categorizeTransactionAction } from '@/app/actions/edit-transaction';
+import { CategoryPicker } from '@/components/dashboard/category-picker';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
 import type { CategoryRow } from '@/core/repositories/category.repository';
@@ -92,6 +93,12 @@ export function ReviewQueue({
           return (
             <div key={tx.id} className="review-card">
               <div className="review-card-head">
+                {/* The tile is where the chosen category's icon will sit, so
+                    the row does not reflow the moment one is picked. */}
+                <span className="review-card-mark" aria-hidden="true">
+                  <CategoryIcon name="Tag" size={18} />
+                </span>
+
                 <div className="review-card-id">
                   <span className="review-card-merchant">{tx.merchant}</span>
                   <span className="review-card-date">
@@ -101,6 +108,7 @@ export function ReviewQueue({
                     })}
                   </span>
                 </div>
+
                 <span
                   className={`review-card-amount${
                     isIncome ? ' review-card-amount--income' : ''
@@ -110,22 +118,15 @@ export function ReviewQueue({
                 </span>
               </div>
 
-              <div className="entry-categories">
-                {selectable.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => assign(tx.id, cat.id)}
-                    className="entry-category"
-                  >
-                    <span
-                      className="entry-category-dot"
-                      style={{ '--dot': cat.color } as React.CSSProperties}
-                    />
-                    {cat.name}
-                  </button>
-                ))}
+              <div className="review-card-pick">
+                <span className="entry-label">{t('field_category')}</span>
+                <CategoryPicker
+                  categories={selectable}
+                  selectedId={null}
+                  onSelect={(categoryId) => assign(tx.id, categoryId)}
+                  disabled={isPending}
+                  ariaLabel={`Categoría para ${tx.merchant}`}
+                />
               </div>
 
               <Link href={`/movimiento/${tx.id}`} className="review-card-edit">
