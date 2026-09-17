@@ -31,10 +31,18 @@ export default async function QuickAddPage(props: {
   }
 
   const userId = toUserId(session.id);
-  const initialType = searchParams?.type === 'income' ? 'income' : 'expense';
+  // A link that already says which kind of movement this is ("Registrar
+  // ingreso" on the dashboard) has answered step 0 before the screen opens.
+  // Asking again is a tap the caller already spent.
+  const requestedType =
+    searchParams?.type === 'income'
+      ? 'income'
+      : searchParams?.type === 'expense'
+        ? 'expense'
+        : null;
 
   // Ensure profile row exists in database for foreign key integrity
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   let [accounts, categories] = await Promise.all([
     listAccounts(userId),
@@ -47,11 +55,13 @@ export default async function QuickAddPage(props: {
   }
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--nuevo">
       <QuickAddForm
         accounts={accounts}
         categories={categories}
-        initialType={initialType}
+        initialType={requestedType ?? 'expense'}
+        initialStep={requestedType ? 1 : 0}
+        locationEnabled={profile.locationEnabled}
       />
     </main>
   );
