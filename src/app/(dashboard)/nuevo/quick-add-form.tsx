@@ -13,6 +13,7 @@ import { parseMoney, SCALE } from '@/core/money';
 import type { AccountRow } from '@/core/repositories/account.repository';
 import type { CategoryRow } from '@/core/repositories/category.repository';
 import { t } from '@/lib/i18n';
+import { notifyExpenseSaved, notifyIncomeSaved } from '@/lib/notifications';
 import { reportManualEntryDuration, startTiming } from '@/lib/telemetry';
 
 interface QuickAddFormProps {
@@ -266,6 +267,29 @@ export function QuickAddForm({
         if (elapsedMs !== undefined) {
           reportManualEntryDuration(elapsedMs);
         }
+
+        const selectedCat = categoryList.find((c) => c.id === selectedCategoryId);
+        const isUncategorized =
+          !selectedCat ||
+          selectedCat.name.toLowerCase().includes('otro') ||
+          selectedCat.name.toLowerCase().includes('sin categor');
+
+        if (type === 'expense') {
+          void notifyExpenseSaved({
+            amountMinor: previewMinor,
+            currency: 'COP',
+            merchant,
+            categoryName: selectedCat?.name ?? null,
+            isUncategorized,
+          });
+        } else {
+          void notifyIncomeSaved({
+            amountMinor: previewMinor,
+            currency: 'COP',
+            merchant,
+          });
+        }
+
         setSuccess(true);
         setTimeout(() => {
           router.push('/dashboard');

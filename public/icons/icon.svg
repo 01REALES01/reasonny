@@ -1,18 +1,109 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8172F2" />
-      <stop offset="100%" stop-color="#4F46E5" />
+    <!-- Background Luxury Illuminated Wine Gradient -->
+    <linearGradient id="wineGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#5a1525" />
+      <stop offset="45%" stop-color="#3d0d18" />
+      <stop offset="100%" stop-color="#19060b" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+
+    <!-- Ambient Champagne & Wine Radial Glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#9b2c45" stop-opacity="0.45" />
+      <stop offset="60%" stop-color="#781d32" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#19060b" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Champagne Gold Gradient for Emblem -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fcedd8" />
+      <stop offset="35%" stop-color="#e4cca6" />
+      <stop offset="70%" stop-color="#cfad78" />
+      <stop offset="100%" stop-color="#a47d48" />
+    </linearGradient>
+
+    <!-- Secondary Luminous Accent Gradient -->
+    <linearGradient id="accentGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e4cca6" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+
+    <!-- Subtle Bevel Border Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e4cca6" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#781d32" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#e4cca6" stop-opacity="0.1" />
+    </linearGradient>
+
+    <!-- Soft Depth Shadow -->
+    <filter id="emblemShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.65" />
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#fcedd8" flood-opacity="0.2" />
     </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
-  <g transform="translate(256, 256) scale(1.6)" filter="url(#glow)">
-    <!-- RealMoney Diamond Monogram -->
-    <path d="M 0 -70 L 60 0 L 0 70 L -60 0 Z" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linejoin="round" />
-    <path d="M 0 -35 L 30 0 L 0 35 L -30 0 Z" fill="#FFFFFF" />
+
+  <!-- Base Squircle Container (Continuous Curve Apple Style) -->
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="url(#wineGrad)" />
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="url(#centerGlow)" />
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="none" stroke="url(#borderGrad)" stroke-width="2.5" />
+
+  <!-- Reasonny Emblem "R" with Financial Trajectory -->
+  <g filter="url(#emblemShadow)">
+    <!-- Main Architectural 'R' Structure -->
+    <!-- Vertical Pillar with Champagne Luster -->
+    <path
+      d="M 164 136
+         C 164 126 172 118 182 118
+         L 208 118
+         C 218 118 226 126 226 136
+         L 226 376
+         C 226 386 218 394 208 394
+         L 182 394
+         C 172 394 164 386 164 376
+         Z"
+      fill="url(#goldGrad)"
+    />
+
+    <!-- Loop of Reasoning & Intelligence (Graceful Geometric Arc) -->
+    <path
+      d="M 226 118
+         L 294 118
+         C 346 118 384 152 384 204
+         C 384 254 346 288 294 288
+         L 226 288
+         Z
+         M 226 170
+         L 288 170
+         C 316 170 334 184 334 204
+         C 334 224 316 236 288 236
+         L 226 236
+         Z"
+      fill="url(#goldGrad)"
+    />
+
+    <!-- Dynamic Diagonal Ascending/Supporting Leg (Forward Financial Trajectory) -->
+    <path
+      d="M 268 266
+         L 346 382
+         C 352 391 364 394 374 388
+         L 386 380
+         C 395 374 397 362 391 353
+         L 315 240
+         C 301 247 285 258 268 266
+         Z"
+      fill="url(#goldGrad)"
+    />
+
+    <!-- Clarity Node: Sparkling 4-point Diamond at the junction of Thought & Action -->
+    <path
+      d="M 204 150
+         Q 204 172 216 172
+         Q 204 172 204 194
+         Q 204 172 192 172
+         Q 204 172 204 150
+         Z"
+      fill="url(#accentGrad)"
+      opacity="0.95"
+    />
   </g>
 </svg>

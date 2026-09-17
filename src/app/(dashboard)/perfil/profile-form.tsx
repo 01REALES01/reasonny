@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 
 import {
   clearLocationsAction,
@@ -12,6 +12,12 @@ import { updateDisplayNameAction } from '@/app/actions/profile';
 import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { t } from '@/lib/i18n';
+import {
+  getNotificationPermission,
+  type PermissionStatus,
+  requestNotificationPermission,
+  sendAppNotification,
+} from '@/lib/notifications';
 
 interface ProfileFormProps {
   readonly email: string;
@@ -39,6 +45,57 @@ export function ProfileForm({
   const [homePoint, setHomePoint] = useState(home);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+
+  const [notifPermission, setNotifPermission] = useState<PermissionStatus>('default');
+  const [notifNote, setNotifNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNotifPermission(getNotificationPermission());
+  }, []);
+
+  async function handleRequestNotif(): Promise<void> {
+    setNotifNote(null);
+    const status = await requestNotificationPermission();
+    setNotifPermission(status);
+    if (status === 'granted') {
+      await sendAppNotification({
+        title: 'Reasonny',
+        body: '🔔 ¡Notificaciones activadas con éxito!',
+      });
+      setNotifNote('¡Notificaciones activadas con éxito!');
+    } else if (status === 'denied') {
+      setNotifNote('Permiso denegado en tu navegador. Puedes activarlo en los ajustes del navegador.');
+    }
+  }
+
+  async function handleTestNotification(): Promise<void> {
+    setNotifNote(null);
+    const ok = await sendAppNotification({
+      title: 'Gasto de $50.000 guardado',
+      body: '¡Categorízalo para mantener tus finanzas al día!',
+      url: '/revisar',
+    });
+    if (!ok) {
+      if (notifPermission !== 'granted') {
+        const status = await requestNotificationPermission();
+        setNotifPermission(status);
+        if (status === 'granted') {
+          await sendAppNotification({
+            title: 'Gasto de $50.000 guardado',
+            body: '¡Categorízalo para mantener tus finanzas al día!',
+            url: '/revisar',
+          });
+          setNotifNote('Notificación de prueba enviada a tu dispositivo.');
+        } else {
+          setNotifNote('Activa los permisos de notificación para recibir avisos.');
+        }
+      } else {
+        setNotifNote('No se pudo enviar la notificación. Verifica los permisos del navegador.');
+      }
+    } else {
+      setNotifNote('Notificación de prueba enviada a tu dispositivo.');
+    }
+  }
 
   function handleToggleLocation(next: boolean): void {
     setLocationNote(null);
@@ -216,6 +273,55 @@ export function ProfileForm({
           <span className="profile-fact-value">{timezone}</span>
         </div>
       </div>
+
+      {/* App notifications section */}
+      <section className="location-settings" aria-labelledby="notif-settings-title">
+        <h2 id="notif-settings-title" className="location-settings-title">
+          Notificaciones de la app
+        </h2>
+        <div className="location-home">
+          <span className="location-home-head">
+            <span className="profile-fact-label">Estado</span>
+            <span className="profile-fact-value">
+              {notifPermission === 'granted'
+                ? 'Activas'
+                : notifPermission === 'denied'
+                ? 'Bloqueadas en el navegador'
+                : notifPermission === 'unsupported'
+                ? 'No disponibles en este navegador'
+                : 'Sin configurar'}
+            </span>
+          </span>
+          <span className="entry-hint">
+            Reasonny te avisa en tiempo real cada vez que se guarda un gasto o cuando una compra necesita ser categorizada.
+          </span>
+          <div className="location-home-actions">
+            {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+              <button
+                type="button"
+                onClick={handleRequestNotif}
+                className="location-btn"
+              >
+                <CategoryIcon name="Bell" size={14} />
+                Activar notificaciones
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleTestNotification}
+              className="location-btn location-btn--quiet"
+            >
+              <CategoryIcon name="Bell" size={14} />
+              Probar notificación
+            </button>
+          </div>
+          {notifNote && (
+            <p role="status" className="location-note">
+              {notifNote}
+            </p>
+          )}
+        </div>
+      </section>
 
       {/* Location lives at the bottom, off by default, with its own delete.
           Everything above is about how the app addresses you; this is the only
