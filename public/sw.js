@@ -6,15 +6,20 @@
  * native notification handling for autonomous PWA alerts.
  */
 
-const CACHE_NAME = 'reasonny-v3';
+const CACHE_NAME = 'reasonny-v4';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-512-maskable.png',
   '/apple-icon.png',
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
