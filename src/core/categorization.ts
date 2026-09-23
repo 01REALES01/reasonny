@@ -65,3 +65,49 @@ export function normalizeMerchant(raw: string): string {
     .trim()
     .slice(0, MAX_LENGTH);
 }
+
+/**
+ * Merchant names that stand for "we could not name this", and must never
+ * become a rule.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * The Bancolombia parser cannot always find a counterparty: a transfer to a
+ * bare account number, a QR key with no name attached, a cash withdrawal. It
+ * fills those in with a placeholder so the row is readable, which is right -
+ * but a placeholder is not a shop. Without this list, categorising ONE
+ * unnamed transfer would teach the engine that every future unnamed transfer
+ * belongs to that category, and it would keep filing them there silently.
+ *
+ * The prefixed forms carry a masked number ("Cuenta ••9149"), so they are
+ * matched by prefix rather than listed one by one.
+ */
+const GENERIC_MERCHANT_KEYS: ReadonlySet<string> = new Set([
+  normalizeMerchant('Transferencia enviada'),
+  // The incoming side of the same hole. It is not symmetric by accident: a
+  // transfer OUT with no counterparty and a transfer IN with no sender are
+  // written by two different branches of the parser (bancolombia.ts), and
+  // rules are keyed by direction - so leaving this one out would let a single
+  // categorised incoming transfer file every future one silently.
+  normalizeMerchant('Transferencia recibida'),
+  normalizeMerchant('Retiro en cajero'),
+]);
+
+const GENERIC_MERCHANT_PREFIXES: readonly string[] = [
+  normalizeMerchant('Cuenta ••'),
+  normalizeMerchant('Llave ••'),
+];
+
+/**
+ * Whether this key identifies a real merchant the engine may learn from.
+ *
+ * Both halves of the loop ask: nothing generic is learned, and nothing generic
+ * is matched either - so a rule stored before this existed stops firing rather
+ * than having to be found and deleted.
+ */
+export function isLearnableMerchantKey(key: string): boolean {
+  if (!key || GENERIC_MERCHANT_KEYS.has(key)) {
+    return false;
+  }
+  return !GENERIC_MERCHANT_PREFIXES.some((prefix) => key.startsWith(prefix));
+}

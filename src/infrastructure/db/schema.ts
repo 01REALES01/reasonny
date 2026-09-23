@@ -379,6 +379,82 @@ export const categorizationRules = pgTable(
   ],
 );
 
+// 7b. Notification prompts ───────────────────────────────────────────────────
+// What the bot asked about, and which transaction it was asking about.
+export const notificationPrompts = pgTable(
+  'notification_prompts',
+  {
+    id: primaryId(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    transactionId: uuid('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    /**
+     * 'telegram' today, 'whatsapp' when the criterion in the plan is met.
+     *
+     * The column exists so this table survives the move. Everything else about
+     * a prompt - a chat, a message, a question that was or was not answered -
+     * means the same thing on either provider.
+     */
+    provider: varchar({ length: 20 }).notNull(),
+    /**
+     * What this message asked for, and therefore how a reply to it reads.
+     *
+     * WHY IT CANNOT BE INFERRED
+     * -------------------------
+     * Two different messages can be outstanding about the SAME spend: the one
+     * with the category buttons, and the "type a name" one that ➕ Nueva sends.
+     * Both are rows here, both are answerable by replying. Without this column
+     * they are indistinguishable, and replying to the KEYBOARD message with
+     * `12000 juan valdez` would be read as a category name - creating a
+     * category called "12000 juan valdez" and recording no transaction.
+     *
+     * It also keeps the level 2 gesture metric honest: prompts sent versus
+     * answered must count 'category_pick' only, or the ➕ Nueva path reads as
+     * two questions for one spend (METRICS.md, P6).
+     */
+    kind: varchar({ length: 20 }).notNull(),
+    /**
+     * Chat and message as the provider numbers them.
+     *
+     * WHY THE MESSAGE ID IS STORED AT ALL
+     * -----------------------------------
+     * A tapped button carries at most 64 bytes of payload, and two uuids do
+     * not fit. The spec (§3.5) requires the transaction to be resolved on the
+     * server rather than trusted from the client, and this is what makes that
+     * possible: the message the button is attached to identifies the row.
+     */
+    chatId: bigint('chat_id', { mode: 'bigint' }).notNull(),
+    externalMessageId: bigint('external_message_id', { mode: 'bigint' }).notNull(),
+    /**
+     * When the user actually answered.
+     *
+     * Two jobs. It makes the handler idempotent over retries - Telegram
+     * redelivers a callback it did not get a 200 for, and a second delivery
+     * must not count a second time. And it is the only honest source for the
+     * level 2 gesture metric in METRICS.md: prompts sent versus prompts
+     * answered, with n.
+     */
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    // The seek the callback handler does on every tap: one message, one row.
+    unique('uq_prompt_message').on(t.provider, t.chatId, t.externalMessageId),
+    index('idx_prompts_user').on(t.userId, t.createdAt.desc()),
+    check(
+      'notification_prompts_provider_check',
+      sql`${t.provider} IN ('telegram','whatsapp')`,
+    ),
+    check(
+      'notification_prompts_kind_check',
+      sql`${t.kind} IN ('category_pick','category_name')`,
+    ),
+  ],
+);
+
 // 8. Achievements ────────────────────────────────────────────────────────────
 // P1: these reward behaviour, never amounts or outcomes.
 export const achievements = pgTable(

@@ -1,5 +1,5 @@
-import { normalizeMerchant } from '@/core/categorization';
-import { getCategory } from '@/core/repositories/category.repository';
+import { isLearnableMerchantKey, normalizeMerchant } from '@/core/categorization';
+import { getCategory, type CategoryRow } from '@/core/repositories/category.repository';
 import {
   findRuleForMerchant,
   learnRule,
@@ -41,6 +41,8 @@ function asRuleType(type: TransactionType): RuleType | null {
 export interface CategorySuggestion {
   readonly categoryId: CategoryId;
   readonly ruleId: string;
+  readonly categoryName: string;
+  readonly categoryIcon: string;
 }
 
 /**
@@ -64,7 +66,7 @@ export async function suggestCategory(
   // The same function that produced the key stored on the transaction. Never a
   // second spelling of the rule - see the header of core/categorization.ts.
   const key = normalizeMerchant(merchant);
-  if (!key) {
+  if (!isLearnableMerchantKey(key)) {
     return null;
   }
 
@@ -103,7 +105,7 @@ export async function learnFromTransaction(
   const ruleType = asRuleType(transaction.type as TransactionType);
   const key = transaction.merchantNormalized;
 
-  if (!ruleType || !key || !transaction.categoryId) {
+  if (!ruleType || !key || !transaction.categoryId || !isLearnableMerchantKey(key)) {
     return false;
   }
 
@@ -121,7 +123,19 @@ export async function learnFromTransaction(
 }
 
 export type CategorizeTransactionResult =
-  | { readonly ok: true; readonly transaction: TransactionRow; readonly learned: boolean }
+  | {
+      readonly ok: true;
+      readonly transaction: TransactionRow;
+      /**
+       * The row that was verified on the way in. Returned rather than re-read
+       * by the caller: every surface that categorises also has to SAY what it
+       * filed the spend as, and a second SELECT for a row this function
+       * already holds is a round trip to Neon on a path that may be paying a
+       * cold start.
+       */
+      readonly category: CategoryRow;
+      readonly learned: boolean;
+    }
   | { readonly ok: false; readonly reason: 'unknown_category' | 'not_found' };
 
 /**
@@ -157,5 +171,5 @@ export async function categorizeTransaction(
   }
 
   const learned = await learnFromTransaction(userId, transaction);
-  return { ok: true, transaction, learned };
+  return { ok: true, transaction, category, learned };
 }

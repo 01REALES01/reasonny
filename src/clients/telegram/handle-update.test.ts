@@ -5,22 +5,57 @@ vi.mock('@/core/services/telegram-link.service', () => ({
   resolveChat: vi.fn(),
 }));
 
-vi.mock('@/infrastructure/messaging/telegram', () => ({
-  sendMessage: vi.fn().mockResolvedValue({ ok: true, result: {} }),
+vi.mock('@/core/services/chat-capture.service', () => ({
+  captureFromText: vi.fn(),
 }));
 
+vi.mock('@/core/services/notification.service', () => ({
+  notifyIfUncategorized: vi.fn(),
+  resolvePromptContext: vi.fn(),
+  answerCategoryPrompt: vi.fn(),
+  createCategoryForPrompt: vi.fn(),
+  listPromptChoices: vi.fn(),
+  trackFollowUpPrompt: vi.fn(),
+}));
+
+vi.mock('@/infrastructure/messaging/telegram', () => ({
+  sendMessage: vi.fn(),
+  answerCallbackQuery: vi.fn(),
+  editMessageText: vi.fn(),
+  editMessageReplyMarkup: vi.fn(),
+}));
+
+import { captureFromText } from '@/core/services/chat-capture.service';
+import {
+  answerCategoryPrompt,
+  createCategoryForPrompt,
+  listPromptChoices,
+  notifyIfUncategorized,
+  resolvePromptContext,
+  trackFollowUpPrompt,
+} from '@/core/services/notification.service';
 import { linkChatWithToken, resolveChat } from '@/core/services/telegram-link.service';
-import { sendMessage } from '@/infrastructure/messaging/telegram';
+import {
+  answerCallbackQuery,
+  editMessageReplyMarkup,
+  editMessageText,
+  sendMessage,
+} from '@/infrastructure/messaging/telegram';
 
 import { handleTelegramUpdate, localeFor } from './handle-update';
 
 const CHAT_ID = 4_242_424_242;
+const MESSAGE_ID = 7;
+const CATEGORY_ID = '33333333-3333-4333-8333-333333333333';
+// A real uuid: toUserId is a branded constructor and throws on anything else,
+// and the handler swallows throws - so a fake id here fails every test silently.
+const USER_ID = '11111111-1111-4111-8111-111111111111';
 
 function update(text: string, extras: Record<string, unknown> = {}) {
   return {
     update_id: 1,
     message: {
-      message_id: 7,
+      message_id: MESSAGE_ID,
       chat: { id: CHAT_ID, type: 'private' },
       from: { id: 99, is_bot: false, language_code: 'es' },
       text,
@@ -30,17 +65,59 @@ function update(text: string, extras: Record<string, unknown> = {}) {
   } as never;
 }
 
-/** The text of the one message the bot sent back. */
-function reply(): string {
-  return String(vi.mocked(sendMessage).mock.calls[0]?.[1] ?? '');
+function tap(data: string) {
+  return {
+    update_id: 1,
+    callback_query: {
+      id: 'cb-1',
+      from: { id: 99, is_bot: false, language_code: 'es' },
+      data,
+      message: {
+        message_id: MESSAGE_ID,
+        chat: { id: CHAT_ID, type: 'private' },
+        date: 0,
+      },
+    },
+  } as never;
+}
+
+/** $12.000 COP, in minor units. */
+const AMOUNT = 1_200_000n;
+
+const transaction = {
+  id: 'tx-1',
+  amountMinor: AMOUNT,
+  currency: 'COP',
+  merchant: 'Juan Valdez',
+  type: 'expense',
+  category: null,
+};
+
+const category = { id: CATEGORY_ID, name: 'Restaurantes', icon: 'Utensils' };
+
+/** The text of the nth message the bot sent back. */
+function reply(n = 0): string {
+  return String(vi.mocked(sendMessage).mock.calls[n]?.[1] ?? '');
+}
+
+function edited(n = 0): string {
+  return String(vi.mocked(editMessageText).mock.calls[n]?.[2] ?? '');
 }
 
 describe('the Telegram client', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(sendMessage).mockResolvedValue({ ok: true, result: {} } as never);
+    vi.mocked(sendMessage).mockResolvedValue({
+      ok: true,
+      result: { message_id: 99 },
+    } as never);
+    vi.mocked(answerCallbackQuery).mockResolvedValue({ ok: true, result: true });
+    vi.mocked(editMessageText).mockResolvedValue({ ok: true, result: true });
+    vi.mocked(editMessageReplyMarkup).mockResolvedValue({ ok: true, result: true });
     vi.mocked(resolveChat).mockResolvedValue(null);
+    vi.mocked(resolvePromptContext).mockResolvedValue(null);
+    vi.mocked(notifyIfUncategorized).mockResolvedValue({ sent: true, messageId: 99n });
   });
 
   describe('language', () => {
@@ -120,22 +197,376 @@ describe('the Telegram client', () => {
     });
   });
 
-  describe('everything else', () => {
-    it('points an unlinked chat at the app instead of answering', async () => {
+  describe('writing down a spend', () => {
+    beforeEach(() => {
+      vi.mocked(resolveChat).mockResolvedValue({ id: USER_ID, baseCurrency: 'COP' } as never);
+    });
+
+    it('points an unlinked chat at the app instead of recording anything', async () => {
+      vi.mocked(resolveChat).mockResolvedValue(null);
+
       await handleTelegramUpdate(update('12000 juan valdez'));
 
       expect(resolveChat).toHaveBeenCalledWith(BigInt(CHAT_ID));
+      expect(captureFromText).not.toHaveBeenCalled();
       expect(reply()).toContain('no está conectado');
     });
 
-    it('answers a linked chat, pending the text parser', async () => {
-      vi.mocked(resolveChat).mockResolvedValue({ id: 'u1' } as never);
+    it('keys the write to the message id, so a redelivery is not a second coffee', async () => {
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
 
       await handleTelegramUpdate(update('12000 juan valdez'));
 
-      expect(reply()).toContain('Todavía no sé');
+      expect(captureFromText).toHaveBeenCalledWith(
+        USER_ID,
+        expect.anything(),
+        '12000 juan valdez',
+        { source: 'telegram_text', externalId: `telegram:${CHAT_ID}:${MESSAGE_ID}` },
+      );
     });
 
+    it('answers with the category when the engine already knew it, and asks nothing', async () => {
+      // Level 1. The whole point: the second time, there is nothing to tap.
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: true,
+        appliedCategory: { name: 'Restaurantes', icon: 'Utensils' },
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(reply()).toContain('12.000');
+      expect(reply()).toContain('Restaurantes');
+      expect(notifyIfUncategorized).not.toHaveBeenCalled();
+    });
+
+    it('lets the question be the receipt when the engine had no answer', async () => {
+      // Two messages for one coffee is how a useful bot becomes a muted one.
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(notifyIfUncategorized).toHaveBeenCalled();
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('still confirms the spend when the question could not be delivered', async () => {
+      // Rule 7: the money is stored. Silence here would read as a lost expense.
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
+      vi.mocked(notifyIfUncategorized).mockResolvedValue({
+        sent: false,
+        reason: 'no_categories',
+      });
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(reply()).toContain('12.000');
+      expect(reply()).toContain('categorías');
+    });
+
+    it('says nothing new about a redelivered message', async () => {
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: true,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(reply()).toContain('ya lo tenía');
+      expect(notifyIfUncategorized).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['no_amount', 'monto'],
+      ['no_merchant', 'en qué fue'],
+      ['not_positive', 'mayor que cero'],
+    ])('explains a %s failure in words the user can act on', async (reason, expected) => {
+      vi.mocked(captureFromText).mockResolvedValue({ ok: false, reason } as never);
+
+      await handleTelegramUpdate(update('lo que sea'));
+
+      expect(reply()).toContain(expected);
+    });
+
+    it('answers /ayuda with the format instead of trying to parse it', async () => {
+      await handleTelegramUpdate(update('/ayuda'));
+
+      expect(captureFromText).not.toHaveBeenCalled();
+      expect(reply()).toContain('juan valdez');
+    });
+
+    it('does not read an unknown command as a merchant', async () => {
+      await handleTelegramUpdate(update('/saldo'));
+
+      expect(captureFromText).not.toHaveBeenCalled();
+      expect(reply()).toContain('No conozco');
+    });
+  });
+
+  describe('naming a new category by replying', () => {
+    beforeEach(() => {
+      vi.mocked(resolveChat).mockResolvedValue({ id: USER_ID, baseCurrency: 'COP' } as never);
+    });
+
+    it('creates the category and files the spend under it', async () => {
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_name',
+        transaction,
+      } as never);
+      vi.mocked(createCategoryForPrompt).mockResolvedValue({
+        ok: true,
+        transaction,
+        category,
+        learned: true,
+        firstAnswer: true,
+      } as never);
+
+      await handleTelegramUpdate(
+        update('Mercado', { reply_to_message: { message_id: 55, chat: { id: CHAT_ID, type: 'private' }, date: 0 } }),
+      );
+
+      expect(resolvePromptContext).toHaveBeenCalledWith(USER_ID, 'telegram', BigInt(CHAT_ID), 55n);
+      expect(createCategoryForPrompt).toHaveBeenCalledWith(USER_ID, expect.anything(), 'Mercado');
+      expect(captureFromText).not.toHaveBeenCalled();
+      expect(reply()).toContain('Restaurantes');
+    });
+
+    it('says so when the name is already taken, rather than silently doing nothing', async () => {
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_name',
+        transaction,
+      } as never);
+      vi.mocked(createCategoryForPrompt).mockResolvedValue({ ok: false, reason: 'duplicate' } as never);
+
+      await handleTelegramUpdate(
+        update('Mercado', { reply_to_message: { message_id: 55, chat: { id: CHAT_ID, type: 'private' }, date: 0 } }),
+      );
+
+      expect(reply()).toContain('Ya tienes');
+    });
+
+    it('does not turn a command into a category, even when it is a reply', async () => {
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_name',
+        transaction,
+      } as never);
+
+      await handleTelegramUpdate(
+        update('/ayuda', { reply_to_message: { message_id: 55, chat: { id: CHAT_ID, type: 'private' }, date: 0 } }),
+      );
+
+      expect(createCategoryForPrompt).not.toHaveBeenCalled();
+      expect(reply()).toContain('juan valdez');
+    });
+
+    it('reads a reply to the KEYBOARD message as a spend, not as a category name', async () => {
+      // Answering the bot in a hurry by replying to the buttons is the normal
+      // mistake. Without the kind check this created a category literally
+      // called "12000 juan valdez" and recorded no transaction at all.
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_pick',
+        transaction,
+      } as never);
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
+
+      await handleTelegramUpdate(
+        update('12000 juan valdez', { reply_to_message: { message_id: 55, chat: { id: CHAT_ID, type: 'private' }, date: 0 } }),
+      );
+
+      expect(createCategoryForPrompt).not.toHaveBeenCalled();
+      expect(captureFromText).toHaveBeenCalled();
+    });
+
+    it('reads a reply to anything else as a spend, not as a category name', async () => {
+      // Quoting an old message while writing `12000 tienda` must still record it.
+      vi.mocked(resolvePromptContext).mockResolvedValue(null);
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: false,
+        appliedCategory: null,
+      } as never);
+
+      await handleTelegramUpdate(
+        update('12000 tienda', { reply_to_message: { message_id: 55, chat: { id: CHAT_ID, type: 'private' }, date: 0 } }),
+      );
+
+      expect(createCategoryForPrompt).not.toHaveBeenCalled();
+      expect(captureFromText).toHaveBeenCalled();
+    });
+  });
+
+  describe('tapping a button', () => {
+    beforeEach(() => {
+      vi.mocked(resolveChat).mockResolvedValue({ id: USER_ID, baseCurrency: 'COP' } as never);
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_pick',
+        transaction,
+      } as never);
+    });
+
+    it('acks BEFORE it writes, and edits the message only after (spec §3.6)', async () => {
+      vi.mocked(answerCategoryPrompt).mockResolvedValue({
+        ok: true,
+        transaction,
+        category,
+        learned: true,
+        firstAnswer: true,
+      } as never);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      const ack = vi.mocked(answerCallbackQuery).mock.invocationCallOrder[0] as number;
+      const write = vi.mocked(answerCategoryPrompt).mock.invocationCallOrder[0] as number;
+      const edit = vi.mocked(editMessageText).mock.invocationCallOrder[0] as number;
+
+      expect(ack).toBeLessThan(write);
+      expect(write).toBeLessThan(edit);
+      // Neutral: the ack cannot claim a write that has not happened yet.
+      expect(vi.mocked(answerCallbackQuery).mock.calls[0]?.[1]).toBeUndefined();
+    });
+
+    it('edits the message with the category and the promise that it learned', async () => {
+      vi.mocked(answerCategoryPrompt).mockResolvedValue({
+        ok: true,
+        transaction,
+        category,
+        learned: true,
+        firstAnswer: true,
+      } as never);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      expect(edited()).toContain('Restaurantes');
+      expect(edited()).toContain('Lo recordaré');
+      // No keyboard on the edit: an answered question cannot be answered twice.
+      expect(vi.mocked(editMessageText).mock.calls[0]?.[3]).toBeUndefined();
+    });
+
+    it('does not promise to remember a merchant it refused to learn', async () => {
+      // "Transferencia enviada" is not a merchant; claiming otherwise is a lie
+      // the user catches on the very next transfer.
+      vi.mocked(answerCategoryPrompt).mockResolvedValue({
+        ok: true,
+        transaction,
+        category,
+        learned: false,
+        firstAnswer: true,
+      } as never);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      expect(edited()).not.toContain('Lo recordaré');
+    });
+
+    it('says the write failed instead of showing a success it did not get', async () => {
+      vi.mocked(answerCategoryPrompt).mockResolvedValue({ ok: false, reason: 'not_found' } as never);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      expect(edited()).toContain('No se pudo guardar');
+    });
+
+    it('expands to the full list without redrawing the amount', async () => {
+      vi.mocked(listPromptChoices).mockResolvedValue([
+        { id: CATEGORY_ID, name: 'Restaurantes', icon: 'Utensils' },
+      ] as never);
+
+      await handleTelegramUpdate(tap('c:more'));
+
+      expect(editMessageReplyMarkup).toHaveBeenCalled();
+      expect(editMessageText).not.toHaveBeenCalled();
+    });
+
+    it('asks for a name with force_reply and records which spend it is for', async () => {
+      await handleTelegramUpdate(tap('c:new'));
+
+      expect(vi.mocked(sendMessage).mock.calls[0]?.[2]).toEqual({
+        replyMarkup: { force_reply: true },
+      });
+      expect(trackFollowUpPrompt).toHaveBeenCalledWith(USER_ID, 'telegram', BigInt(CHAT_ID), 99n, 'tx-1');
+    });
+
+    it('keeps the keyboard when it cannot resolve the prompt', async () => {
+      // One way to land here is a RACE, not a deletion: the prompt row is
+      // inserted after sendMessage returns, so a tap during a Neon cold start
+      // can beat the commit. Editing the message would strip the buttons and
+      // leave the spend permanently uncategorisable from the chat.
+      vi.mocked(resolvePromptContext).mockResolvedValue(null);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      expect(answerCategoryPrompt).not.toHaveBeenCalled();
+      expect(editMessageText).not.toHaveBeenCalled();
+      expect(reply()).toContain('Vuelve a tocar el botón');
+    });
+
+    it('does not overwrite a category the user already chose', async () => {
+      // A redelivered callback, or a double tap. Re-showing the answer beats
+      // silently replacing it with whatever the second tap said.
+      vi.mocked(resolvePromptContext).mockResolvedValue({
+        promptId: 'p1',
+        kind: 'category_pick',
+        transaction: { ...transaction, category },
+      } as never);
+
+      await handleTelegramUpdate(tap(`c:${CATEGORY_ID}`));
+
+      expect(answerCategoryPrompt).not.toHaveBeenCalled();
+      expect(edited()).toContain('Restaurantes');
+    });
+
+    it('still acks a payload it cannot read, so the button stops spinning', async () => {
+      await handleTelegramUpdate(tap('nonsense'));
+
+      expect(answerCallbackQuery).toHaveBeenCalledWith('cb-1');
+      expect(answerCategoryPrompt).not.toHaveBeenCalled();
+      expect(editMessageText).not.toHaveBeenCalled();
+    });
+
+    it('refuses a category id that is not a uuid before it reaches a query', async () => {
+      await handleTelegramUpdate(tap("c:1' OR 1=1--"));
+
+      expect(resolvePromptContext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('what it ignores', () => {
     it('ignores a group chat entirely', async () => {
       // A shared audience has no business seeing a personal ledger, and a
       // group id lives in a different range.
@@ -160,6 +591,25 @@ describe('the Telegram client', () => {
       } as never);
 
       expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('refuses an edited message instead of swallowing it as a duplicate', async () => {
+      // The idempotency seed is the message id, so editing 1200 into 12000
+      // collides with the original: ON CONFLICT DO NOTHING, "ya lo tenía
+      // registrado", and the wrong amount left in the ledger.
+      await handleTelegramUpdate({
+        update_id: 1,
+        edited_message: {
+          message_id: MESSAGE_ID,
+          chat: { id: CHAT_ID, type: 'private' },
+          from: { id: 99, is_bot: false, language_code: 'es' },
+          text: '12000 juan valdez',
+          date: 0,
+        },
+      } as never);
+
+      expect(captureFromText).not.toHaveBeenCalled();
+      expect(reply()).toContain('mensajes editados');
     });
 
     it('ignores an update that carries nothing it handles', async () => {

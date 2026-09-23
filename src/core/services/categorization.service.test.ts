@@ -47,6 +47,8 @@ describe('the rule engine', () => {
       vi.mocked(findRuleForMerchant).mockResolvedValue({
         ruleId: 'rule-1',
         categoryId: CATEGORY_ID as never,
+        categoryName: 'Restaurantes',
+        categoryIcon: 'Utensils',
       });
 
       // Accents, case and double spaces: one shop written by a person in /nuevo
@@ -54,7 +56,12 @@ describe('the rule engine', () => {
       const result = await suggestCategory(userId, '  Café  JUAN Valdez ', 'expense');
 
       expect(findRuleForMerchant).toHaveBeenCalledWith(userId, 'cafe juan valdez', 'expense');
-      expect(result).toEqual({ ruleId: 'rule-1', categoryId: CATEGORY_ID });
+      expect(result).toEqual({
+        ruleId: 'rule-1',
+        categoryId: CATEGORY_ID,
+        categoryName: 'Restaurantes',
+        categoryIcon: 'Utensils',
+      });
     });
 
     it('answers nothing when no rule has been learned', async () => {
@@ -68,6 +75,11 @@ describe('the rule engine', () => {
       expect(findRuleForMerchant).not.toHaveBeenCalled();
     });
 
+    it('does not look up a placeholder, so a rule stored before the guard stops firing', async () => {
+      await expect(suggestCategory(userId, 'Transferencia enviada', 'expense')).resolves.toBeNull();
+      expect(findRuleForMerchant).not.toHaveBeenCalled();
+    });
+
     it('does not look up a merchant that normalises to no key at all', async () => {
       await expect(suggestCategory(userId, '   ', 'expense')).resolves.toBeNull();
       expect(findRuleForMerchant).not.toHaveBeenCalled();
@@ -76,7 +88,12 @@ describe('the rule engine', () => {
 
   describe('confirmSuggestionUsed', () => {
     it('counts the firing', async () => {
-      await confirmSuggestionUsed(userId, { ruleId: 'rule-1', categoryId: CATEGORY_ID as never });
+      await confirmSuggestionUsed(userId, {
+        ruleId: 'rule-1',
+        categoryId: CATEGORY_ID as never,
+        categoryName: 'Restaurantes',
+        categoryIcon: 'Utensils',
+      });
 
       expect(recordRuleHit).toHaveBeenCalledWith(userId, 'rule-1');
     });
@@ -85,7 +102,12 @@ describe('the rule engine', () => {
       vi.mocked(recordRuleHit).mockRejectedValue(new Error('connection terminated'));
 
       await expect(
-        confirmSuggestionUsed(userId, { ruleId: 'rule-1', categoryId: CATEGORY_ID as never }),
+        confirmSuggestionUsed(userId, {
+        ruleId: 'rule-1',
+        categoryId: CATEGORY_ID as never,
+        categoryName: 'Restaurantes',
+        categoryIcon: 'Utensils',
+      }),
       ).resolves.toBeUndefined();
     });
   });
@@ -156,6 +178,30 @@ describe('the rule engine', () => {
   });
 
   describe('learnFromTransaction', () => {
+    it('files nothing for a placeholder the SMS parser invented', async () => {
+      // "Transferencia enviada" is what Bancolombia's parser writes when the
+      // message carries no counterparty. Learning from it would file every
+      // future unnamed transfer under this category, silently.
+      const learned = await learnFromTransaction(userId, {
+        type: 'expense',
+        merchantNormalized: 'transferencia enviada',
+        categoryId: CATEGORY_ID,
+      } as never);
+
+      expect(learned).toBe(false);
+      expect(learnRule).not.toHaveBeenCalled();
+    });
+
+    it('files nothing for a masked account number', async () => {
+      const learned = await learnFromTransaction(userId, {
+        type: 'expense',
+        merchantNormalized: 'cuenta ••9149',
+        categoryId: CATEGORY_ID,
+      } as never);
+
+      expect(learned).toBe(false);
+    });
+
     it('files nothing for a transfer', async () => {
       const learned = await learnFromTransaction(userId, {
         type: 'transfer',

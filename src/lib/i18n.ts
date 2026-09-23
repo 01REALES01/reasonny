@@ -160,6 +160,10 @@ export const DICTIONARY = {
     nav_new: 'Nuevo',
     nav_month: 'Mes y distribución',
     dashboard_pending_review: 'por revisar',
+    capture_callout_badge: 'Paso clave',
+    capture_callout_title: 'Vincula tu banco ahora',
+    capture_callout_text: 'Conecta los SMS de tu banco con Atajos de iOS y tus gastos se guardan solos.',
+    capture_callout_aria: 'Vincular la captura automática de SMS con Atajos',
     dashboard_export_csv: 'CSV',
     dashboard_export_csv_title: 'Exportar todas las transacciones a CSV',
     dashboard_recent_title: 'Últimos movimientos',
@@ -214,7 +218,32 @@ export const DICTIONARY = {
     bot_link_no_profile: 'No encuentro esa cuenta. Entra a Reasonny una vez y vuelve a intentarlo.',
     bot_not_linked:
       'Hola. Este chat todavía no está conectado a ninguna cuenta de Reasonny. Abre la app, entra en Perfil → Telegram y toca Conectar.',
-    bot_unknown_command: 'Todavía no sé hacer eso. Por ahora escríbeme /start para conectar tu cuenta.',
+    bot_unknown_command: 'No conozco ese comando. Escríbeme un gasto, así: 12000 juan valdez',
+
+    // Captura por texto y teclado de categorías.
+    bot_help:
+      'Anota un gasto así:\n\n12000 juan valdez\ncafé 8500\n+2500000 salario\n\nUna nota va tras un guion:\n12000 tienda - almuerzo del lunes',
+    bot_ask_category: '¿En qué categoría va?',
+    bot_saved: 'Guardado',
+    bot_saved_duplicate: 'Ese ya lo tenía registrado.',
+    bot_parse_no_amount:
+      'No encontré el monto. El número va al principio o al final:\n\n12000 juan valdez',
+    bot_parse_no_merchant: 'Falta decir en qué fue:\n\n12000 juan valdez',
+    bot_parse_not_positive: 'El monto tiene que ser mayor que cero.',
+    bot_capture_failed: 'No pude guardarlo. Inténtalo de nuevo en un momento.',
+    bot_more_categories: 'Otras…',
+    bot_new_category: '➕ Nueva',
+    bot_new_category_ask: 'Escribe el nombre de la nueva categoría.',
+    bot_new_category_invalid: 'Ese nombre no me sirve. Prueba con uno de 1 a 50 caracteres.',
+    bot_new_category_duplicate: 'Ya tienes una categoría con ese nombre.',
+    bot_prompt_expired:
+      'No encuentro ese gasto ahora mismo. Vuelve a tocar el botón; si sigue igual, búscalo en la app.',
+    bot_edit_ignored:
+      'No leo los mensajes editados. Escríbelo de nuevo como un mensaje nuevo, o corrígelo en la app.',
+    bot_already_answered: 'Ese gasto ya estaba categorizado.',
+    bot_save_failed: '⚠️ No se pudo guardar. Toca el botón otra vez.',
+    bot_learned: 'Lo recordaré para la próxima.',
+    bot_no_categories: 'Todavía no tienes categorías. Crea una desde la app.',
   },
   en: {
     // Navigation & Common
@@ -366,6 +395,10 @@ export const DICTIONARY = {
     nav_new: 'New',
     nav_month: 'Month and breakdown',
     dashboard_pending_review: 'to review',
+    capture_callout_badge: 'Key step',
+    capture_callout_title: 'Link your bank now',
+    capture_callout_text: 'Connect your bank texts to iOS Shortcuts and your spending records itself.',
+    capture_callout_aria: 'Link automatic SMS capture with Shortcuts',
     dashboard_export_csv: 'CSV',
     dashboard_export_csv_title: 'Export every transaction to CSV',
     dashboard_recent_title: 'Recent activity',
@@ -419,7 +452,32 @@ export const DICTIONARY = {
     bot_link_no_profile: 'I cannot find that account. Open Reasonny once and try again.',
     bot_not_linked:
       'Hi. This chat is not connected to any Reasonny account yet. Open the app, go to Profile → Telegram and tap Connect.',
-    bot_unknown_command: 'I cannot do that yet. For now, send me /start to connect your account.',
+    bot_unknown_command: 'I do not know that command. Send me an expense, like: 12000 juan valdez',
+
+    // Text capture and the category keyboard.
+    bot_help:
+      'Jot down an expense like this:\n\n12000 juan valdez\ncoffee 8500\n+2500000 salary\n\nA note goes after a dash:\n12000 store - monday lunch',
+    bot_ask_category: 'Which category does it go in?',
+    bot_saved: 'Saved',
+    bot_saved_duplicate: 'I already had that one.',
+    bot_parse_no_amount:
+      'I could not find the amount. The number goes first or last:\n\n12000 juan valdez',
+    bot_parse_no_merchant: 'Tell me what it was for:\n\n12000 juan valdez',
+    bot_parse_not_positive: 'The amount has to be greater than zero.',
+    bot_capture_failed: 'I could not save it. Try again in a moment.',
+    bot_more_categories: 'More…',
+    bot_new_category: '➕ New',
+    bot_new_category_ask: 'Type the name of the new category.',
+    bot_new_category_invalid: 'That name will not work. Try one between 1 and 50 characters.',
+    bot_new_category_duplicate: 'You already have a category with that name.',
+    bot_prompt_expired:
+      'I cannot find that expense right now. Tap the button again; if it keeps happening, look for it in the app.',
+    bot_edit_ignored:
+      'I do not read edited messages. Send it again as a new message, or fix it in the app.',
+    bot_already_answered: 'That expense was already categorized.',
+    bot_save_failed: '⚠️ Could not save it. Tap the button again.',
+    bot_learned: 'I will remember it for next time.',
+    bot_no_categories: 'You have no categories yet. Create one from the app.',
   },
 } as const;
 
@@ -459,6 +517,18 @@ export function t(key: TranslationKey, locale: Locale = DEFAULT_LOCALE): string 
  * aggregation carries the timezone; a date the user reads is the same promise,
  * and an optional field is not a promise.
  */
+/**
+ * The BCP 47 tag Intl needs, from the two-letter locale the app carries.
+ *
+ * 'es' alone would format money as 12.000 € in some runtimes and date order
+ * differs across Spanish regions, so the region is pinned rather than left to
+ * whatever the host decides. Exported because the Telegram client formats
+ * amounts too, and it must read them the same way the dashboard does.
+ */
+export function intlTag(locale: Locale = DEFAULT_LOCALE): string {
+  return locale === 'es' ? 'es-CO' : 'en-US';
+}
+
 export function formatDate(
   date: Date | string | number,
   timeZone: string,
@@ -467,7 +537,7 @@ export function formatDate(
 ): string {
   // new Date() accepts a Date as well as a string or a number, so no branch.
   const d = new Date(date);
-  const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
+  const localeTag = intlTag(locale);
   return new Intl.DateTimeFormat(localeTag, {
     ...(options ?? {
       year: 'numeric',
@@ -489,7 +559,7 @@ export function formatTime(
   options?: Intl.DateTimeFormatOptions,
 ): string {
   const d = new Date(date);
-  const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
+  const localeTag = intlTag(locale);
   return new Intl.DateTimeFormat(localeTag, {
     hour: '2-digit',
     minute: '2-digit',

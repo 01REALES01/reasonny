@@ -67,6 +67,15 @@ export interface TelegramMessage {
   readonly from?: TelegramUser;
   readonly text?: string;
   readonly date: number;
+  /**
+   * Present when the user answered a message rather than writing a new one.
+   *
+   * It is what makes `force_reply` usable as a one-question form: the reply
+   * carries the id of the message it answers, so "Mercado" can be read as the
+   * name of a category for a specific spend instead of as a failed attempt to
+   * record one. Telegram sends only one level, never the whole chain.
+   */
+  readonly reply_to_message?: TelegramMessage;
 }
 
 export interface TelegramCallbackQuery {
@@ -91,6 +100,21 @@ export interface InlineKeyboardButton {
 
 export interface InlineKeyboardMarkup {
   readonly inline_keyboard: readonly (readonly InlineKeyboardButton[])[];
+}
+
+/**
+ * Opens the keyboard with this message pre-selected as the one being answered.
+ *
+ * The alternative - "send me the name as your next message" - needs the bot to
+ * remember that it is waiting, which means state, which means a row somewhere
+ * and a decision about when it expires. force_reply puts that state in the
+ * message itself, where Telegram keeps it for free.
+ */
+export interface ForceReply {
+  readonly force_reply: true;
+  readonly input_field_placeholder?: string;
+  /** Irrelevant in a private chat, but Telegram's own field name. */
+  readonly selective?: boolean;
 }
 
 // ── Calling it ──────────────────────────────────────────────────────────────
@@ -150,8 +174,15 @@ async function call<T>(
 }
 
 export interface SendMessageOptions {
-  readonly replyMarkup?: InlineKeyboardMarkup;
+  // Only a NEW message may force a reply; the edit calls below stay narrowed
+  // to an inline keyboard, because that is all Telegram accepts there.
+  readonly replyMarkup?: InlineKeyboardMarkup | ForceReply;
   /** Telegram's own Markdown dialect. Off by default: a merchant name is user text. */
+  readonly parseMode?: 'MarkdownV2' | 'HTML';
+}
+
+export interface EditMessageOptions {
+  readonly replyMarkup?: InlineKeyboardMarkup;
   readonly parseMode?: 'MarkdownV2' | 'HTML';
 }
 
@@ -191,7 +222,7 @@ export async function editMessageText(
   chatId: bigint | number,
   messageId: number,
   text: string,
-  options: SendMessageOptions = {},
+  options: EditMessageOptions = {},
 ): Promise<TelegramResult<TelegramMessage | boolean>> {
   return call<TelegramMessage | boolean>('editMessageText', {
     chat_id: String(chatId),

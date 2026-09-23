@@ -43,6 +43,13 @@
       "when": 1789569864100,
       "tag": "0005_flowery_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790123296808,
+      "tag": "0006_abnormal_starjammers",
+      "breakpoints": true
     }
   ]
 }

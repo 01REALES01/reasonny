@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeMerchant } from './categorization';
+import { isLearnableMerchantKey, normalizeMerchant } from './categorization';
 
 describe('normalizeMerchant', () => {
   it('sees one merchant where two sources wrote it differently', () => {
@@ -62,4 +62,30 @@ describe('normalizeMerchant', () => {
       normalizeMerchant('TIENDA GENERICA 45 MEDELLIN'),
     );
   });
+
+describe('isLearnableMerchantKey', () => {
+  it.each([
+    ['a real shop', 'juan valdez'],
+    ['a shop whose name contains a number', 'tienda 24'],
+    ['a payment processor prefix', 'uber*rides'],
+  ])('learns from %s', (_why, key) => {
+    expect(isLearnableMerchantKey(key)).toBe(true);
+  });
+
+  it.each([
+    ['the placeholder for an unnamed transfer out', 'Transferencia enviada'],
+    // The two directions are written by different branches of the parser and
+    // rules are keyed by direction, so each one has to be listed.
+    ['the placeholder for an unnamed transfer in', 'Transferencia recibida'],
+    ['the placeholder for a cash withdrawal', 'Retiro en cajero'],
+    ['a masked account number', 'Cuenta ••9149'],
+    ['a masked QR key', 'Llave ••0001'],
+    ['no key at all', ''],
+  ])('refuses %s', (_why, merchant) => {
+    // These are what the SMS parser writes when it cannot find a counterparty.
+    // Learning from one would file EVERY future unnamed transfer under whatever
+    // category that first one got, silently and forever.
+    expect(isLearnableMerchantKey(normalizeMerchant(merchant))).toBe(false);
+  });
+});
 });

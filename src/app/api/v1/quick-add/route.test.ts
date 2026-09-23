@@ -16,10 +16,26 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock('@/core/services/notification.service', () => ({
+  notifyIfUncategorized: vi.fn().mockResolvedValue({ sent: false, reason: 'not_linked' }),
+}));
+
+/**
+ * `after` throws outside a real request scope, and the route is called here as
+ * a plain function. Running the callback inline instead of dropping it is the
+ * point: the whole reason the prompt lives in `after` is that it must not
+ * block the Shortcut, and a no-op mock would let that wiring rot untested.
+ */
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  return { ...actual, after: (fn: () => unknown) => void fn() };
+});
+
 import { NextRequest } from 'next/server';
 
 import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.repository';
 import { getProfile } from '@/core/repositories/profile.repository';
+import { notifyIfUncategorized } from '@/core/services/notification.service';
 import { recordTransaction } from '@/core/services/transaction.service';
 import { mintIngestToken } from '@/lib/ingest-token';
 import { toUserId } from '@/core/types';
@@ -71,6 +87,7 @@ describe('POST /api/v1/quick-add', () => {
       transaction: { id: 'tx-1' } as never,
       isDuplicate: false,
       autoCategorized: false,
+      appliedCategory: null,
     });
   });
 
@@ -104,6 +121,29 @@ describe('POST /api/v1/quick-add', () => {
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ stored: false, reason: 'unknown_bank' });
+  });
+
+  it('reads the fields whatever case the iPhone typed them in', async () => {
+    // THE REGRESSION: the first user after the author. iOS capitalises the
+    // first letter typed into a Shortcuts field, so a setup that followed the
+    // guide exactly sent `Text`, and a readable SMS was rejected whole.
+    const res = await POST(
+      request(
+        { Text: CARD_SMS, Latitude: '4.65', ' LONGITUDE ': '-74.05' },
+        mintIngestToken(userId),
+      ),
+    );
+
+    expect(res.status).toBe(201);
+    expect(recordedInput()?.location).toMatchObject({ latitude: 4.65, longitude: -74.05 });
+  });
+
+  it('prefers the exact spelling when a body carries both', async () => {
+    await POST(
+      request({ Text: 'Banco Inventado: algo pasó', text: CARD_SMS }, mintIngestToken(userId)),
+    );
+
+    expect(recordTransaction).toHaveBeenCalled();
   });
 
   describe('coordinates from Shortcuts', () => {
@@ -170,12 +210,39 @@ describe('POST /api/v1/quick-add', () => {
     });
   });
 
+  it('asks for a category after the response, never during it', async () => {
+    // The Shortcut times out at 30 s and api.telegram.org is not ours.
+    await POST(request({ text: CARD_SMS }, mintIngestToken(userId)));
+
+    expect(notifyIfUncategorized).toHaveBeenCalledWith(
+      userId,
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ provider: 'telegram' }),
+    );
+  });
+
+  it('does not ask again about a message it already stored', async () => {
+    vi.mocked(recordTransaction).mockResolvedValue({
+      ok: true,
+      transaction: { id: 'tx-1' } as never,
+      isDuplicate: true,
+      autoCategorized: false,
+      appliedCategory: null,
+    });
+
+    await POST(request({ text: CARD_SMS }, mintIngestToken(userId)));
+
+    expect(notifyIfUncategorized).not.toHaveBeenCalled();
+  });
+
   it('reports a duplicate as 200 without claiming it stored anything', async () => {
     vi.mocked(recordTransaction).mockResolvedValue({
       ok: true,
       transaction: { id: 'tx-1' } as never,
       isDuplicate: true,
       autoCategorized: false,
+      appliedCategory: null,
     });
 
     const res = await POST(request({ text: CARD_SMS }, mintIngestToken(userId)));

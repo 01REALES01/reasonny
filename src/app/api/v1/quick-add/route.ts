@@ -1,15 +1,17 @@
-import { createHash } from 'node:crypto';
-
 import { revalidatePath } from 'next/cache';
-import { type NextRequest, NextResponse } from 'next/server';
+import { after, type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { uuidFromSeed } from '@/core/idempotency';
 import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.repository';
 import { getProfile } from '@/core/repositories/profile.repository';
+import { notifyIfUncategorized } from '@/core/services/notification.service';
 import { recordTransaction } from '@/core/services/transaction.service';
 import { type UserId } from '@/core/types';
+import { telegramAdapter } from '@/clients/telegram/messaging-adapter';
 import { parseBankSms } from '@/infrastructure/sms-parsers';
 import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
+import { DEFAULT_LOCALE } from '@/lib/i18n';
 
 /**
  * Ingestion endpoint.
@@ -126,29 +128,41 @@ const BodySchema = z.object({
 });
 
 /**
- * A deterministic uuid from the message.
+ * Field names as the schema spells them, whatever case the phone typed.
  *
- * Apple's Wallet and SMS automations are documented to time out and retry, so
- * the same message can arrive twice. Deriving the key from the text means the
- * second delivery collides with the first on the partial unique index and is
- * dropped by ON CONFLICT DO NOTHING - a constraint, never a SELECT-then-INSERT,
- * which is a TOCTOU that lets two concurrent retries both insert.
+ * WHY
+ * ---
+ * The first real user after the author set the automation up exactly as the
+ * guide says, and every SMS was thrown away with 400 invalid_body. The message
+ * was a Bancolombia template the parser reads, the token verified, the JSON
+ * was valid - the keys arrived as `Text`, `Latitude`, `Longitude`. iOS
+ * capitalises the first letter of whatever is typed into a Shortcuts field, so
+ * a correct setup produces a capitalised key unless the user notices and
+ * undoes it. Blaming the phone's keyboard on the person who followed the steps
+ * is not a validation rule, it is a bug.
  *
- * The user id is in the hash so the same message text from two users cannot
- * collide, and the shape is a v4-looking uuid because the column is `uuid`.
+ * Mapped to the schema's own names rather than lowercased wholesale, because
+ * `idempotencyKey` and `locationAccuracyM` are camelCase and lowercasing them
+ * would break the ones that are already right. Surrounding spaces go too: the
+ * same field is where an autocomplete leaves a trailing one.
  */
-function idempotencyKeyFor(userId: string, text: string): string {
-  const hex = createHash('sha256')
-    .update(`${userId}:${text.trim()}`)
-    .digest('hex');
+const CANONICAL_KEYS: ReadonlyMap<string, string> = new Map(
+  Object.keys(BodySchema.shape).map((key) => [key.toLowerCase(), key]),
+);
 
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    `4${hex.slice(13, 16)}`,
-    ((parseInt(hex.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20),
-    hex.slice(20, 32),
-  ].join('-');
+function canonicalizeKeys(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return body;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    const canonical = CANONICAL_KEYS.get(key.trim().toLowerCase()) ?? key;
+    // An exact spelling wins over a case variant if a Shortcut sends both.
+    if (!(canonical in out) || canonical === key) {
+      out[canonical] = value;
+    }
+  }
+  return out;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -176,7 +190,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return refuse(userId, 400, { error: 'invalid_json' }, { raw: rawText }, 'invalid_json');
   }
 
-  const parsedBody = BodySchema.safeParse(body);
+  const parsedBody = BodySchema.safeParse(canonicalizeKeys(body));
   if (!parsedBody.success) {
     // The commonest real cause: the Shortcut's JSON field is named something
     // other than `text`, or its value was left empty.
@@ -222,10 +236,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     merchant: tx.merchant,
     transactionDate: tx.transactionDate,
     source: SOURCE,
-    idempotencyKey: parsedBody.data.idempotencyKey ?? idempotencyKeyFor(userId, text),
-    // No category. The rule engine does not exist yet, and guessing one would
-    // put a wrong colour in the breakdown that nobody would think to correct.
-    // Uncategorised is exactly what /revisar is for.
+    idempotencyKey: parsedBody.data.idempotencyKey ?? uuidFromSeed(`${userId}:${text.trim()}`),
+    // No category from the parser - a bank SMS does not name one. The rule
+    // engine inside recordTransaction gets its turn here, and when it has
+    // never seen the merchant the answer is still null: /revisar and the
+    // Telegram prompt below are both for exactly that case.
     categoryId: null,
     location: { latitude, longitude, accuracyM: locationAccuracyM },
     // 'shortcut', not 'device_pwa': this is where the card was PAID, which is
@@ -253,6 +268,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   revalidatePath('/revisar');
   revalidatePath('/captura');
   revalidatePath('/perfil');
+
+  // Level 2, and the reason it is scheduled rather than awaited: the Shortcut
+  // gives this request 30 seconds total, and api.telegram.org is an upstream
+  // this endpoint does not control. `after` runs the send once the response is
+  // already on its way back to the phone (rule 7: the spend is stored, then
+  // the question is asked).
+  //
+  // Nothing is asked about a duplicate - the prompt for it went out the first
+  // time - and nothing is asked when the rule engine already answered, which
+  // notifyIfUncategorized checks for itself.
+  if (!isDuplicate) {
+    after(async () => {
+      try {
+        // DEFAULT_LOCALE because an SMS carries no language: Telegram tells us
+        // the user's only when THEY write, and this path is the bank writing.
+        await notifyIfUncategorized(
+          userId,
+          profile,
+          transaction,
+          telegramAdapter(DEFAULT_LOCALE),
+        );
+      } catch (error) {
+        // After the response. There is nobody left to tell.
+        console.error('[quick-add] could not ask for a category:', error);
+      }
+    });
+  }
 
   return NextResponse.json(
     {

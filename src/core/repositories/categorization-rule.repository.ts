@@ -32,6 +32,19 @@ export interface LearnRuleInput {
   readonly type: RuleType;
 }
 
+export interface MatchedRule {
+  readonly ruleId: string;
+  readonly categoryId: CategoryId;
+  /**
+   * The category's own columns, carried back from the join that was already
+   * being done for isolation. Free here, and it saves the caller a second
+   * SELECT purely to be able to say WHICH category the engine picked - which
+   * is the one thing that makes level 1 visible to the user at all.
+   */
+  readonly categoryName: string;
+  readonly categoryIcon: string;
+}
+
 /**
  * The rule for this exact merchant key, if one has been learned.
  *
@@ -50,7 +63,7 @@ export async function findRuleForMerchant(
   userId: UserId,
   merchantPattern: string,
   type: RuleType,
-): Promise<{ ruleId: string; categoryId: CategoryId } | null> {
+): Promise<MatchedRule | null> {
   // '' is "no key" (see normalizeMerchant): as a pattern it would match every
   // blank merchant at once, so it is never looked up.
   if (!merchantPattern) {
@@ -62,6 +75,8 @@ export async function findRuleForMerchant(
     .select({
       ruleId: categorizationRules.id,
       categoryId: categorizationRules.categoryId,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
     })
     .from(categorizationRules)
     .innerJoin(
@@ -81,7 +96,14 @@ export async function findRuleForMerchant(
     )
     .limit(1);
 
-  return row ? { ruleId: row.ruleId, categoryId: row.categoryId as CategoryId } : null;
+  return row
+    ? {
+        ruleId: row.ruleId,
+        categoryId: row.categoryId as CategoryId,
+        categoryName: row.categoryName,
+        categoryIcon: row.categoryIcon,
+      }
+    : null;
 }
 
 /**

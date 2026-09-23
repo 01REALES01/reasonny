@@ -3,11 +3,11 @@
  *
  * Manages user-isolated categories and default per-user seed categories.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import type { CategoryId, UserId } from '@/core/types';
 import { getDb } from '@/infrastructure/db/client';
-import { categories } from '@/infrastructure/db/schema';
+import { categories, transactions } from '@/infrastructure/db/schema';
 
 export type CategoryRow = typeof categories.$inferSelect;
 export type CategoryType = 'expense' | 'income';
@@ -67,6 +67,52 @@ export async function listCategories(
     .from(categories)
     .where(and(...conditions))
     .orderBy(categories.name);
+}
+
+/**
+ * The categories this user reaches for most, most-used first.
+ *
+ * For a keyboard in a notification banner. A phone shows three buttons before
+ * it starts hiding them, and a user with fifteen categories would get a wall
+ * nobody taps - so the three that cover most of their spending go on top and
+ * the rest live behind "more".
+ *
+ * Ordered by how often each has actually been chosen, so the list improves on
+ * its own instead of being a guess frozen at seed time. Ties break by name, so
+ * the keyboard does not reshuffle between two equally-used categories from one
+ * message to the next - a button that moves is a button tapped by mistake.
+ */
+export async function listMostUsedCategories(
+  userId: UserId,
+  type: CategoryType,
+  limit = 3,
+): Promise<CategoryRow[]> {
+  const db = getDb();
+
+  return db
+    .select({
+      id: categories.id,
+      userId: categories.userId,
+      name: categories.name,
+      icon: categories.icon,
+      color: categories.color,
+      type: categories.type,
+      createdFromSeed: categories.createdFromSeed,
+      createdAt: categories.createdAt,
+    })
+    .from(categories)
+    .leftJoin(
+      transactions,
+      and(
+        eq(transactions.categoryId, categories.id),
+        eq(transactions.userId, userId),
+        isNull(transactions.deletedAt),
+      ),
+    )
+    .where(and(eq(categories.userId, userId), eq(categories.type, type)))
+    .groupBy(categories.id)
+    .orderBy(sql`COUNT(${transactions.id}) DESC`, categories.name)
+    .limit(limit);
 }
 
 export async function getCategory(

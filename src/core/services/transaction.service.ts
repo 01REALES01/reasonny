@@ -113,6 +113,15 @@ export type RecordTransactionResult =
       readonly isDuplicate: boolean;
       /** True when the rule engine supplied the category: level 1, zero gestures. */
       readonly autoCategorized: boolean;
+      /**
+       * What the engine filed it as, when it did.
+       *
+       * Carried out rather than left for the caller to look up, because a
+       * silent auto-categorisation that nobody can SEE is indistinguishable
+       * from the engine not working. It rides along on the join the rule
+       * lookup was already doing, so saying it costs nothing.
+       */
+      readonly appliedCategory: { readonly name: string; readonly icon: string } | null;
     }
   | { readonly ok: false; readonly reason: 'unknown_account' | 'unknown_category' };
 
@@ -271,5 +280,13 @@ export async function recordTransaction(
     await confirmSuggestionUsed(userId, suggestion);
   }
 
-  return { ok: true, transaction, isDuplicate, autoCategorized: Boolean(suggestion) };
+  return {
+    ok: true,
+    transaction,
+    isDuplicate,
+    autoCategorized: Boolean(suggestion),
+    appliedCategory: suggestion
+      ? { name: suggestion.categoryName, icon: suggestion.categoryIcon }
+      : null,
+  };
 }

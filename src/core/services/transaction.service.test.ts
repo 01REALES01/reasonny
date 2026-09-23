@@ -366,7 +366,12 @@ describe('recordTransaction', () => {
   });
 
   describe('the rule engine', () => {
-    const suggestion = { ruleId: 'rule-1', categoryId: CATEGORY_ID as never };
+    const suggestion = {
+      ruleId: 'rule-1',
+      categoryId: CATEGORY_ID as never,
+      categoryName: 'Restaurantes',
+      categoryIcon: 'Utensils',
+    };
 
     beforeEach(() => {
       vi.mocked(listAccounts).mockResolvedValue([
