@@ -60,11 +60,12 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 
 ## Fase 1 — Líneas base
 
-> **Estado del instrumento (28-ago-2026).** La instrumentación existe y está
-> cableada: `src/lib/telemetry.ts` en el navegador, `POST /api/v1/telemetry`
-> como receptor, tabla `telemetry_events` con escala fija 1000. Los valores de
-> abajo siguen vacíos porque **todavía no hay uso real que medir** — y ese es
-> justamente el criterio §11.8 del plan. Se rellenan con:
+> **Estado del instrumento (23-sep-2026).** La instrumentación existe, está
+> cableada — `src/lib/telemetry.ts` en el navegador, `POST /api/v1/telemetry`
+> como receptor, tabla `telemetry_events` con escala fija 1000 — y **ya tiene
+> lecturas reales**: 17 días de uso diario, 795 cargas del dashboard. El
+> criterio §11.8 del plan está cubierto para las entradas de abajo. Se
+> regeneran con:
 >
 > ```bash
 > pnpm metrics:report          # imprime p50/p75/p95 y n de todo lo de abajo
@@ -72,10 +73,10 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 >
 > Ningún número se copia aquí sin el `n` que lo acompaña en esa salida (P6).
 
-### [ pendiente ] Tiempo de registro manual
+### [2026-09-23] Tiempo de registro manual
 
-- **p50 / p95:** — / —
-- **n:** —
+- **p50 / p75 / p95:** **21,5 s / 59,9 s / 170,2 s**
+- **n:** 11 registros
 - **Método:** cronómetro monótono (`performance.now()`) en `src/lib/telemetry.ts`,
   arrancado al montar el formulario de `/nuevo` y detenido en el `submit`
   **exitoso**. Los intentos fallidos no cuentan: medirían "cuánto tarda un
@@ -84,12 +85,18 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 - **Línea base:** primera medición
 - **Conclusión:** es *la* referencia contra la que se medirán el OCR (Fase 2) y
   la automatización (Fase 4). Solo puede capturarse mientras la entrada siga
-  siendo 100% manual
+  siendo 100% manual.
+  **21,5 segundos de mediana para anotar un gasto** es el número que justifica
+  todo lo demás: contra eso, `12000 juan valdez` en un chat es otro orden de
+  magnitud, y el Atajo de SMS son cero segundos.
+  El p95 de 170 s no es un formulario lento — es alguien que lo abrió, se
+  distrajo y volvió. Con n=11 la cola alta es anécdota, no distribución; lo
+  honesto de esta medición es la mediana
 
-### [ pendiente ] Core Web Vitals reales
+### [2026-09-23] Core Web Vitals reales
 
-- **LCP p75:** — · **INP p75:** — · **CLS p75:** —
-- **n:** —
+- **LCP p75:** **2072 ms** ✅ · **INP p75:** **144 ms** ✅ · **CLS p75:** **0,041** ✅
+- **n:** 109 / 174 / 79 lecturas respectivamente
 - **Método:** librería `web-vitals` 6.2.1 sobre uso real, enviada con
   `navigator.sendBeacon` en `visibilitychange`/`pagehide` — el único momento en
   que INP es definitivo. Sin `reportAllChanges`: se guarda el valor final, no
@@ -97,26 +104,45 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 - **Objetivo (P7):** LCP <2.5s · INP <200ms · CLS <0.1
 - **Nota:** el veredicto se calcula sobre **p75**, no sobre p50. Un p50 que pasa
   mientras el p75 falla no es un aprobado
+- **Línea base:** primera medición
+- **Conclusión:** los tres dentro del presupuesto P7, en uso real y en un
+  teléfono real, no en Lighthouse. Pero **las colas dicen otra cosa y se
+  publican igual** (regla 3): LCP p95 4256 ms está en el umbral de fallo
+  (>4,0 s) y CLS p95 0,877 lo supera por mucho (>0,25). Uno de cada veinte
+  arranques ve una página que salta. Con n=79 no es una conclusión, es un hilo
+  del que tirar cuando haya más lecturas
 
-### [ pendiente ] Latencia del dashboard
+### [2026-09-23] Latencia del dashboard
 
-- **p50 / p95:** — / —
-- **n:** —
+- **p50 / p75 / p95:** **526 ms / 655 ms / 1006 ms**
+- **n:** 795 cargas
 - **Método:** medido en servidor alrededor de `getDashboardData` y registrado
   con `after()` de Next, ya enviada la respuesta, para que instrumentar no
   cueste latencia. **Incluye el cold start de Neon** (300ms-2.6s p95
   documentado): excluirlo describiría una base de datos que nadie usa
+- **Línea base:** primera medición
+- **Conclusión:** con n=795 esta sí es una distribución y no una anécdota. El
+  p95 de 1 s queda por debajo de los 2,6 s que el spec documenta para el cold
+  start de Neon, lo que sugiere que la auto-suspensión casi nunca se alcanza
+  con este patrón de uso — dato a revisar cuando pasen varios días sin abrir
+  la app
 
-### [ pendiente ] Uso diario
+### [2026-09-23] Uso diario
 
-- **Valor:** días con ≥1 registro / días transcurridos
-- **n:** —
+- **Valor:** **16 de 17 días** (94%)
+- **n:** 63 transacciones, un perfil, 2026-09-07 → 2026-09-23
 - **Método:** `COUNT(DISTINCT)` sobre fechas **locales** de `transactions`
-  (`AT TIME ZONE`), no sobre `telemetry_events`: la evidencia de que la app se
-  usa es una transacción que el usuario decidió crear, no una visita de página.
-  Días transcurridos se cuentan desde el primer registro, inclusive
-- **Conclusión:** línea base de retención. El criterio de §1 exige ≥3
-  aperturas/semana en la semana 6
+  (`AT TIME ZONE 'America/Bogota'`), no sobre `telemetry_events`: la evidencia
+  de que la app se usa es una transacción que el usuario decidió crear, no una
+  visita de página. Días transcurridos se cuentan desde el primer registro,
+  inclusive
+- **Línea base:** primera medición
+- **Conclusión:** el criterio de §1 pedía ≥3 aperturas/semana en la semana 6 y
+  está superado con holgura desde la primera. **Pero el número está inflado por
+  construcción y no debe leerse como retención:** 78% de estos registros los
+  creó el Atajo de SMS sin que nadie abriera nada. Mide que el canal automático
+  funciona, no que la persona vuelva. La retención honesta es la entrada de
+  captura por canal, más abajo
 
 ---
 
@@ -150,14 +176,61 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 
 ## Fase 4 — Ingesta y Telegram
 
-### [ pendiente ] Tasa de auto-categorización (Nivel 1)
+### [2026-09-23] Tasa de auto-categorización (Nivel 1)
 
-- **Valor:** % guardado sin ninguna intervención del usuario
-- **Conclusión:** **la métrica central de la app.** Debe *crecer con el tiempo* conforme el motor de reglas aprende. Si a los 6 meses sigue baja, el motor falló y el Nivel 2 dejó de ser andamio para volverse muleta
+- **Valor:** **4,8%** (3 de 63)
+- **n:** 63 transacciones vivas, un perfil, 2026-09-07 → 2026-09-23
+- **Método:** `transactions.categorized_by = 'rule_engine'` sobre el total con
+  `deleted_at IS NULL`, un solo `user_id`. El segundo perfil de la base (6
+  filas, creado hoy probando el bot) queda fuera: mezclarlo subiría el `n` sin
+  añadir un solo día de uso real
+- **Línea base:** primera medición. El motor de reglas se desplegó **hoy**, así
+  que 4,8% es el punto cero por construcción, no un resultado
+- **Delta:** —
+- **Conclusión:** **la métrica central de la app.** Debe *crecer con el tiempo*
+  conforme el motor aprende. Si a los 6 meses sigue baja, el motor falló y el
+  Nivel 2 dejó de ser andamio para volverse muleta.
+  Punto de partida real: 9 reglas aprendidas, 4 disparos acumulados
 
-### [ pendiente ] Gestos por transacción, por nivel
+### [2026-09-23] Captura por canal
 
-- **Distribución Nivel 1 / 2 / 3:** — / — / —
+- **Valor:** SMS 77,8% (49) · manual 17,5% (11) · **Telegram 4,8% (3)**
+- **n:** 63 transacciones, un perfil, 17 días
+- **Método:** conteo sobre `transactions.source`, `deleted_at IS NULL`
+- **Línea base:** primera medición. El canal de Telegram abrió el 2026-09-23,
+  así que sus 3 filas son de un solo día y no significan nada todavía
+- **Conclusión:** esta es la entrada que decide si la Fase 4 valió la pena. La
+  hipótesis es que el efectivo, Nequi y los QR estaban **estructuralmente
+  fuera** del dato — ningún SMS los anuncia — y que por tanto el 77,8% del SMS
+  no es cobertura, es sesgo: mide los pagos con tarjeta, que son los únicos que
+  se anunciaban solos. Si en 4 semanas Telegram no pasa del 15%, o el efectivo
+  pesa menos de lo que se creía, o el canal no es tan cómodo como se pensó — y
+  ambas respuestas se publican
+
+### [2026-09-23] Gestos por transacción, por nivel
+
+- **Distribución Nivel 1 / 2 / 3:** 4,8% (3) / 0% (0) / 0% (0)
+- **Sin categoría:** **44,4% (28 de 63)**
+- **A mano, en la app:** 50,8% (32)
+- **Prompts del bot:** 4 enviados, 3 respondidos (75%, n=4 — sin valor
+  estadístico, solo confirma que el instrumento registra)
+- **n:** 63 transacciones, un perfil
+- **Método:** conteo sobre `transactions.categorized_by` (`rule_engine` = Nivel
+  1, 0 gestos · `telegram` = Nivel 2 · `shortcut_menu` = Nivel 3) y sobre
+  `notification_prompts` (`kind = 'category_pick'`), ambos `AT TIME ZONE` no
+  aplicable por ser conteos absolutos
+- **Línea base:** primera medición
+- **Conclusión:** el 44,4% sin categoría es el hallazgo, y **no es un problema
+  de captura sino de momento.** El gasto se guarda solo; ponerle categoría es
+  un segundo acto, en otro rato, y ese se olvida — la ubicación y la hora
+  quedan grabadas justamente para poder reconstruirlo después. De esas 28,
+  **22 no tienen comercio que aprender**: "Transferencia enviada", "Retiro en
+  cajero" y las cuentas enmascaradas, todo lo que `isLearnableMerchantKey`
+  rechaza. Ninguna regla podrá categorizarlas jamás. Solo quedan **6** al
+  alcance del motor. Solo la persona sabe qué fueron las otras, y solo
+  mientras lo recuerde.
+  Ese es el argumento entero del Nivel 2: mover la pregunta al instante del
+  gasto, cuando la respuesta todavía existe
 - **Método:** conteo sobre `transactions.categorized_by` (`rule_engine` = Nivel 1, 0 gestos · `telegram` = Nivel 2 · `shortcut_menu` = Nivel 3)
 - **Línea base:** tiempo de registro manual de Fase 1, y los gestos medidos del Nivel 2 en Fase 0
 - **Nota:** se cuentan **gestos**, no toques. El Nivel 2 cuesta pulsación larga + toque
@@ -166,9 +239,24 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
 
 - **Método:** test de carga reproducible con peticiones simultáneas de la misma `Idempotency-Key`
 
-### [ pendiente ] Tasa de fallo de ingesta y de recuperación
+### [2026-09-23] Tasa de fallo de ingesta y de recuperación
 
-- **Método:** conteo sobre la tabla `ingestion_failures`
+- **Valor:** **10,9% de fallo** en el canal de SMS (6 de 55 intentos)
+- **Recuperación:** **0 de 7** resueltas (`resolved_at IS NULL` en todas)
+- **Desglose:** `unrecognized_format` 3 · `invalid_body` 3 · `no_merchant` 1
+- **n:** 7 filas de `ingestion_failures` para un perfil, 17 días
+- **Método:** conteo sobre `ingestion_failures`; el denominador del SMS son las
+  49 guardadas más las 6 fallidas de ese canal. Las `unauthorized` quedan fuera
+  del desglose por perfil porque un token que no verifica no tiene usuario al
+  que atribuirse
+- **Línea base:** primera medición
+- **Conclusión:** dos lecturas distintas y las dos incómodas. Las 3
+  `unrecognized_format` son **plata que se perdió**: un SMS que llegó, que el
+  parser no supo leer, y que nadie fue a buscar — son la evidencia de qué
+  plantilla cambió un banco. Las 3 `invalid_body` son el bug de coordenadas ya
+  corregido, y sirven para comprobar que no vuelven a aparecer. Y el 0 de
+  recuperación dice lo importante: **la tabla registra, pero nadie la lee.**
+  Un registro de fallos que no se revisa es un cajón, no un instrumento
 
 ---
 

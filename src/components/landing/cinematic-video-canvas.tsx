@@ -155,10 +155,39 @@ export function CinematicVideoCanvas(): React.ReactElement {
     // ------------------------------------------------------------------
     // DESKTOP: Centered Intra-Frame Video
     // ------------------------------------------------------------------
+    let pendingDesktopTarget: number | null = null;
+
     if (!isMobile && desktopVideo) {
       desktopVideo.muted = true;
       desktopVideo.playsInline = true;
       desktopVideo.pause();
+    }
+
+    function performDesktopSeek(target: number): void {
+      if (!desktopVideo) return;
+      if (desktopVideo.seeking) {
+        pendingDesktopTarget = target;
+        return;
+      }
+      if ('fastSeek' in desktopVideo && typeof desktopVideo.fastSeek === 'function') {
+        desktopVideo.fastSeek(target);
+      } else {
+        desktopVideo.currentTime = target;
+      }
+    }
+
+    function onDesktopSeeked(): void {
+      if (pendingDesktopTarget !== null) {
+        const next = pendingDesktopTarget;
+        pendingDesktopTarget = null;
+        if (desktopVideo && Math.abs(desktopVideo.currentTime - next) >= 0.015) {
+          performDesktopSeek(next);
+        }
+      }
+    }
+
+    if (!isMobile && desktopVideo) {
+      desktopVideo.addEventListener('seeked', onDesktopSeeked);
     }
 
     function applyDesktopProgress(progress: number): void {
@@ -170,7 +199,7 @@ export function CinematicVideoCanvas(): React.ReactElement {
         Math.max(0, desktopVideo.duration - 0.04),
       );
       if (Math.abs(desktopVideo.currentTime - target) < 0.015) return;
-      desktopVideo.currentTime = target;
+      performDesktopSeek(target);
     }
 
     // ------------------------------------------------------------------
@@ -229,6 +258,9 @@ export function CinematicVideoCanvas(): React.ReactElement {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('touchmove', onScroll);
       window.removeEventListener('resize', onResize);
+      if (desktopVideo) {
+        desktopVideo.removeEventListener('seeked', onDesktopSeeked);
+      }
       if (rafId) window.cancelAnimationFrame(rafId);
     };
   }, [isMobile]);

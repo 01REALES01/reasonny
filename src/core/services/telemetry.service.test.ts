@@ -6,6 +6,22 @@ vi.mock('@/core/repositories/telemetry.repository', () => ({
   getDailyUsage: vi.fn(),
 }));
 
+vi.mock('@/core/repositories/transaction.repository', () => ({
+  getCaptureBreakdown: vi.fn(),
+}));
+
+vi.mock('@/core/repositories/categorization-rule.repository', () => ({
+  getRuleStats: vi.fn(),
+}));
+
+vi.mock('@/core/repositories/notification-prompt.repository', () => ({
+  getPromptStats: vi.fn(),
+}));
+
+vi.mock('@/core/repositories/ingestion-failure.repository', () => ({
+  getFailureStats: vi.fn(),
+}));
+
 import {
   getDailyUsage,
   getMetricPercentiles,
@@ -13,8 +29,14 @@ import {
 } from '@/core/repositories/telemetry.repository';
 import { toUserId } from '@/core/types';
 
+import { getRuleStats } from '@/core/repositories/categorization-rule.repository';
+import { getFailureStats } from '@/core/repositories/ingestion-failure.repository';
+import { getPromptStats } from '@/core/repositories/notification-prompt.repository';
+import { getCaptureBreakdown } from '@/core/repositories/transaction.repository';
+
 import {
   getPhase1Baselines,
+  getPhase4Snapshot,
   recordMetric,
   recordMetrics,
 } from './telemetry.service';
@@ -248,5 +270,94 @@ describe('Telemetry Service', () => {
       // "since X" would print an all-time figure next to windowed latencies.
       expect(getDailyUsage).toHaveBeenCalledWith(userId, 'America/Bogota', since);
     });
+  });
+});
+
+/**
+ * The phase-4 snapshot is what fills METRICS.md, so a wrong number here does
+ * not crash anything - it becomes a claim in a document, which is worse.
+ */
+describe('the phase 4 snapshot', () => {
+  const userId = toUserId('11111111-1111-4111-8111-111111111111');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getRuleStats).mockResolvedValue({ rules: 9, hits: 4 });
+    vi.mocked(getPromptStats).mockResolvedValue([]);
+    vi.mocked(getFailureStats).mockResolvedValue([]);
+    vi.mocked(getCaptureBreakdown).mockResolvedValue({
+      total: 0,
+      bySource: [],
+      byCategorizedBy: [],
+      uncategorizedByMerchant: [],
+    });
+  });
+
+  it('separates what a rule could learn from what nobody but the person knows', async () => {
+    // The whole honesty of the level 1 metric. "Transferencia enviada" is a
+    // placeholder the bank never named: counting it against the rule engine
+    // would report a failure that is not the engine's to answer for.
+    vi.mocked(getCaptureBreakdown).mockResolvedValue({
+      total: 10,
+      bySource: [{ source: 'sms_shortcut', n: 10 }],
+      byCategorizedBy: [{ categorizedBy: null, n: 10 }],
+      uncategorizedByMerchant: [
+        { merchant: 'transferencia enviada', n: 5 },
+        { merchant: 'retiro en cajero', n: 2 },
+        { merchant: 'juan valdez', n: 3 },
+      ],
+    });
+
+    const snapshot = await getPhase4Snapshot(userId);
+
+    expect(snapshot.uncategorized).toBe(10);
+    expect(snapshot.uncategorizedLearnable).toBe(3);
+    expect(snapshot.uncategorizedUnnameable).toBe(7);
+  });
+
+  it('counts a merchant it has no key for as unnameable, not as learnable', async () => {
+    vi.mocked(getCaptureBreakdown).mockResolvedValue({
+      total: 2,
+      bySource: [],
+      byCategorizedBy: [],
+      uncategorizedByMerchant: [{ merchant: null, n: 2 }],
+    });
+
+    const snapshot = await getPhase4Snapshot(userId);
+
+    expect(snapshot.uncategorizedLearnable).toBe(0);
+    expect(snapshot.uncategorizedUnnameable).toBe(2);
+  });
+
+  it('reports the level 1 rate off rule_engine alone', async () => {
+    vi.mocked(getCaptureBreakdown).mockResolvedValue({
+      total: 63,
+      bySource: [
+        { source: 'sms_shortcut', n: 49 },
+        { source: 'telegram_text', n: 3 },
+      ],
+      byCategorizedBy: [
+        { categorizedBy: 'manual', n: 32 },
+        { categorizedBy: null, n: 28 },
+        { categorizedBy: 'rule_engine', n: 3 },
+      ],
+      uncategorizedByMerchant: [],
+    });
+
+    const snapshot = await getPhase4Snapshot(userId);
+
+    expect(snapshot.autoCategorizedRate).toBe(4.8);
+    expect(snapshot.bySource[0]).toEqual({ source: 'sms_shortcut', n: 49, pct: 77.8 });
+    // A null categorized_by is a real bucket in the report, not a missing row.
+    expect(snapshot.byLevel).toContainEqual({ level: 'uncategorized', n: 28, pct: 44.4 });
+  });
+
+  it('answers 0% rather than NaN on an empty ledger', async () => {
+    // A fresh profile reads this before it has spent anything, and a NaN in
+    // METRICS.md is worse than a zero: it looks like a bug in the app.
+    const snapshot = await getPhase4Snapshot(userId);
+
+    expect(snapshot.autoCategorizedRate).toBe(0);
+    expect(snapshot.total).toBe(0);
   });
 });

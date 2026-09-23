@@ -11,11 +11,16 @@
  * a Telegram handler recording the same metric has no `after()` and must not be
  * forced to pretend it does.
  */
+import { isLearnableMerchantKey } from '@/core/categorization';
+import { getRuleStats } from '@/core/repositories/categorization-rule.repository';
+import { getFailureStats, type FailureStats } from '@/core/repositories/ingestion-failure.repository';
+import { getPromptStats, type PromptStats } from '@/core/repositories/notification-prompt.repository';
 import {
   getDailyUsage,
   getMetricPercentiles,
   recordTelemetryEvent,
 } from '@/core/repositories/telemetry.repository';
+import { getCaptureBreakdown } from '@/core/repositories/transaction.repository';
 import {
   computeDailyUsageRate,
   fromScaledValue,
@@ -180,5 +185,80 @@ export async function getPhase1Baselines(
       daysElapsed: usage.daysElapsed,
       rate: computeDailyUsageRate(usage.daysWithEntry, usage.daysElapsed),
     },
+  };
+}
+
+// ── Phase 4: capture and categorisation ─────────────────────────────────────
+
+/**
+ * The numbers METRICS.md's phase-4 entries are made of.
+ *
+ * Assembled here rather than in the script because two of them are judgements,
+ * not counts, and a judgement in a script is a judgement nobody reviews:
+ *
+ * - Which uncategorised rows a rule could EVER have handled. "Transferencia
+ *   enviada" is a placeholder the bank never named, so no amount of learning
+ *   will ever categorise it - counting those against the engine would report a
+ *   failure that is not the engine's.
+ * - Which failures belong to a capture channel's denominator. A message that
+ *   never parsed is a lost expense for that channel; one rejected for a bad
+ *   token never had a channel.
+ */
+export interface Phase4Snapshot {
+  readonly total: number;
+  readonly bySource: ReadonlyArray<{ readonly source: string; readonly n: number; readonly pct: number }>;
+  readonly byLevel: ReadonlyArray<{ readonly level: string; readonly n: number; readonly pct: number }>;
+  readonly autoCategorizedRate: number;
+  readonly uncategorized: number;
+  /** Uncategorised rows a rule could plausibly learn from, one day. */
+  readonly uncategorizedLearnable: number;
+  /** Uncategorised rows no engine can ever help with. Only the person knows. */
+  readonly uncategorizedUnnameable: number;
+  readonly rules: { readonly rules: number; readonly hits: number };
+  readonly prompts: readonly PromptStats[];
+  readonly failures: readonly FailureStats[];
+}
+
+function pct(n: number, total: number): number {
+  return total === 0 ? 0 : Math.round((n / total) * 1000) / 10;
+}
+
+export async function getPhase4Snapshot(userId: UserId): Promise<Phase4Snapshot> {
+  const [capture, rules, prompts, failures] = await Promise.all([
+    getCaptureBreakdown(userId),
+    getRuleStats(userId),
+    getPromptStats(userId),
+    getFailureStats(userId),
+  ]);
+
+  const total = capture.total;
+
+  let uncategorized = 0;
+  let uncategorizedLearnable = 0;
+  for (const row of capture.uncategorizedByMerchant) {
+    uncategorized += row.n;
+    if (row.merchant && isLearnableMerchantKey(row.merchant)) {
+      uncategorizedLearnable += row.n;
+    }
+  }
+
+  const autoCategorized =
+    capture.byCategorizedBy.find((row) => row.categorizedBy === 'rule_engine')?.n ?? 0;
+
+  return {
+    total,
+    bySource: capture.bySource.map((row) => ({ ...row, pct: pct(row.n, total) })),
+    byLevel: capture.byCategorizedBy.map((row) => ({
+      level: row.categorizedBy ?? 'uncategorized',
+      n: row.n,
+      pct: pct(row.n, total),
+    })),
+    autoCategorizedRate: pct(autoCategorized, total),
+    uncategorized,
+    uncategorizedLearnable,
+    uncategorizedUnnameable: uncategorized - uncategorizedLearnable,
+    rules,
+    prompts,
+    failures,
   };
 }

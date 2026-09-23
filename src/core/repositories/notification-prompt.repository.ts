@@ -6,7 +6,7 @@
  * to identifies it instead, which is also what PROJECT_SPEC §3.5 requires: the
  * transaction is resolved on the server, never trusted from the client.
  */
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import type { UserId } from '@/core/types';
 import { getDb } from '@/infrastructure/db/client';
@@ -117,4 +117,31 @@ export async function markPromptAnswered(
     .returning({ id: notificationPrompts.id });
 
   return rows.length > 0;
+}
+
+/**
+ * Prompts sent versus answered - the level 2 gesture metric (METRICS.md).
+ *
+ * Grouped by kind because they are not the same question: 'category_pick' is
+ * the one that measures whether the scaffolding works, while 'category_name'
+ * is a follow-up about a spend already counted. Adding them together would
+ * report the "new category" path as two questions for one transaction.
+ */
+export interface PromptStats {
+  readonly kind: string;
+  readonly sent: number;
+  readonly answered: number;
+}
+
+export async function getPromptStats(userId: UserId): Promise<PromptStats[]> {
+  const db = getDb();
+  return db
+    .select({
+      kind: notificationPrompts.kind,
+      sent: sql<number>`COUNT(*)::int`,
+      answered: sql<number>`COUNT(${notificationPrompts.answeredAt})::int`,
+    })
+    .from(notificationPrompts)
+    .where(eq(notificationPrompts.userId, userId))
+    .groupBy(notificationPrompts.kind);
 }

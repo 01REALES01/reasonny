@@ -1,5 +1,5 @@
 /**
- * Prints the phase-1 baselines in the exact shape METRICS.md expects (B9).
+ * Prints the phase-1 and phase-4 baselines in the shape METRICS.md expects.
  *
  * Read-only. Exists so that filling in METRICS.md is a copy-paste rather than a
  * hand-written summary of a query somebody ran once - which is how a number
@@ -14,7 +14,9 @@ const { Pool, neonConfig } = await import('@neondatabase/serverless');
 const { loadEnvFiles, resolveConnectionString } = await import(
   '../src/infrastructure/db/env'
 );
-const { getPhase1Baselines } = await import('../src/core/services/telemetry.service');
+const { getPhase1Baselines, getPhase4Snapshot } = await import(
+  '../src/core/services/telemetry.service'
+);
 const { toUserId } = await import('../src/core/types');
 
 loadEnvFiles();
@@ -102,6 +104,53 @@ try {
     `  ${daysWithEntry}/${daysElapsed} days with at least one entry` +
       `   rate=${(rate * 100).toFixed(1)}%`,
   );
+
+  // ── Phase 4 ───────────────────────────────────────────────────────────────
+  const phase4 = await getPhase4Snapshot(toUserId(profile.id));
+
+  console.log(`\nCapture by channel   (n=${phase4.total})`);
+  for (const row of phase4.bySource) {
+    console.log(`  ${row.source.padEnd(16)} ${String(row.n).padStart(5)}   ${row.pct}%`);
+  }
+
+  console.log('\nWho set the category');
+  for (const row of phase4.byLevel) {
+    console.log(`  ${row.level.padEnd(16)} ${String(row.n).padStart(5)}   ${row.pct}%`);
+  }
+  console.log(`  -> level 1 (auto-categorized): ${phase4.autoCategorizedRate}%`);
+
+  console.log(`\nUncategorized        ${phase4.uncategorized}`);
+  console.log(
+    `  a rule could learn these:   ${phase4.uncategorizedLearnable}` +
+      `\n  nobody but the person can:  ${phase4.uncategorizedUnnameable}` +
+      '   (unnamed transfers, cash withdrawals)',
+  );
+
+  console.log(
+    `\nRules                ${phase4.rules.rules} learned, ${phase4.rules.hits} firings`,
+  );
+
+  console.log('\nLevel 2 prompts');
+  if (phase4.prompts.length === 0) {
+    console.log('  none sent yet');
+  }
+  for (const row of phase4.prompts) {
+    const rate = row.sent === 0 ? '—' : `${Math.round((row.answered / row.sent) * 100)}%`;
+    console.log(
+      `  ${row.kind.padEnd(16)} ${row.answered}/${row.sent} answered   ${rate}`,
+    );
+  }
+
+  console.log('\nIngestion failures   (recovery is the column nobody reads)');
+  if (phase4.failures.length === 0) {
+    console.log('  none');
+  }
+  for (const row of phase4.failures) {
+    console.log(
+      `  ${row.source.padEnd(16)} ${row.error.padEnd(22)} ${String(row.n).padStart(3)}` +
+        `   resolved ${row.resolved}`,
+    );
+  }
 
   if (baselines.manualEntryDuration.n === 0) {
     console.log(

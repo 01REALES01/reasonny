@@ -8,7 +8,7 @@
  * only thing that names the template a bank changed - and it was being dropped
  * on the floor.
  */
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
 import type { UserId } from '@/core/types';
 import { getDb } from '@/infrastructure/db/client';
@@ -64,4 +64,32 @@ export async function listOpenIngestionFailures(
     )
     .orderBy(desc(ingestionFailures.createdAt))
     .limit(limit);
+}
+
+/**
+ * What the capture channels dropped, and whether anyone went back for it.
+ *
+ * `resolved` is the half that matters and the half nobody looks at: a failure
+ * log with a recovery rate of zero is a drawer, not an instrument.
+ */
+export interface FailureStats {
+  readonly source: string;
+  readonly error: string;
+  readonly n: number;
+  readonly resolved: number;
+}
+
+export async function getFailureStats(userId: UserId): Promise<FailureStats[]> {
+  const db = getDb();
+  return db
+    .select({
+      source: ingestionFailures.source,
+      error: ingestionFailures.error,
+      n: sql<number>`COUNT(*)::int`,
+      resolved: sql<number>`COUNT(${ingestionFailures.resolvedAt})::int`,
+    })
+    .from(ingestionFailures)
+    .where(eq(ingestionFailures.userId, userId))
+    .groupBy(ingestionFailures.source, ingestionFailures.error)
+    .orderBy(sql`COUNT(*) DESC`);
 }

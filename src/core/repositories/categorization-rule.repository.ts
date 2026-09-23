@@ -169,3 +169,24 @@ export async function recordRuleHit(userId: UserId, ruleId: string): Promise<voi
       and(eq(categorizationRules.userId, userId), eq(categorizationRules.id, ruleId)),
     );
 }
+
+/**
+ * How much the engine has learned, and how often it acted on it.
+ *
+ * `hits` is the number that says whether level 1 is working at all: rules
+ * nobody's spending ever matches are a table that looks busy and does nothing.
+ */
+export async function getRuleStats(
+  userId: UserId,
+): Promise<{ rules: number; hits: number }> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      rules: sql<number>`COUNT(*)::int`,
+      hits: sql<number>`COALESCE(SUM(${categorizationRules.hitCount}), 0)::int`,
+    })
+    .from(categorizationRules)
+    .where(eq(categorizationRules.userId, userId));
+
+  return row ?? { rules: 0, hits: 0 };
+}

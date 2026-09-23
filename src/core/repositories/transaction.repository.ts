@@ -824,3 +824,65 @@ export async function softDeleteTransaction(
   return Boolean(row);
 }
 
+/**
+ * The phase-4 counts, straight from the ledger.
+ *
+ * WHY A REPORT FUNCTION AND NOT A QUERY SOMEBODY RUNS ONCE
+ * --------------------------------------------------------
+ * P6 says a metric travels with its method. A number pasted into METRICS.md
+ * from a psql session somebody had open has no method - the next measurement
+ * will be taken slightly differently and the delta between them will be an
+ * artefact of the query, not of the app. This is the query, in the repository
+ * layer where every other read lives, so the second reading is the same
+ * reading.
+ */
+export interface CaptureBreakdown {
+  readonly total: number;
+  readonly bySource: ReadonlyArray<{ readonly source: string; readonly n: number }>;
+  readonly byCategorizedBy: ReadonlyArray<{
+    readonly categorizedBy: string | null;
+    readonly n: number;
+  }>;
+  /**
+   * Every uncategorised row's merchant key, with how many share it. The caller
+   * decides which of them a rule could ever have learned - that judgement is
+   * isLearnableMerchantKey's and lives in core/categorization.ts, not here.
+   */
+  readonly uncategorizedByMerchant: ReadonlyArray<{
+    readonly merchant: string | null;
+    readonly n: number;
+  }>;
+}
+
+export async function getCaptureBreakdown(userId: UserId): Promise<CaptureBreakdown> {
+  const db = getDb();
+  const alive = and(eq(transactions.userId, userId), isNull(transactions.deletedAt));
+
+  const [bySource, byCategorizedBy, uncategorized] = await Promise.all([
+    db
+      .select({ source: transactions.source, n: sql<number>`COUNT(*)::int` })
+      .from(transactions)
+      .where(alive)
+      .groupBy(transactions.source)
+      .orderBy(sql`COUNT(*) DESC`),
+    db
+      .select({ categorizedBy: transactions.categorizedBy, n: sql<number>`COUNT(*)::int` })
+      .from(transactions)
+      .where(alive)
+      .groupBy(transactions.categorizedBy)
+      .orderBy(sql`COUNT(*) DESC`),
+    db
+      .select({ merchant: transactions.merchantNormalized, n: sql<number>`COUNT(*)::int` })
+      .from(transactions)
+      .where(and(alive, isNull(transactions.categoryId)))
+      .groupBy(transactions.merchantNormalized)
+      .orderBy(sql`COUNT(*) DESC`),
+  ]);
+
+  return {
+    total: bySource.reduce((sum, row) => sum + row.n, 0),
+    bySource,
+    byCategorizedBy,
+    uncategorizedByMerchant: uncategorized,
+  };
+}
