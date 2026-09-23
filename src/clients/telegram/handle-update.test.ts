@@ -300,8 +300,8 @@ describe('the Telegram client', () => {
     });
 
     it.each([
-      ['no_amount', 'monto'],
-      ['no_merchant', 'en qué fue'],
+      ['no_amount', 'No encontré un monto'],
+      ['no_merchant', 'no en qué fue'],
       ['not_positive', 'mayor que cero'],
     ])('explains a %s failure in words the user can act on', async (reason, expected) => {
       vi.mocked(captureFromText).mockResolvedValue({ ok: false, reason } as never);
@@ -311,6 +311,36 @@ describe('the Telegram client', () => {
       expect(reply()).toContain(expected);
     });
 
+    it.each(['no_amount', 'no_merchant', 'not_positive'])(
+      'puts the whole format under a %s failure, both directions of money',
+      async (reason) => {
+        // The message that failed is the moment somebody will actually read
+        // the instructions, and income is the half nobody discovers on their
+        // own - there is no reason to guess that `+` means money coming in.
+        vi.mocked(captureFromText).mockResolvedValue({ ok: false, reason } as never);
+
+        await handleTelegramUpdate(update('lo que sea'));
+
+        expect(reply()).toContain('GASTOS');
+        expect(reply()).toContain('INGRESOS');
+        expect(reply()).toContain('+2500000 salario');
+      },
+    );
+
+    it('does not blame the format when the failure was ours', async () => {
+      // 'unknown_account' is a bug on our side. Answering it with "here is how
+      // to write an expense" tells the user they did something wrong.
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: false,
+        reason: 'unknown_account',
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(reply()).not.toContain('GASTOS');
+      expect(reply()).toContain('No pude guardarlo');
+    });
+
     it('answers /ayuda with the format instead of trying to parse it', async () => {
       await handleTelegramUpdate(update('/ayuda'));
 
@@ -318,11 +348,12 @@ describe('the Telegram client', () => {
       expect(reply()).toContain('juan valdez');
     });
 
-    it('does not read an unknown command as a merchant', async () => {
+    it('does not read an unknown command as a merchant, and says what it CAN do', async () => {
       await handleTelegramUpdate(update('/saldo'));
 
       expect(captureFromText).not.toHaveBeenCalled();
       expect(reply()).toContain('No conozco');
+      expect(reply()).toContain('GASTOS');
     });
   });
 

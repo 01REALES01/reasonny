@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { t } from '@/lib/i18n';
+
 import { parseQuickEntry } from './quick-entry';
 
 /** Every case is read in COP, the currency the profile actually uses. */
@@ -134,5 +136,61 @@ describe('parseQuickEntry', () => {
       const long = 'b'.repeat(2000);
       expect(entry(`12000 tienda - ${long}`).note).toHaveLength(1000);
     });
+  });
+});
+
+/**
+ * The bot's help text promises a format. This is the promise being kept.
+ *
+ * Every line offered as an example there has to survive this parser, and each
+ * example is also asserted to still BE in the text - so the test fails whether
+ * the parser drifts or the copy does. An example the bot itself rejects is the
+ * worst possible first impression: the user follows the instructions, gets
+ * refused, and concludes the thing is broken.
+ */
+describe('the examples the bot hands out', () => {
+  const examples = [
+    { text: '12000 juan valdez', minor: 1_200_000n, type: 'expense', merchant: 'juan valdez' },
+    { text: 'café 8500', minor: 850_000n, type: 'expense', merchant: 'café' },
+    { text: '$25.000 uber', minor: 2_500_000n, type: 'expense', merchant: 'uber' },
+    { text: '+2500000 salario', minor: 250_000_000n, type: 'income', merchant: 'salario' },
+    { text: '+80000 venta', minor: 8_000_000n, type: 'income', merchant: 'venta' },
+    {
+      text: '12000 tienda - almuerzo del lunes',
+      minor: 1_200_000n,
+      type: 'expense',
+      merchant: 'tienda',
+      note: 'almuerzo del lunes',
+    },
+  ] as const;
+
+  it.each(examples)('reads "$text" exactly as advertised', (example) => {
+    const result = parseQuickEntry(example.text, 'COP');
+
+    expect(result.ok, `"${example.text}" was refused`).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.entry.amountMinor).toBe(example.minor);
+    expect(result.entry.type).toBe(example.type);
+    expect(result.entry.merchant).toBe(example.merchant);
+    expect(result.entry.note).toBe('note' in example ? example.note : null);
+  });
+
+  it.each(['es', 'en'] as const)('still offers a working expense and income in %s', (locale) => {
+    const help = t('bot_help', locale);
+
+    expect(help).toContain('12000 juan valdez');
+    // Income is the half nobody guesses: there is no reason to know that a
+    // leading '+' means money coming in unless the bot says so.
+    expect(help).toMatch(/\+\d/);
+  });
+
+  it('offers every Spanish example in a form this parser accepts', () => {
+    const help = t('bot_help', 'es');
+    const missing = examples
+      .filter((example) => !help.includes(example.text))
+      .map((example) => example.text);
+
+    expect(missing, 'the help text stopped offering these').toEqual([]);
   });
 });

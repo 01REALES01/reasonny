@@ -218,17 +218,32 @@ export const DICTIONARY = {
     bot_link_no_profile: 'No encuentro esa cuenta. Entra a Reasonny una vez y vuelve a intentarlo.',
     bot_not_linked:
       'Hola. Este chat todavía no está conectado a ninguna cuenta de Reasonny. Abre la app, entra en Perfil → Telegram y toca Conectar.',
-    bot_unknown_command: 'No conozco ese comando. Escríbeme un gasto, así: 12000 juan valdez',
+    bot_unknown_command: 'No conozco ese comando.',
 
     // Captura por texto y teclado de categorías.
+    //
+    // bot_help se envía SOLO y también pegado debajo de cada fallo de lectura,
+    // así que tiene que sostenerse por sí mismo: quien lo recibe puede llevar
+    // diez segundos usando el bot o diez meses.
     bot_help:
-      'Anota un gasto así:\n\n12000 juan valdez\ncafé 8500\n+2500000 salario\n\nUna nota va tras un guion:\n12000 tienda - almuerzo del lunes',
+      'Así anoto lo que me escribas.\n\n' +
+      '💸 GASTOS — el monto y en qué fue:\n' +
+      '12000 juan valdez\n' +
+      'café 8500\n' +
+      '$25.000 uber\n\n' +
+      '💰 INGRESOS — lo mismo, con un + delante del monto:\n' +
+      '+2500000 salario\n' +
+      '+80000 venta\n\n' +
+      '📝 NOTA — después de un guion:\n' +
+      '12000 tienda - almuerzo del lunes\n\n' +
+      'El monto va al principio o al final, nunca en medio. Si no lo entiendo, no lo guardo: prefiero preguntarte a apuntar un número equivocado.',
     bot_ask_category: '¿En qué categoría va?',
     bot_saved: 'Guardado',
     bot_saved_duplicate: 'Ese ya lo tenía registrado.',
-    bot_parse_no_amount:
-      'No encontré el monto. El número va al principio o al final:\n\n12000 juan valdez',
-    bot_parse_no_merchant: 'Falta decir en qué fue:\n\n12000 juan valdez',
+    // Las tres son un diagnóstico de UNA línea: el cliente les pega bot_help
+    // debajo, así que repetir el formato aquí lo diría dos veces.
+    bot_parse_no_amount: 'No encontré un monto en ese mensaje.',
+    bot_parse_no_merchant: 'Vi el monto, pero no en qué fue.',
     bot_parse_not_positive: 'El monto tiene que ser mayor que cero.',
     bot_capture_failed: 'No pude guardarlo. Inténtalo de nuevo en un momento.',
     bot_more_categories: 'Otras…',
@@ -452,17 +467,32 @@ export const DICTIONARY = {
     bot_link_no_profile: 'I cannot find that account. Open Reasonny once and try again.',
     bot_not_linked:
       'Hi. This chat is not connected to any Reasonny account yet. Open the app, go to Profile → Telegram and tap Connect.',
-    bot_unknown_command: 'I do not know that command. Send me an expense, like: 12000 juan valdez',
+    bot_unknown_command: 'I do not know that command.',
 
     // Text capture and the category keyboard.
+    //
+    // bot_help is sent on its own AND appended under every parse failure, so
+    // it has to stand alone: whoever reads it may be ten seconds into using
+    // the bot or ten months.
     bot_help:
-      'Jot down an expense like this:\n\n12000 juan valdez\ncoffee 8500\n+2500000 salary\n\nA note goes after a dash:\n12000 store - monday lunch',
+      'Here is how I read what you send me.\n\n' +
+      '💸 EXPENSES — the amount and what it was for:\n' +
+      '12000 juan valdez\n' +
+      'coffee 8500\n' +
+      '$25.000 uber\n\n' +
+      '💰 INCOME — the same, with a + before the amount:\n' +
+      '+2500000 salary\n' +
+      '+80000 sale\n\n' +
+      '📝 NOTE — after a dash:\n' +
+      '12000 store - monday lunch\n\n' +
+      'The amount goes first or last, never in the middle. If I cannot read it I do not save it: I would rather ask than write down the wrong number.',
     bot_ask_category: 'Which category does it go in?',
     bot_saved: 'Saved',
     bot_saved_duplicate: 'I already had that one.',
-    bot_parse_no_amount:
-      'I could not find the amount. The number goes first or last:\n\n12000 juan valdez',
-    bot_parse_no_merchant: 'Tell me what it was for:\n\n12000 juan valdez',
+    // One line of diagnosis each: the client appends bot_help underneath, so
+    // repeating the format here would say it twice.
+    bot_parse_no_amount: 'I could not find an amount in that message.',
+    bot_parse_no_merchant: 'I saw the amount, but not what it was for.',
     bot_parse_not_positive: 'The amount has to be greater than zero.',
     bot_capture_failed: 'I could not save it. Try again in a moment.',
     bot_more_categories: 'More…',

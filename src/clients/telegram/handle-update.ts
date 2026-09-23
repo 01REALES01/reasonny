@@ -188,15 +188,26 @@ async function captureSpend(
   });
 
   if (!result.ok) {
-    const key =
-      result.reason === 'no_amount'
-        ? 'bot_parse_no_amount'
-        : result.reason === 'no_merchant'
-          ? 'bot_parse_no_merchant'
-          : result.reason === 'not_positive'
-            ? 'bot_parse_not_positive'
-            : 'bot_capture_failed';
-    await sendMessage(chatId, t(key, locale));
+    // Diagnosis, then the whole format underneath.
+    //
+    // A bare "I could not find the amount" tells somebody what went wrong and
+    // not what to do instead - and the message that failed is exactly the
+    // moment they are willing to read the instructions. The two failures that
+    // are OURS ('unknown_account'…) get no format guide, because the format
+    // was not the problem and offering it would blame the user for a bug.
+    const isFormat =
+      result.reason === 'no_amount' ||
+      result.reason === 'no_merchant' ||
+      result.reason === 'not_positive';
+
+    const key = isFormat
+      ? (`bot_parse_${result.reason}` as const)
+      : ('bot_capture_failed' as const);
+
+    await sendMessage(
+      chatId,
+      isFormat ? `${t(key, locale)}\n\n${t('bot_help', locale)}` : t(key, locale),
+    );
     return;
   }
 
@@ -315,8 +326,14 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
   }
 
   if (text.startsWith('/')) {
+    // An unknown command gets the guide too. Somebody typing /gastos is
+    // reaching for something the bot does not have yet, and the useful answer
+    // is what it DOES have - not a dead end.
     const isHelp = /^\/(help|ayuda)(?:@\S+)?$/.test(text);
-    await sendMessage(chatId, t(isHelp ? 'bot_help' : 'bot_unknown_command', locale));
+    await sendMessage(
+      chatId,
+      isHelp ? t('bot_help', locale) : `${t('bot_unknown_command', locale)}\n\n${t('bot_help', locale)}`,
+    );
     return;
   }
 
