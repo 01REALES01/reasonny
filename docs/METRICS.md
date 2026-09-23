@@ -192,6 +192,26 @@ Registro de mediciones del proyecto. Gobernado por el **principio P6** de `IMPLE
   Nivel 2 dejó de ser andamio para volverse muleta.
   Punto de partida real: 9 reglas aprendidas, 4 disparos acumulados
 
+> **Corrección aplicada el mismo día, después de tomar la foto de arriba.**
+> Las cifras de la línea base se dejan como se midieron; esto es lo que cambió
+> y por qué, que es lo que hace comparable la siguiente lectura.
+>
+> **Reglas 9 → 8, disparos 4 → 2.** Se borró la regla
+> `transferencia enviada → Restaurantes y Café`, aprendida antes de que
+> existiera `isLearnableMerchantKey`. Sus 2 disparos nunca fueron una decisión
+> del motor sobre un comercio: eran un marcador de posición del banco
+> actuando como si fuera uno.
+>
+> **4 filas con la clave desfasada, reparadas.** `merchant` y
+> `merchant_normalized` no concordaban — ediciones hechas en la app antes de
+> que `updateTransaction` recalculara la segunda. La fila se mostraba como
+> "SARKU K33" pero buscaba como "transferencia enviada", que es exactamente
+> cómo la regla envenenada llegó a categorizarla. Ninguna transacción se
+> borró: 69 antes, 69 después.
+>
+> La tasa del 4,8% no se movió: las 4 filas ya tenían categoría, así que la
+> reparación cambió con qué clave casan en el futuro, no el conteo de hoy.
+
 ### [2026-09-23] Captura por canal
 
 - **Valor:** SMS 77,8% (49) · manual 17,5% (11) · **Telegram 4,8% (3)**
