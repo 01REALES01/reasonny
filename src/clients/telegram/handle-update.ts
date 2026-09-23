@@ -1,6 +1,7 @@
 import { formatMoney, money } from '@/core/money';
 import type { ProfileRow } from '@/core/repositories/profile.repository';
-import { captureFromText } from '@/core/services/chat-capture.service';
+import { getDashboardData, getMonthViewData } from '@/core/services/analytics.service';
+import { captureFromText, shouldOfferCommandsTip } from '@/core/services/chat-capture.service';
 import {
   answerCategoryPrompt,
   createCategoryForPrompt,
@@ -27,6 +28,7 @@ import { DEFAULT_LOCALE, intlTag, t, type Locale } from '@/lib/i18n';
 import { categoryLabel } from './category-emoji';
 import { fullKeyboard, parseCallbackData } from './keyboards';
 import { telegramAdapter } from './messaging-adapter';
+import { balanceReport, monthReport, todayReport } from './reports';
 
 /**
  * The Telegram client. A translator, nothing else.
@@ -216,6 +218,12 @@ async function captureSpend(
     return;
   }
 
+  // Told once, ever, and only after the habit exists - see
+  // shouldOfferCommandsTip. Sent after the receipt below rather than folded
+  // into it, so the confirmation of THIS spend is never competing with a note
+  // about something else.
+  const offerTip = await shouldOfferCommandsTip(userId, SOURCE);
+
   // Level 1: the engine knew. One message, no buttons, nothing to tap - which
   // is the entire point of the thing.
   if (result.appliedCategory) {
@@ -229,6 +237,7 @@ async function captureSpend(
         locale,
       ),
     );
+    await offerCommandsTip(chatId, offerTip, locale);
     return;
   }
 
@@ -241,6 +250,7 @@ async function captureSpend(
     telegramAdapter(locale),
   );
   if (prompted.sent) {
+    await offerCommandsTip(chatId, offerTip, locale);
     return;
   }
 
@@ -259,6 +269,61 @@ async function captureSpend(
       locale,
     )}${hint}`,
   );
+
+  await offerCommandsTip(chatId, offerTip, locale);
+}
+
+async function offerCommandsTip(
+  chatId: bigint,
+  offer: boolean,
+  locale: Locale,
+): Promise<void> {
+  if (offer) {
+    await sendMessage(chatId, t('bot_commands_hint', locale));
+  }
+}
+
+/**
+ * The three questions the bot can answer without a model.
+ *
+ * Deliberately not natural language. `/mes` understands `/mes`, and that is a
+ * feature for now: it costs nothing, answers in 300ms, and cannot misread the
+ * question. When the assistant arrives these same services become its tools -
+ * so this is the layer underneath it, not a throwaway step before it.
+ *
+ * Returns false when the text is not one of them, so the caller can keep
+ * looking rather than having the command list decided in two places.
+ */
+async function handleQuery(
+  userId: UserId,
+  chatId: bigint,
+  text: string,
+  locale: Locale,
+): Promise<boolean> {
+  const command = /^\/(saldo|hoy|mes|balance|today|month)(?:@\S+)?$/.exec(text)?.[1];
+  if (!command) {
+    return false;
+  }
+
+  // The keyboard is not shown while a query runs, but Telegram displays
+  // "typing…" for a few seconds, which is the difference between a slow answer
+  // and an app that looks broken during a Neon cold start.
+  if (command === 'mes' || command === 'month') {
+    const data = await getMonthViewData(userId, 0);
+    await sendMessage(chatId, monthReport(data, locale));
+    return true;
+  }
+
+  // One query serves both: the dashboard already computes the balance, today
+  // and the week together, so asking for it twice would be two cold starts.
+  const data = await getDashboardData(userId);
+  const report =
+    command === 'saldo' || command === 'balance'
+      ? balanceReport(data, locale)
+      : todayReport(data, locale);
+
+  await sendMessage(chatId, report);
+  return true;
 }
 
 async function handleMessage(message: TelegramMessage): Promise<void> {
@@ -326,6 +391,10 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
   }
 
   if (text.startsWith('/')) {
+    if (await handleQuery(userId, chatId, text, locale)) {
+      return;
+    }
+
     // An unknown command gets the guide too. Somebody typing /gastos is
     // reaching for something the bot does not have yet, and the useful answer
     // is what it DOES have - not a dead end.

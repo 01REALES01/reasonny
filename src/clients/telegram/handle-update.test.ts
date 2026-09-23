@@ -7,6 +7,12 @@ vi.mock('@/core/services/telegram-link.service', () => ({
 
 vi.mock('@/core/services/chat-capture.service', () => ({
   captureFromText: vi.fn(),
+  shouldOfferCommandsTip: vi.fn(),
+}));
+
+vi.mock('@/core/services/analytics.service', () => ({
+  getDashboardData: vi.fn(),
+  getMonthViewData: vi.fn(),
 }));
 
 vi.mock('@/core/services/notification.service', () => ({
@@ -25,7 +31,8 @@ vi.mock('@/infrastructure/messaging/telegram', () => ({
   editMessageReplyMarkup: vi.fn(),
 }));
 
-import { captureFromText } from '@/core/services/chat-capture.service';
+import { getDashboardData, getMonthViewData } from '@/core/services/analytics.service';
+import { captureFromText, shouldOfferCommandsTip } from '@/core/services/chat-capture.service';
 import {
   answerCategoryPrompt,
   createCategoryForPrompt,
@@ -118,6 +125,30 @@ describe('the Telegram client', () => {
     vi.mocked(resolveChat).mockResolvedValue(null);
     vi.mocked(resolvePromptContext).mockResolvedValue(null);
     vi.mocked(notifyIfUncategorized).mockResolvedValue({ sent: true, messageId: 99n });
+    vi.mocked(shouldOfferCommandsTip).mockResolvedValue(false);
+    vi.mocked(getDashboardData).mockResolvedValue({
+      baseCurrency: 'COP',
+      timezone: 'America/Bogota',
+      totalBalanceMinor: 123_450_000n,
+      monthlyTotals: { totalExpenseMinor: 84_730_000n, totalIncomeMinor: 0n, transactionCount: 5 },
+      categoryBreakdown: [],
+      recentDays: [],
+      week: { today: '2026-09-23', days: [], todayExpenseMinor: 4_500_000n, weekExpenseMinor: 31_240_000n },
+      uncategorizedCount: 0,
+      currentMonthLabel: 'Septiembre 2026',
+      lastCaptureAt: null,
+      autoCaptureCount: 0,
+    } as never);
+    vi.mocked(getMonthViewData).mockResolvedValue({
+      baseCurrency: 'COP',
+      timezone: 'America/Bogota',
+      monthlyTotals: { totalExpenseMinor: 100_000_000n, totalIncomeMinor: 250_000_000n, transactionCount: 20 },
+      categoryBreakdown: [],
+      days: [],
+      monthLabel: 'Septiembre 2026',
+      offset: 0,
+      isCurrentMonth: true,
+    } as never);
   });
 
   describe('language', () => {
@@ -284,6 +315,40 @@ describe('the Telegram client', () => {
       expect(reply()).toContain('categorías');
     });
 
+    it('tells the user about the commands exactly once, when the habit exists', async () => {
+      // A second message per spend forever is how a useful bot gets muted.
+      // The count of captures IS the state - there is no flag to get wrong.
+      vi.mocked(shouldOfferCommandsTip).mockResolvedValue(true);
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: true,
+        appliedCategory: { name: 'Restaurantes', icon: 'Utensils' },
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(reply(0)).toContain('Restaurantes');
+      expect(reply(1)).toContain('/saldo');
+      expect(reply(1)).toContain('Menu');
+    });
+
+    it('stays quiet about the commands on every other spend', async () => {
+      vi.mocked(shouldOfferCommandsTip).mockResolvedValue(false);
+      vi.mocked(captureFromText).mockResolvedValue({
+        ok: true,
+        transaction,
+        isDuplicate: false,
+        autoCategorized: true,
+        appliedCategory: { name: 'Restaurantes', icon: 'Utensils' },
+      } as never);
+
+      await handleTelegramUpdate(update('12000 juan valdez'));
+
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+    });
+
     it('says nothing new about a redelivered message', async () => {
       vi.mocked(captureFromText).mockResolvedValue({
         ok: true,
@@ -341,6 +406,39 @@ describe('the Telegram client', () => {
       expect(reply()).toContain('No pude guardarlo');
     });
 
+    it.each([
+      ['/saldo', '1.234.500'],
+      ['/hoy', '45.000'],
+    ])('answers %s from ONE dashboard read', async (command, expected) => {
+      // The dashboard already computes the balance, today and the week
+      // together. Asking for it twice would pay two Neon cold starts.
+      await handleTelegramUpdate(update(command));
+
+      expect(getDashboardData).toHaveBeenCalledTimes(1);
+      expect(getMonthViewData).not.toHaveBeenCalled();
+      expect(captureFromText).not.toHaveBeenCalled();
+      expect(reply()).toContain(expected);
+    });
+
+    it('answers /mes from the month view, for the current month', async () => {
+      await handleTelegramUpdate(update('/mes'));
+
+      expect(getMonthViewData).toHaveBeenCalledWith(USER_ID, 0);
+      expect(reply()).toContain('Septiembre 2026');
+    });
+
+    it('accepts the group form, /mes@thebot', async () => {
+      await handleTelegramUpdate(update('/mes@reasonny_JP_bot'));
+
+      expect(getMonthViewData).toHaveBeenCalled();
+    });
+
+    it('does not read a query as a merchant', async () => {
+      await handleTelegramUpdate(update('/saldo'));
+
+      expect(captureFromText).not.toHaveBeenCalled();
+    });
+
     it('answers /ayuda with the format instead of trying to parse it', async () => {
       await handleTelegramUpdate(update('/ayuda'));
 
@@ -349,11 +447,14 @@ describe('the Telegram client', () => {
     });
 
     it('does not read an unknown command as a merchant, and says what it CAN do', async () => {
-      await handleTelegramUpdate(update('/saldo'));
+      // /presupuesto is not built yet. The useful answer is the list of what
+      // IS built, not a dead end.
+      await handleTelegramUpdate(update('/presupuesto'));
 
       expect(captureFromText).not.toHaveBeenCalled();
       expect(reply()).toContain('No conozco');
       expect(reply()).toContain('GASTOS');
+      expect(reply()).toContain('/saldo');
     });
   });
 

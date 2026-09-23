@@ -886,3 +886,29 @@ export async function getCaptureBreakdown(userId: UserId): Promise<CaptureBreakd
     uncategorizedByMerchant: uncategorized,
   };
 }
+
+/**
+ * How many rows a capture channel has produced.
+ *
+ * Used to say something to the user exactly once - the chat tip after the
+ * third spend - which is the only honest way to do a one-off nudge without
+ * storing a "have I said this yet" flag per person. The count IS the state.
+ */
+export async function countTransactionsBySource(
+  userId: UserId,
+  source: TransactionSource,
+): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ n: sql<number>`COUNT(*)::int` })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.source, source),
+        isNull(transactions.deletedAt),
+      ),
+    );
+
+  return row?.n ?? 0;
+}

@@ -11,7 +11,10 @@
  */
 process.loadEnvFile?.('.env.local');
 
-const { setWebhook, getWebhookInfo } = await import('../src/infrastructure/messaging/telegram');
+const { setWebhook, setMyCommands, getWebhookInfo } = await import(
+  '../src/infrastructure/messaging/telegram'
+);
+const { DICTIONARY } = await import('../src/lib/i18n');
 
 const statusOnly = process.argv.includes('--status');
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://reasonny.vercel.app';
@@ -40,6 +43,32 @@ if (!statusOnly) {
     process.exit(1);
   }
   console.log(`Registered: ${url}`);
+
+  // Registered here and not on every update: Telegram stores the list per bot,
+  // and it is what makes the Menu button appear. Without it the commands work
+  // but nobody discovers them, which is the same as not having them.
+  //
+  // Spanish is the default list; the English one is layered on top for phones
+  // set to English. The command NAMES stay Spanish in both - they are the
+  // bot's vocabulary, and renaming them per language would mean a user who
+  // switches their phone's language loses the commands they had learned.
+  const commands = (locale: 'es' | 'en') => [
+    { command: 'saldo', description: DICTIONARY[locale].bot_cmd_balance_desc },
+    { command: 'hoy', description: DICTIONARY[locale].bot_cmd_today_desc },
+    { command: 'mes', description: DICTIONARY[locale].bot_cmd_month_desc },
+    { command: 'ayuda', description: DICTIONARY[locale].bot_cmd_help_desc },
+  ];
+
+  const defaults = await setMyCommands(commands('es'));
+  const english = await setMyCommands(commands('en'), 'en');
+
+  // Not fatal: the webhook is already registered and the bot works. What is
+  // lost is discovery, so each failure is reported rather than swallowed.
+  if (!defaults.ok) console.error('setMyCommands (es) failed:', defaults.error);
+  if (!english.ok) console.error('setMyCommands (en) failed:', english.error);
+  if (defaults.ok && english.ok) {
+    console.log('Commands registered: /saldo /hoy /mes /ayuda  (es + en)');
+  }
 }
 
 const info = await getWebhookInfo();

@@ -2,9 +2,10 @@ import { uuidFromSeed } from '@/core/idempotency';
 import { parseQuickEntry, type QuickEntryFailure } from '@/core/quick-entry';
 import { recordIngestionFailure } from '@/core/repositories/ingestion-failure.repository';
 import type { ProfileRow } from '@/core/repositories/profile.repository';
-import type {
-  TransactionRow,
-  TransactionSource,
+import {
+  countTransactionsBySource,
+  type TransactionRow,
+  type TransactionSource,
 } from '@/core/repositories/transaction.repository';
 import { recordTransaction } from '@/core/services/transaction.service';
 import type { UserId } from '@/core/types';
@@ -128,4 +129,33 @@ export async function captureFromText(
     autoCategorized: result.autoCategorized,
     appliedCategory: result.appliedCategory,
   };
+}
+
+/**
+ * Whether this is the moment to tell the user what else the bot can do.
+ *
+ * WHY THE THIRD AND NOT THE FIRST
+ * -------------------------------
+ * On the first spend the user is still finding out whether this works at all,
+ * and a second message about unrelated features competes with the one thing
+ * they were trying to do. By the third they have a habit, and the question
+ * "can it tell me how I am going?" is one they might actually have.
+ *
+ * Exactly once, ever. There is no flag to store: the count of rows this
+ * channel produced IS the state, so a tip cannot be shown twice and cannot be
+ * shown to somebody who has been using the bot for months.
+ */
+const TIP_AT_NTH_CAPTURE = 3;
+
+export async function shouldOfferCommandsTip(
+  userId: UserId,
+  source: TransactionSource,
+): Promise<boolean> {
+  try {
+    return (await countTransactionsBySource(userId, source)) === TIP_AT_NTH_CAPTURE;
+  } catch (error) {
+    // A tip is not worth a failed reply. The spend is already stored.
+    console.error('[chat-capture] could not count captures:', error);
+    return false;
+  }
 }

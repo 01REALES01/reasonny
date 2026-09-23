@@ -210,7 +210,7 @@ export const DICTIONARY = {
     // inventa copy, igual que no inventa lógica.
     bot_linked_title: '✅ Listo, quedamos conectados.',
     bot_linked_body:
-      'Desde ahora puedes anotar aquí lo que pagues en efectivo. Escríbeme el monto y el comercio, así: 12000 juan valdez',
+      'Desde ahora puedes anotar aquí lo que pagues en efectivo. Escríbeme el monto y el comercio, así: 12000 juan valdez\n\nY cuando quieras saber cómo vas: /saldo · /hoy · /mes',
     bot_already_linked: 'Este chat ya estaba conectado a tu cuenta. Todo en orden.',
     bot_link_expired:
       '⌛ Ese enlace ya caducó. Vuelve a Reasonny, entra en Perfil → Telegram y toca Conectar otra vez. Los enlaces duran 15 minutos a propósito.',
@@ -236,7 +236,7 @@ export const DICTIONARY = {
       '+80000 venta\n\n' +
       '📝 NOTA — después de un guion:\n' +
       '12000 tienda - almuerzo del lunes\n\n' +
-      'El monto va al principio o al final, nunca en medio. Si no lo entiendo, no lo guardo: prefiero preguntarte a apuntar un número equivocado.',
+      'El monto va al principio o al final, nunca en medio. Si no lo entiendo, no lo guardo: prefiero preguntarte a apuntar un número equivocado.\n\n📊 CONSULTAS — /saldo · /hoy · /mes',
     bot_ask_category: '¿En qué categoría va?',
     bot_saved: 'Guardado',
     bot_saved_duplicate: 'Ese ya lo tenía registrado.',
@@ -259,6 +259,27 @@ export const DICTIONARY = {
     bot_save_failed: '⚠️ No se pudo guardar. Toca el botón otra vez.',
     bot_learned: 'Lo recordaré para la próxima.',
     bot_no_categories: 'Todavía no tienes categorías. Crea una desde la app.',
+
+    // Consultas: /saldo, /hoy, /mes.
+    bot_cmd_balance_desc: 'Tu saldo total',
+    bot_cmd_today_desc: 'Lo que llevas hoy y esta semana',
+    bot_cmd_month_desc: 'Resumen del mes',
+    bot_cmd_help_desc: 'Cómo escribirme',
+    bot_balance_title: '💰 Saldo total',
+    bot_today_title: '📅 Hoy',
+    bot_week_label: 'Esta semana',
+    bot_month_expenses: 'Gastos',
+    bot_month_income: 'Ingresos',
+    bot_month_balance: 'Balance',
+    bot_month_other_categories: 'Otras categorías',
+    bot_month_uncategorized: 'sin categoría',
+    bot_no_movements: 'Todavía no hay movimientos en este periodo.',
+    bot_movements_one: 'movimiento',
+    bot_movements_many: 'movimientos',
+    // El aviso que aparece UNA vez, cuando el bot ya demostró que funciona.
+    bot_commands_hint:
+      '💡 Además de anotar, puedo responderte:\n\n/saldo — tu saldo total\n/hoy — lo que llevas hoy\n/mes — el resumen del mes\n\nEstán también en el botón Menu, junto a la caja de texto.',
+    bot_help_queries: '📊 CONSULTAS — /saldo · /hoy · /mes',
   },
   en: {
     // Navigation & Common
@@ -459,7 +480,7 @@ export const DICTIONARY = {
     // not invent copy, the same way it does not invent logic.
     bot_linked_title: '✅ Done, we are connected.',
     bot_linked_body:
-      'From now on you can jot down whatever you pay in cash right here. Send me the amount and the merchant, like this: 12000 juan valdez',
+      'From now on you can jot down whatever you pay in cash right here. Send me the amount and the merchant, like this: 12000 juan valdez\n\nAnd whenever you want to know how you are doing: /saldo · /hoy · /mes',
     bot_already_linked: 'This chat was already connected to your account. All good.',
     bot_link_expired:
       '⌛ That link has expired. Go back to Reasonny, open Profile → Telegram and tap Connect again. Links last 15 minutes on purpose.',
@@ -485,7 +506,7 @@ export const DICTIONARY = {
       '+80000 sale\n\n' +
       '📝 NOTE — after a dash:\n' +
       '12000 store - monday lunch\n\n' +
-      'The amount goes first or last, never in the middle. If I cannot read it I do not save it: I would rather ask than write down the wrong number.',
+      'The amount goes first or last, never in the middle. If I cannot read it I do not save it: I would rather ask than write down the wrong number.\n\n📊 QUERIES — /saldo · /hoy · /mes',
     bot_ask_category: 'Which category does it go in?',
     bot_saved: 'Saved',
     bot_saved_duplicate: 'I already had that one.',
@@ -508,6 +529,26 @@ export const DICTIONARY = {
     bot_save_failed: '⚠️ Could not save it. Tap the button again.',
     bot_learned: 'I will remember it for next time.',
     bot_no_categories: 'You have no categories yet. Create one from the app.',
+
+    // Queries: /saldo, /hoy, /mes (the commands keep their Spanish names).
+    bot_cmd_balance_desc: 'Your total balance',
+    bot_cmd_today_desc: 'Today and this week so far',
+    bot_cmd_month_desc: 'This month at a glance',
+    bot_cmd_help_desc: 'How to write to me',
+    bot_balance_title: '💰 Total balance',
+    bot_today_title: '📅 Today',
+    bot_week_label: 'This week',
+    bot_month_expenses: 'Expenses',
+    bot_month_income: 'Income',
+    bot_month_balance: 'Balance',
+    bot_month_other_categories: 'Other categories',
+    bot_month_uncategorized: 'uncategorized',
+    bot_no_movements: 'Nothing recorded in this period yet.',
+    bot_movements_one: 'movement',
+    bot_movements_many: 'movements',
+    bot_commands_hint:
+      '💡 Besides writing things down, I can answer:\n\n/saldo — your total balance\n/hoy — today so far\n/mes — this month\n\nThey are also in the Menu button, next to the text box.',
+    bot_help_queries: '📊 QUERIES — /saldo · /hoy · /mes',
   },
 } as const;
 

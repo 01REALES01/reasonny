@@ -288,6 +288,38 @@ export async function setWebhook(
   });
 }
 
+export interface BotCommand {
+  /** Lowercase, 1-32 chars, letters, digits and underscores only. */
+  readonly command: string;
+  readonly description: string;
+}
+
+/**
+ * Registers the command list Telegram shows in its own UI.
+ *
+ * WHY THIS IS NOT OPTIONAL POLISH
+ * -------------------------------
+ * Without it the commands still work, but nobody types '/' unprompted - and a
+ * feature only reachable by guessing its name does not exist. This is what
+ * puts the blue "Menu" button next to the text box and makes '/' autocomplete
+ * with descriptions, which is the difference between a bot people use and a
+ * bot people forget.
+ *
+ * Telegram stores this per bot, not per chat, so it is set once from a script
+ * rather than on every update.
+ */
+export async function setMyCommands(
+  commands: readonly BotCommand[],
+  languageCode?: string,
+): Promise<TelegramResult<boolean>> {
+  return call<boolean>('setMyCommands', {
+    commands,
+    // Omitted means "the default list, for every language". A per-language
+    // list is layered on top of it, never instead of it.
+    ...(languageCode ? { language_code: languageCode } : {}),
+  });
+}
+
 export async function deleteWebhook(): Promise<TelegramResult<boolean>> {
   return call<boolean>('deleteWebhook', { drop_pending_updates: false });
 }
