@@ -47,7 +47,7 @@ export function LandingSectionUnderstand(): React.ReactElement {
           observer.disconnect();
         }
       },
-      { threshold: 0.35 },
+      { threshold: 0.18 },
     );
 
     observer.observe(el);

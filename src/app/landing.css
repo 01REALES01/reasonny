@@ -52,6 +52,12 @@
   object-position: center center;
 }
 
+@media (max-width: 768px) {
+  .cinematic-video-desktop {
+    display: none !important;
+  }
+}
+
 @media (min-width: 769px) {
   .cinematic-canvas-mobile {
     display: none;

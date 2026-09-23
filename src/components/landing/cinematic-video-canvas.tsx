@@ -52,38 +52,57 @@ export function CinematicVideoCanvas(): React.ReactElement {
     // MOBILE: Canvas Frame Sequence
     // ------------------------------------------------------------------
     let mobileFrames: HTMLImageElement[] = [];
-    let currentFrameIndex = 0;
+    let desiredFrameIndex = 0;
+    let displayedFrameIndex = -1;
+    let cachedCtx: CanvasRenderingContext2D | null = null;
+
+    function getCanvasContext(): CanvasRenderingContext2D | null {
+      if (!cachedCtx && canvas) {
+        cachedCtx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+      }
+      return cachedCtx;
+    }
 
     function renderMobileFrame(index: number): void {
       if (!canvas) return;
-      const ctx = canvas.getContext('2d', { alpha: false });
+      desiredFrameIndex = index;
+      const ctx = getCanvasContext();
       if (!ctx) return;
 
       const img = mobileFrames[index];
-      if (!img || !img.complete || img.naturalWidth === 0) {
-        // Fallback to nearest loaded frame, never flashing back to frame 0
-        let found: HTMLImageElement | null = null;
-        for (let offset = 1; offset < TOTAL_MOBILE_FRAMES; offset++) {
-          const prev = mobileFrames[index - offset];
-          if (prev && prev.complete && prev.naturalWidth > 0) {
-            found = prev;
-            break;
-          }
-          const next = mobileFrames[index + offset];
-          if (next && next.complete && next.naturalWidth > 0) {
-            found = next;
-            break;
-          }
-        }
-        const fallback = found || mobileFrames[0];
-        if (fallback && fallback.complete && fallback.naturalWidth > 0) {
-          drawCover(ctx, fallback, canvas.width, canvas.height);
-        }
+      if (img && img.complete && img.naturalWidth > 0) {
+        displayedFrameIndex = index;
+        drawCover(ctx, img, canvas.width, canvas.height);
         return;
       }
 
-      currentFrameIndex = index;
-      drawCover(ctx, img, canvas.width, canvas.height);
+      // Fallback to nearest loaded frame, never flashing back to frame 0
+      let foundIndex = -1;
+      for (let offset = 1; offset < TOTAL_MOBILE_FRAMES; offset++) {
+        const prevIdx = index - offset;
+        if (prevIdx >= 0) {
+          const prev = mobileFrames[prevIdx];
+          if (prev && prev.complete && prev.naturalWidth > 0) {
+            foundIndex = prevIdx;
+            break;
+          }
+        }
+        const nextIdx = index + offset;
+        if (nextIdx < TOTAL_MOBILE_FRAMES) {
+          const next = mobileFrames[nextIdx];
+          if (next && next.complete && next.naturalWidth > 0) {
+            foundIndex = nextIdx;
+            break;
+          }
+        }
+      }
+
+      const fallbackIdx = foundIndex !== -1 ? foundIndex : 0;
+      const fallbackImg = mobileFrames[fallbackIdx];
+      if (fallbackImg && fallbackImg.complete && fallbackImg.naturalWidth > 0) {
+        displayedFrameIndex = fallbackIdx;
+        drawCover(ctx, fallbackImg, canvas.width, canvas.height);
+      }
     }
 
     function drawCover(
@@ -117,11 +136,16 @@ export function CinematicVideoCanvas(): React.ReactElement {
     function resizeCanvas(): void {
       if (!canvas || !isMobile) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      renderMobileFrame(currentFrameIndex);
+      const targetW = Math.round(window.innerWidth * dpr);
+      const targetH = Math.round(window.innerHeight * dpr);
+
+      // Only resize the buffer when width changes (orientation flip) or height changes significantly,
+      // avoiding canvas clears on mobile URL bar micro-collapses.
+      if (canvas.width !== targetW || Math.abs(canvas.height - targetH) > 40) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      renderMobileFrame(desiredFrameIndex);
     }
 
     if (isMobile && canvas) {
@@ -130,20 +154,25 @@ export function CinematicVideoCanvas(): React.ReactElement {
 
       // 2. Load frame 0 immediately for instant paint
       const frame0 = new Image();
+      frame0.decoding = 'async';
       frame0.src = '/frames/mobile/frame_001.jpg';
       frame0.onload = () => {
         resizeCanvas();
       };
       mobileFrames[0] = frame0;
 
-      // 3. Preload all remaining frames in background
+      // 3. Preload all remaining frames in background with async decoding
       for (let i = 1; i < TOTAL_MOBILE_FRAMES; i++) {
         const frameImg = new Image();
+        frameImg.decoding = 'async';
         const frameNum = String(i + 1).padStart(3, '0');
         frameImg.src = `/frames/mobile/frame_${frameNum}.jpg`;
         frameImg.onload = () => {
-          if (currentFrameIndex === i) {
-            renderMobileFrame(i);
+          // If this frame is closer to the user's scroll position than what's currently rendered, paint it
+          const currentDist = displayedFrameIndex >= 0 ? Math.abs(desiredFrameIndex - displayedFrameIndex) : 999;
+          const newDist = Math.abs(desiredFrameIndex - i);
+          if (newDist < currentDist) {
+            renderMobileFrame(desiredFrameIndex);
           }
         };
         mobileFrames[i] = frameImg;
