@@ -212,6 +212,13 @@ const PATHS: Readonly<Record<string, React.ReactNode>> = {
       <line x1="2" x2="22" y1="2" y2="22" />
     </>
   ),
+  AlertTriangle: (
+    <>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </>
+  ),
   ShieldCheck: (
     <>
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />

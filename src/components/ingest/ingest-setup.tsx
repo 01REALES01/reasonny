@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { AnimatedCheck } from '@/components/ui/animated-check';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { STEP_ART, StepArtwork } from './step-art';
+import { STEP_SHOTS, StepScreenshot } from './step-shots';
 
 type Ui = 'es' | 'en';
 
@@ -199,314 +200,408 @@ function IngestCallout({ icon, children }: IngestCalloutProps): React.ReactEleme
   );
 }
 
+/**
+ * "Paso 7", computed from the position rather than written into each step.
+ *
+ * The literals drifted the first time a step was inserted in the middle: every
+ * number after it had to be edited by hand, in two languages, and one missed
+ * edit shows two "Paso 7" in a row to someone already unsure they are on the
+ * right screen.
+ */
+function withEyebrows(steps: readonly Omit<Step, 'eyebrow'>[], locale: Ui): Step[] {
+  return steps.map((step, i) => ({
+    ...step,
+    eyebrow:
+      i === steps.length - 1
+        ? locale === 'en'
+          ? 'Final step'
+          : 'Último paso'
+        : `${locale === 'en' ? 'Step' : 'Paso'} ${i + 1}`,
+  }));
+}
+
+/**
+ * One step per screen, and one screen per capture in step-shots.tsx.
+ *
+ * It used to be twelve steps, several of which asked for two or three things
+ * on screens the reader had not seen yet ("add the field, name it, then pick
+ * the variable"). The first users got lost exactly inside those: the grey tile
+ * nobody mentioned, the variable bar above the keyboard, the capital letter
+ * iOS puts on a key. A longer list of single taps is finished more often than
+ * a shorter list of compound ones.
+ */
 export function buildSteps(locale: Ui): Step[] {
   if (locale === 'en') {
-    return [
+    return withEyebrows(
+      [
+        {
+          id: 'open',
+          title: 'Open the Shortcuts app',
+          body: (
+            <>
+              It comes pre-installed on your iPhone. If you do not see it, swipe down on the home screen and search for <strong>Shortcuts</strong>.
+            </>
+          ),
+          cta: 'It is open',
+        },
+        {
+          id: 'automation',
+          title: 'Tap «Automation», at the bottom',
+          body: <>It is the middle tab of the bar at the bottom of the screen.</>,
+          cta: 'Done',
+        },
+        {
+          id: 'plus',
+          title: 'Tap the + at the top right',
+          body: <>It creates a new automation.</>,
+          cta: 'Tapped',
+        },
+        {
+          id: 'trigger',
+          title: 'Choose «Message»',
+          body: <>Scroll the list of triggers until you see it. It is the one that fires when a text arrives.</>,
+          cta: 'Chosen',
+        },
+        {
+          id: 'contains',
+          title: 'In «Message Contains», type your bank',
+          body: (
+            <>
+              Write <strong>Bancolombia</strong> or <strong>Banco de Bogotá</strong>, exactly as your bank signs its texts. Leave <em>Sender</em> as <em>Any Sender</em>.
+              <IngestCallout icon="ShieldCheck">
+                One automation per bank. If you use both, repeat these steps for the second one.
+              </IngestCallout>
+            </>
+          ),
+          cta: 'Bank typed',
+        },
+        {
+          id: 'immediate',
+          title: 'Tick «Run Immediately» and tap «Next»',
+          body: (
+            <>
+              <strong>Run Immediately</strong> makes it run on its own, without asking you every time. Then tap <strong>Next</strong> at the top right.
+            </>
+          ),
+          cta: 'Next tapped',
+        },
+        {
+          id: 'blank',
+          title: 'Tap the grey tile «Create New Shortcut»',
+          body: (
+            <>
+              It sits under <em>Get Started</em>. Do not pick one of the shortcuts under <em>My Shortcuts</em>: this one has to start empty.
+            </>
+          ),
+          cta: 'Tapped',
+        },
+        {
+          id: 'location',
+          title: 'Search for «Get Current Location»',
+          body: (
+            <>
+              Type it in <strong>Search Actions</strong>, at the bottom, and tap it to add it.
+              <IngestCallout icon="Sparkles">
+                This lets Reasonny place each payment on the map.
+              </IngestCallout>
+            </>
+          ),
+          cta: 'Added',
+        },
+        {
+          id: 'action',
+          title: 'Search for «Get Contents of URL»',
+          body: <>Same search box. Tap it, and it appears under the location.</>,
+          cta: 'Added',
+        },
+        {
+          id: 'url',
+          title: 'Tap «URL» and paste this address',
+          body: <>Copy it with the button below and paste it into the blue <em>URL</em> box.</>,
+          copy: 'url',
+          cta: 'Address pasted',
+        },
+        {
+          id: 'method',
+          title: 'Set «Method» to POST',
+          body: (
+            <>
+              Tap the blue arrow next to the address to show the options, then change <em>Method</em> from GET to <strong>POST</strong>.
+            </>
+          ),
+          cta: 'POST set',
+        },
+        {
+          id: 'header',
+          title: 'Open «Headers» and tap «Add new header»',
+          body: (
+            <>
+              As the key, type <code>Authorization</code>.
+            </>
+          ),
+          cta: 'Header added',
+        },
+        {
+          id: 'token',
+          title: 'Paste your key as the value',
+          body: <>Copy it with the button below and paste it next to <em>Authorization</em>. It starts with <code>Bearer</code>; keep that word.</>,
+          copy: 'token',
+          cta: 'Key pasted',
+        },
+        {
+          id: 'body_field',
+          title: 'In «Request Body», add a Text field',
+          body: (
+            <>
+              Check that <em>Request Body</em> says <strong>JSON</strong>, tap <strong>Add new field</strong> and choose <strong>Text</strong>. As the key, type <code>text</code>.
+              <IngestCallout icon="AlertTriangle">
+                In <strong>lowercase</strong>. The iPhone capitalises the first letter on its own: if you see <code>Text</code>, delete the T and type a lowercase one.
+              </IngestCallout>
+            </>
+          ),
+          cta: 'Field added',
+        },
+        {
+          id: 'body_text',
+          title: 'Tap the value and pick «Shortcut Input»',
+          body: (
+            <>
+              When the keyboard opens, a bar appears <strong>right above the letters</strong>. <strong>Shortcut Input</strong> is in that bar: tap it there.
+              <IngestCallout icon="Sparkles">
+                Do not type it. It has to show up as a blue bubble; if it shows up as letters, it will not work.
+              </IngestCallout>
+            </>
+          ),
+          cta: 'Bubble set',
+        },
+        {
+          id: 'location_fields',
+          title: 'Add «latitude» and «longitude»',
+          body: (
+            <>
+              Two more Text fields, keys <code>latitude</code> and <code>longitude</code>, in lowercase as well. In each value, pick <strong>Current Location</strong> from the bar above the keyboard.
+            </>
+          ),
+          cta: 'Both added',
+        },
+        {
+          id: 'location_bubbles',
+          title: 'Tap each «Current Location» bubble',
+          body: <>A panel opens to choose which part of the location goes in that field.</>,
+          cta: 'Panel open',
+        },
+        {
+          id: 'location_detail',
+          title: 'Latitude in one, Longitude in the other',
+          body: (
+            <>
+              In the <code>latitude</code> field choose <strong>Latitude</strong>; in <code>longitude</code>, <strong>Longitude</strong>.
+            </>
+          ),
+          cta: 'Chosen',
+        },
+        {
+          id: 'save_shortcut',
+          title: 'Check it and tap the blue ✓',
+          body: (
+            <>
+              It should look like this: location, address, <em>POST</em>, your key, and three fields in lowercase with blue bubbles. Then tap the <strong>✓</strong> at the top right.
+              <IngestCallout icon="Check">
+                From now on, every bank text records the spend on its own.
+              </IngestCallout>
+            </>
+          ),
+          cta: 'Saved',
+        },
+      ],
+      locale,
+    );
+  }
+
+  return withEyebrows(
+    [
       {
         id: 'open',
-        eyebrow: 'Step 1',
-        title: 'Open the Shortcuts app',
+        title: 'Abre la app Atajos',
         body: (
           <>
-            It comes pre-installed on your iPhone. If you do not see it, swipe down on the home screen and search for <strong>Shortcuts</strong>.
+            Ya viene instalada en tu iPhone. Si no la ves, desliza hacia abajo en la pantalla de inicio y escribe <strong>Atajos</strong>.
           </>
         ),
-        cta: 'It is open',
+        cta: 'La tengo abierta',
       },
       {
         id: 'automation',
-        eyebrow: 'Step 2',
-        title: 'Tap «Automation», at the bottom',
-        body: (
-          <>
-            It is the middle tab. Then tap the <strong>+</strong> button at the top right.
-          </>
-        ),
-        cta: 'Done',
+        title: 'Toca «Automatización», abajo',
+        body: <>Es la pestaña del centro, en la barra de abajo de la pantalla.</>,
+        cta: 'Hecho',
+      },
+      {
+        id: 'plus',
+        title: 'Toca el + arriba a la derecha',
+        body: <>Crea una automatización nueva.</>,
+        cta: 'Tocado',
       },
       {
         id: 'trigger',
-        eyebrow: 'Step 3',
-        title: 'Find «Message» and choose it',
-        body: <>In the list of triggers, select <strong>Message</strong>. It triggers whenever a text arrives.</>,
-        cta: 'Chosen',
+        title: 'Elige «Mensaje»',
+        body: <>Baja por la lista de disparadores hasta verlo. Es el que se activa cuando te llega un SMS.</>,
+        cta: 'Elegido',
       },
       {
-        id: 'sender',
-        eyebrow: 'Step 4',
-        title: 'Use the sender shortcode',
+        id: 'contains',
+        title: 'En «Mensaje contiene», escribe tu banco',
         body: (
           <>
-            Banks text from a <strong>5-digit shortcode</strong>. Open Messages, copy that shortcode from your bank&apos;s conversation, and paste it into <em>Sender</em>.
+            Escribe <strong>Bancolombia</strong> o <strong>Banco de Bogotá</strong>, tal como tu banco firma sus mensajes. Deja <em>Remitente</em> en <em>Cualquier remitente</em>.
             <IngestCallout icon="ShieldCheck">
-              Tip: Put your bank&apos;s name in <em>Message contains</em> to prevent two-factor codes from being processed.
+              Una automatización por banco. Si usas los dos, repite estos pasos para el segundo.
             </IngestCallout>
           </>
         ),
-        cta: 'Sender set',
+        cta: 'Banco escrito',
       },
       {
         id: 'immediate',
-        eyebrow: 'Step 5',
-        title: 'Tick «Run immediately»',
+        title: 'Marca «Ejecutar inmediatamente» y toca «Siguiente»',
         body: (
           <>
-            Select <strong>Run immediately</strong> so it runs silently without manual prompts.
-            <IngestCallout icon="EyeOff">
-              Turn off <strong>Notify when run</strong> to make the capture 100% invisible.
-            </IngestCallout>
+            <strong>Ejecutar inmediatamente</strong> hace que corra solo, sin preguntarte cada vez. Luego toca <strong>Siguiente</strong> arriba a la derecha.
           </>
         ),
-        cta: 'Ticked',
+        cta: 'Siguiente tocado',
+      },
+      {
+        id: 'blank',
+        title: 'Toca el recuadro gris «Crear atajo nuevo»',
+        body: (
+          <>
+            Está debajo de <em>Comenzar</em>. No elijas uno de <em>Mis atajos</em>: este tiene que empezar vacío.
+          </>
+        ),
+        cta: 'Tocado',
       },
       {
         id: 'location',
-        eyebrow: 'Step 6',
-        title: 'Add «Get Current Location»',
+        title: 'Busca «Obtener ubicación actual»',
         body: (
           <>
-            In the bottom search bar, search for <strong>Get Current Location</strong> and tap it to add it as your first action.
+            Escríbela en <strong>Buscar acciones</strong>, abajo, y tócala para añadirla.
             <IngestCallout icon="Sparkles">
-              This allows Reasonny to automatically attach the exact venue map to your transaction.
+              Así Reasonny puede ubicar cada pago en el mapa.
             </IngestCallout>
           </>
         ),
-        cta: 'Action added',
+        cta: 'Añadida',
       },
       {
         id: 'action',
-        eyebrow: 'Step 7',
-        title: 'Add «Get contents of URL»',
-        body: (
-          <>
-            Search below your location action for <strong>Get Contents of URL</strong> and paste this address:
-          </>
-        ),
+        title: 'Busca «Obtener contenido de la URL»',
+        body: <>En el mismo buscador. Tócala y aparece debajo de la ubicación.</>,
+        cta: 'Añadida',
+      },
+      {
+        id: 'url',
+        title: 'Toca «URL» y pega esta dirección',
+        body: <>Cópiala con el botón de abajo y pégala en el recuadro azul <em>URL</em>.</>,
         copy: 'url',
-        cta: 'URL pasted',
+        cta: 'Dirección pegada',
       },
       {
         id: 'method',
-        eyebrow: 'Step 8',
-        title: 'Expand «Show more» and set POST',
+        title: 'Pon «Método» en POST',
         body: (
           <>
-            Change the HTTP method from <em>GET</em> to <strong>POST</strong> right under the URL box.
+            Toca la flecha azul junto a la dirección para ver las opciones y cambia <em>Método</em> de GET a <strong>POST</strong>.
           </>
         ),
-        cta: 'Changed',
+        cta: 'POST puesto',
       },
       {
         id: 'header',
-        eyebrow: 'Step 9',
-        title: 'Add the access header',
+        title: 'Abre «Encabezados» y toca «Añadir encabezado nuevo»',
         body: (
           <>
-            Under <em>Headers</em>, set key <code>Authorization</code> and paste your private token:
+            Como clave, escribe <code>Authorization</code>.
           </>
         ),
+        cta: 'Encabezado añadido',
+      },
+      {
+        id: 'token',
+        title: 'Pega tu llave como valor',
+        body: <>Cópiala con el botón de abajo y pégala junto a <em>Authorization</em>. Empieza por <code>Bearer</code>; deja esa palabra.</>,
         copy: 'token',
-        cta: 'Header set',
+        cta: 'Llave pegada',
+      },
+      {
+        id: 'body_field',
+        title: 'En «Cuerpo de la petición», añade un campo de texto',
+        body: (
+          <>
+            Revisa que <em>Cuerpo de la petición</em> diga <strong>JSON</strong>, toca <strong>Añadir campo nuevo</strong> y elige <strong>Texto</strong>. Como clave, escribe <code>text</code>.
+            <IngestCallout icon="AlertTriangle">
+              En <strong>minúscula</strong>. El iPhone pone la primera letra en mayúscula solo: si ves <code>Text</code>, borra la T y escríbela en minúscula.
+            </IngestCallout>
+          </>
+        ),
+        cta: 'Campo añadido',
       },
       {
         id: 'body_text',
-        eyebrow: 'Step 10',
-        title: 'Body: Add SMS Text',
+        title: 'Toca el valor y elige «Entrada del atajo»',
         body: (
           <>
-            Under <em>Request Body</em> select <strong>JSON</strong>. Tap <strong>Add new field</strong> and name it <code>text</code> (Text).
+            Al abrirse el teclado aparece una barra <strong>justo encima de las letras</strong>. <strong>Entrada del atajo</strong> está en esa barra: tócala ahí.
             <IngestCallout icon="Sparkles">
-              Do not type with keyboard. Tap the value box and pick <strong>Shortcut Input</strong> from the horizontal bar above your keyboard.
+              No lo escribas. Tiene que quedar como una burbuja azul; si queda como letras, no funciona.
             </IngestCallout>
           </>
         ),
-        cta: 'Text field set',
+        cta: 'Burbuja puesta',
       },
       {
-        id: 'body_location',
-        eyebrow: 'Step 11',
-        title: 'Location: Latitude & Longitude',
+        id: 'location_fields',
+        title: 'Añade «latitude» y «longitude»',
         body: (
           <>
-            Add two more Text fields: <code>latitude</code> and <code>longitude</code>.
-            <IngestCallout icon="Sliders">
-              Pick <strong>Current Location</strong> from the bar, then tap the blue bubble to select <em>Latitude</em> and <em>Longitude</em>.
-            </IngestCallout>
+            Dos campos de texto más, con claves <code>latitude</code> y <code>longitude</code>, también en minúscula. En cada valor, elige <strong>Ubicación actual</strong> en la barra sobre el teclado.
           </>
         ),
-        cta: 'Coordinates set',
+        cta: 'Los dos añadidos',
+      },
+      {
+        id: 'location_bubbles',
+        title: 'Toca cada burbuja «Ubicación actual»',
+        body: <>Se abre un panel para elegir qué parte de la ubicación va en ese campo.</>,
+        cta: 'Panel abierto',
+      },
+      {
+        id: 'location_detail',
+        title: 'Latitud en uno, Longitud en el otro',
+        body: (
+          <>
+            En el campo <code>latitude</code> elige <strong>Latitud</strong>; en <code>longitude</code>, <strong>Longitud</strong>.
+          </>
+        ),
+        cta: 'Elegidas',
       },
       {
         id: 'save_shortcut',
-        eyebrow: 'Final step',
-        title: 'Save and activate',
+        title: 'Revísalo y toca el ✓ azul',
         body: (
           <>
-            Tap <strong>Done</strong> at the top right to save. Your automation is now live!
+            Debe verse así: ubicación, dirección, <em>POST</em>, tu llave y tres campos en minúscula con burbujas azules. Luego toca el <strong>✓</strong> arriba a la derecha.
             <IngestCallout icon="Check">
-              Every bank SMS will now record automatically in your Reasonny ledger.
+              Desde ahora, cada SMS del banco registra el gasto solo.
             </IngestCallout>
           </>
         ),
-        cta: 'Save automation',
+        cta: 'Guardado',
       },
-    ];
-  }
-
-  return [
-    {
-      id: 'open',
-      eyebrow: 'Paso 1',
-      title: 'Abre la app Atajos',
-      body: (
-        <>
-          Ya viene instalada en tu iPhone. Si no la ves, desliza hacia abajo en la pantalla de inicio y escribe <strong>Atajos</strong>.
-        </>
-      ),
-      cta: 'La tengo abierta',
-    },
-    {
-      id: 'automation',
-      eyebrow: 'Paso 2',
-      title: 'Toca «Automatización», abajo',
-      body: (
-        <>
-          Es la pestaña del centro. Luego toca el botón <strong>+</strong> arriba a la derecha.
-        </>
-      ),
-      cta: 'Hecho',
-    },
-    {
-      id: 'trigger',
-      eyebrow: 'Paso 3',
-      title: 'Busca «Mensaje» y elígelo',
-      body: (
-        <>
-          En la lista de disparadores. Es el que se activa cuando te llega un SMS.
-        </>
-      ),
-      cta: 'Elegido',
-    },
-    {
-      id: 'sender',
-      eyebrow: 'Paso 4',
-      title: 'Pon el remitente del banco',
-      body: (
-        <>
-          Los bancos mandan desde un <strong>número corto de 5 dígitos</strong>. Abre Mensajes, entra al chat de tu banco, cópialo y pégalo en <em>Remitente</em>.
-          <IngestCallout icon="ShieldCheck">
-            Opcional: escribe el nombre del banco en <em>Mensaje contiene</em> para no procesar códigos de verificación.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Remitente puesto',
-    },
-    {
-      id: 'immediate',
-      eyebrow: 'Paso 5',
-      title: 'Marca «Ejecutar inmediatamente»',
-      body: (
-        <>
-          Marca <strong>Ejecutar inmediatamente</strong> para que no pida confirmación en cada pago.
-          <IngestCallout icon="EyeOff">
-            Apaga <strong>Notificar al ejecutar</strong> para que la captura sea 100% invisible y sin alertas.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Marcado',
-    },
-    {
-      id: 'location',
-      eyebrow: 'Paso 6',
-      title: 'Añade «Obtener ubicación actual»',
-      body: (
-        <>
-          En el buscador de abajo, escribe <strong>Obtener ubicación actual</strong> y tócala para agregarla como primera acción.
-          <IngestCallout icon="Sparkles">
-            Permite a Reasonny asociar automáticamente el mapa del lugar exacto donde pagaste.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Acción añadida',
-    },
-    {
-      id: 'action',
-      eyebrow: 'Paso 7',
-      title: 'Añade «Obtener contenido de la URL»',
-      body: (
-        <>
-          Búscala en las acciones, debajo de la ubicación, y pega esta dirección:
-        </>
-      ),
-      copy: 'url',
-      cta: 'URL pegada',
-    },
-    {
-      id: 'method',
-      eyebrow: 'Paso 8',
-      title: 'Despliega «Mostrar más» y pon POST',
-      body: (
-        <>
-          Cambia el método de <em>GET</em> a <strong>POST</strong>. Está justo debajo de la URL.
-        </>
-      ),
-      cta: 'Cambiado',
-    },
-    {
-      id: 'header',
-      eyebrow: 'Paso 9',
-      title: 'Añade el encabezado de acceso',
-      body: (
-        <>
-          En <em>Encabezados</em>, campo <code>Authorization</code>. Como valor, pega tu llave privada:
-        </>
-      ),
-      copy: 'token',
-      cta: 'Encabezado puesto',
-    },
-    {
-      id: 'body_text',
-      eyebrow: 'Paso 10',
-      title: 'Cuerpo: Texto del SMS',
-      body: (
-        <>
-          En <em>Cuerpo de la petición</em> elige <strong>JSON</strong>. Toca <strong>Añadir campo nuevo</strong> y nómbralo <code>text</code> (Texto).
-          <IngestCallout icon="Sparkles">
-            Toca el valor y elígelo en la barra de sugerencias sobre el teclado: <strong>Entrada del atajo</strong>. No lo escribas a mano.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Campo de texto listo',
-    },
-    {
-      id: 'body_location',
-      eyebrow: 'Paso 11',
-      title: 'Ubicación: Latitud y Longitud',
-      body: (
-        <>
-          Añade dos campos más de texto: <code>latitude</code> y <code>longitude</code>.
-          <IngestCallout icon="Sliders">
-            Elige <strong>Ubicación actual</strong> en la barra sobre tu teclado, y luego toca cada pastilla azul para seleccionar <em>Latitud</em> y <em>Longitud</em>.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Ubicación lista',
-    },
-    {
-      id: 'save_shortcut',
-      eyebrow: 'Último paso',
-      title: 'Guarda y activa tu atajo',
-      body: (
-        <>
-          Toca <strong>Listo</strong> arriba a la derecha para guardar. ¡Todo terminado!
-          <IngestCallout icon="Check">
-            A partir de ahora, cada SMS bancario registrará tu gasto automáticamente.
-          </IngestCallout>
-        </>
-      ),
-      cta: 'Guardar atajo',
-    },
-  ];
+    ],
+    locale,
+  );
 }
 
 function SetupCompleteArt(): React.ReactElement {
@@ -901,6 +996,7 @@ export function IngestSetup({
 
   const step = steps[index] ?? steps[0]!;
   const art = STEP_ART[ui][step.id];
+  const shot = STEP_SHOTS[step.id];
   const secret = step.copy === 'url' ? endpoint : `Bearer ${token}`;
 
   return (
@@ -1039,7 +1135,7 @@ export function IngestSetup({
                 <h2 className="ingest-title">{step.title}</h2>
                 <div className="ingest-body">{step.body}</div>
 
-                {art && <StepArtwork art={art} />}
+                {shot ? <StepScreenshot shot={shot} locale={ui} /> : art && <StepArtwork art={art} />}
 
                 {step.copy && (
                   <button

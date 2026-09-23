@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
 import { BalanceHero } from '@/components/dashboard/balance-hero';
+import { CaptureCallout } from '@/components/dashboard/capture-callout';
 import { FinancialActions } from '@/components/dashboard/financial-actions';
 import { PhoneLedger } from '@/components/dashboard/phone-ledger';
 import { ReviewCallout } from '@/components/dashboard/review-callout';
@@ -40,7 +41,6 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   }
 
   const queryStartedAt = performance.now();
-  // In parallel: the callout below is decided by the second, and making it wait
   const data = await getDashboardData(userId);
   const queryDurationMs = performance.now() - queryStartedAt;
 
@@ -70,6 +70,11 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         autoCaptureCount={data.autoCaptureCount}
         timeZone={data.timezone}
       />
+
+      {/* Only until the pipe has actually delivered something. See the note in
+          the component for why it leaves rather than turning into a tick. The
+          count already comes with getDashboardData, so this costs no query. */}
+      {data.autoCaptureCount === 0 && <CaptureCallout />}
 
       {/* 2. Triage Callout: Appears only when there are items to categorize (Level 2) */}
       <ReviewCallout uncategorizedCount={data.uncategorizedCount} />

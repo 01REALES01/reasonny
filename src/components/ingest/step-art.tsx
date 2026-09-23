@@ -3,15 +3,11 @@ import React from 'react';
 /**
  * A drawing of the iPhone screen the current step is talking about.
  *
- * WHY A MOCK AND NOT A SCREENSHOT
- * -------------------------------
- * Real screenshots would be nine image files that go stale the moment Apple
- * reshuffles a menu, weigh far more than the screen they illustrate, and only
- * exist in one language - the reader with an English phone would be handed
- * pictures of a Spanish one, which is the exact confusion the language toggle
- * was added to fix. These are built from the same data in whichever language
- * the steps are being read, cost no bytes over the HTML, and stay legible when
- * the reader zooms.
+ * ONLY WHERE THERE IS NO CAPTURE
+ * ------------------------------
+ * A step with a real screenshot shows that instead (see step-shots.tsx). This
+ * is for the steps a screenshot cannot serve well, rendered in whichever
+ * language the steps are being read.
  *
  * They are deliberately schematic. The job is not to look like iOS, it is to
  * answer "which of these things do I tap", so the target row is the only lit
@@ -103,102 +99,22 @@ export function StepArtwork({ art }: { readonly art: StepArt }): React.ReactElem
 }
 
 /**
- * One drawing per step, keyed by the step's id and the language being read.
+ * Drawings for the steps that have no capture in step-shots.tsx, keyed by the
+ * step's id and the language being read.
  *
- * Kept out of the step objects themselves so the wizard's copy stays readable:
- * the instructions are the thing a person edits, and burying a screen mock in
- * the middle of each one would bury them.
+ * Only the first step is left: opening Shortcuts from the home-screen search
+ * is not a screen of the app, and a capture of someone's home screen would
+ * show their apps rather than the one to open. Every other step has a real
+ * picture now, and a drawing kept "just in case" for each would be twenty
+ * schematics nobody sees and nobody updates.
  */
-export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, StepArt>>>> = {
+export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Partial<Record<string, StepArt>>>>> = {
   es: {
     open: {
       title: 'Buscar',
       rows: [
         { label: 'atajos', field: true },
         { label: 'Atajos', value: 'App', target: true },
-      ],
-    },
-    automation: {
-      title: 'Atajos',
-      rows: [{ label: 'Todos los atajos', value: '3' }],
-      tabs: ['Atajos', '*Automatización'],
-      plus: 'target',
-    },
-    trigger: {
-      title: 'Nueva automatización',
-      rows: [
-        { label: 'Hora del día' },
-        { label: 'Alarma' },
-        { label: 'Mensaje', target: true },
-        { label: 'Correo' },
-      ],
-    },
-    sender: {
-      title: 'Mensaje',
-      rows: [
-        { label: 'Remitente', value: '85888', target: true },
-        { label: 'Mensaje contiene', value: 'Bancolombia' },
-      ],
-    },
-    immediate: {
-      title: 'Mensaje',
-      rows: [
-        { label: 'Ejecutar inmediatamente', toggle: true, target: true },
-        { label: 'Ejecutar después de confirmar', toggle: true },
-        { label: 'Notificar al ejecutar', toggle: true },
-      ],
-    },
-    location: {
-      title: 'Acciones',
-      rows: [
-        { label: 'ubicación actual', field: true },
-        { label: 'Obtener ubicación actual', target: true },
-      ],
-    },
-    action: {
-      title: 'Acciones',
-      rows: [
-        { label: 'obtener contenido', field: true },
-        { label: 'Obtener contenido de la URL', target: true },
-      ],
-    },
-    method: {
-      title: 'Obtener contenido de la URL',
-      rows: [
-        { label: 'URL', value: 'reasonny.vercel.app…' },
-        { label: 'Método', value: 'POST', target: true },
-        { label: 'Encabezados' },
-        { label: 'Cuerpo de la petición', value: 'JSON' },
-      ],
-    },
-    header: {
-      title: 'Encabezados',
-      rows: [
-        { label: 'Clave', value: 'Authorization', target: true },
-        { label: 'Valor', value: 'Bearer …' },
-      ],
-    },
-    body_text: {
-      title: 'Cuerpo de la petición',
-      rows: [
-        { label: 'Tipo', value: 'JSON' },
-        { label: 'text', value: 'Entrada del atajo', target: true },
-        { label: 'Añadir campo nuevo' },
-      ],
-    },
-    body_location: {
-      title: 'Cuerpo de la petición',
-      rows: [
-        { label: 'latitude', value: 'Latitud', target: true },
-        { label: 'longitude', value: 'Longitud', target: true },
-        { label: 'Añadir campo nuevo' },
-      ],
-    },
-    save_shortcut: {
-      title: 'Nueva automatización',
-      rows: [
-        { label: 'Listo', value: 'Guardar', target: true },
-        { label: 'Ejecutar inmediatamente', toggle: true },
       ],
     },
   },
@@ -208,89 +124,6 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Record<string, Step
       rows: [
         { label: 'shortcuts', field: true },
         { label: 'Shortcuts', value: 'App', target: true },
-      ],
-    },
-    automation: {
-      title: 'Shortcuts',
-      rows: [{ label: 'All Shortcuts', value: '3' }],
-      tabs: ['Shortcuts', '*Automation'],
-      plus: 'target',
-    },
-    trigger: {
-      title: 'New Automation',
-      rows: [
-        { label: 'Time of Day' },
-        { label: 'Alarm' },
-        { label: 'Message', target: true },
-        { label: 'Email' },
-      ],
-    },
-    sender: {
-      title: 'Message',
-      rows: [
-        { label: 'Sender', value: '85888', target: true },
-        { label: 'Message Contains', value: 'Bancolombia' },
-      ],
-    },
-    immediate: {
-      title: 'Message',
-      rows: [
-        { label: 'Run Immediately', toggle: true, target: true },
-        { label: 'Run After Confirmation', toggle: true },
-        { label: 'Notify When Run', toggle: true },
-      ],
-    },
-    location: {
-      title: 'Actions',
-      rows: [
-        { label: 'current location', field: true },
-        { label: 'Get Current Location', target: true },
-      ],
-    },
-    action: {
-      title: 'Actions',
-      rows: [
-        { label: 'get contents', field: true },
-        { label: 'Get Contents of URL', target: true },
-      ],
-    },
-    method: {
-      title: 'Get Contents of URL',
-      rows: [
-        { label: 'URL', value: 'reasonny.vercel.app…' },
-        { label: 'Method', value: 'POST', target: true },
-        { label: 'Headers' },
-        { label: 'Request Body', value: 'JSON' },
-      ],
-    },
-    header: {
-      title: 'Headers',
-      rows: [
-        { label: 'Key', value: 'Authorization', target: true },
-        { label: 'Value', value: 'Bearer …' },
-      ],
-    },
-    body_text: {
-      title: 'Request Body',
-      rows: [
-        { label: 'Type', value: 'JSON' },
-        { label: 'text', value: 'Shortcut Input', target: true },
-        { label: 'Add new field' },
-      ],
-    },
-    body_location: {
-      title: 'Request Body',
-      rows: [
-        { label: 'latitude', value: 'Latitude', target: true },
-        { label: 'longitude', value: 'Longitude', target: true },
-        { label: 'Add new field' },
-      ],
-    },
-    save_shortcut: {
-      title: 'New Automation',
-      rows: [
-        { label: 'Done', value: 'Save', target: true },
-        { label: 'Run Immediately', toggle: true },
       ],
     },
   },
