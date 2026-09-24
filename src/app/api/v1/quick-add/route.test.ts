@@ -146,6 +146,45 @@ describe('POST /api/v1/quick-add', () => {
     expect(recordTransaction).toHaveBeenCalled();
   });
 
+  describe('the ▶ test run at the end of the tutorial', () => {
+    it('answers an empty text from a valid key as a successful connection test', async () => {
+      // A manual run has no SMS behind it, and Shortcuts shows this reply on
+      // screen. It used to read invalid_body to every user who did it right.
+      const res = await POST(
+        request({ text: '', latitude: '4.65', longitude: '-74.05' }, mintIngestToken(userId)),
+      );
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toMatchObject({ ok: true, test: true });
+      expect(body.message).toContain('Conectado');
+      expect(recordTransaction).not.toHaveBeenCalled();
+    });
+
+    it('still leaves a trace, since real SMS can arrive empty too', async () => {
+      await POST(request({ text: '   ' }, mintIngestToken(userId)));
+
+      expect(recordIngestionFailure).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ error: 'empty_text' }),
+      );
+    });
+
+    it('replies in the language the phone asked for', async () => {
+      const req = request({ Text: '' }, mintIngestToken(userId));
+      req.headers.set('Accept-Language', 'en-US,en;q=0.9');
+
+      const body = await (await POST(req)).json();
+      expect(body.message).toContain('Connected');
+    });
+
+    it('does not vouch for a key that does not verify', async () => {
+      const res = await POST(request({ text: '' }, 'not-a-token'));
+
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('coordinates from Shortcuts', () => {
     it('reads the numbers Shortcuts sends as strings', async () => {
       await POST(

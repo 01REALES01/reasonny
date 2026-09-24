@@ -11,7 +11,7 @@ import { type UserId } from '@/core/types';
 import { telegramAdapter } from '@/clients/telegram/messaging-adapter';
 import { parseBankSms } from '@/infrastructure/sms-parsers';
 import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
-import { DEFAULT_LOCALE } from '@/lib/i18n';
+import { DEFAULT_LOCALE, type Locale, t } from '@/lib/i18n';
 
 /**
  * Ingestion endpoint.
@@ -165,6 +165,41 @@ function canonicalizeKeys(body: unknown): unknown {
   return out;
 }
 
+/**
+ * True when the body carries no message at all.
+ *
+ * WHY THIS IS ANSWERED AS A TEST AND NOT AS invalid_body
+ * ------------------------------------------------------
+ * The tutorial ends by asking the user to tap ▶ once, because that manual run
+ * is the only moment iOS can ask for the location and network permissions -
+ * an automation fired by an SMS runs in the background, cannot show the
+ * question, and stalls until iOS kills it. A manual run has no SMS behind it,
+ * so `text` arrives empty, and Shortcuts SHOWS the response on screen. Every
+ * user who did the right thing was reading `{"error":"invalid_body"}` and
+ * concluding they had done it wrong.
+ *
+ * An empty text from a VERIFIED token proves exactly what the test is for: the
+ * phone reaches us, with a key that is theirs. That is worth saying plainly.
+ *
+ * It is still recorded, as `empty_text` rather than as a success: the same
+ * body also arrives when the Shortcut Input bubble was never set, and a user
+ * whose real SMS keep arriving empty must be visible in the table, not hidden
+ * behind a friendly message.
+ */
+function isEmptyText(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return false;
+  }
+  const text = (body as Record<string, unknown>).text;
+  return text === undefined || (typeof text === 'string' && text.trim() === '');
+}
+
+/** Shortcuts sends the phone's language, and the phone is who reads the reply. */
+function localeFromRequest(request: NextRequest): Locale {
+  const header = request.headers.get('accept-language')?.trim().toLowerCase() ?? '';
+  return header.startsWith('en') ? 'en' : DEFAULT_LOCALE;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let userId: UserId | null;
   try {
@@ -190,7 +225,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return refuse(userId, 400, { error: 'invalid_json' }, { raw: rawText }, 'invalid_json');
   }
 
-  const parsedBody = BodySchema.safeParse(canonicalizeKeys(body));
+  const canonicalBody = canonicalizeKeys(body);
+  if (isEmptyText(canonicalBody)) {
+    return refuse(
+      userId,
+      200,
+      { ok: true, test: true, message: t('quick_add_test_ok', localeFromRequest(request)) },
+      body,
+      'empty_text',
+    );
+  }
+
+  const parsedBody = BodySchema.safeParse(canonicalBody);
   if (!parsedBody.success) {
     // The commonest real cause: the Shortcut's JSON field is named something
     // other than `text`, or its value was left empty.

@@ -255,11 +255,14 @@ export const STEP_SHOTS: Readonly<Partial<Record<string, StepShot>>> = {
   save_shortcut: {
     src: '/tutorial/done.webp',
     width: 600,
-    height: 1084,
+    height: 1166,
     alt: {
-      es: 'El atajo terminado, con el botón azul de confirmar marcado arriba a la derecha',
-      en: 'The finished shortcut, with the blue confirm button marked at the top right',
+      es: 'El atajo terminado, con el botón ▶ marcado abajo y el ✓ azul arriba a la derecha',
+      en: 'The finished shortcut, with the ▶ button marked at the bottom and the blue ✓ at the top right',
     },
-    marks: [[84.5, 10.5, 12, 6.6]],
+    marks: [
+      [79.9, 93.1, 9.2, 5.3],
+      [84.5, 0.6, 12, 6.2],
+    ],
   },
 };

@@ -22,6 +22,8 @@ export interface ArtRow {
   readonly toggle?: boolean;
   /** Draws the row as a text field with the label as its content. */
   readonly field?: boolean;
+  /** An app icon under /public, drawn before the label as Search shows it. */
+  readonly icon?: string;
 }
 
 export interface StepArt {
@@ -66,6 +68,12 @@ export function StepArtwork({ art }: { readonly art: StepArt }): React.ReactElem
               .filter(Boolean)
               .join(' ')}
           >
+            {row.icon && (
+              // A plain img: a 36px icon of 4 KB gains nothing from the image
+              // optimiser, and the empty alt is right because the label next
+              // to it already says what it is.
+              <img src={row.icon} alt="" width={36} height={36} className="art-icon" />
+            )}
             <span className="art-label">{row.label}</span>
             {row.toggle ? (
               <span
@@ -114,7 +122,7 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Partial<Record<stri
       title: 'Buscar',
       rows: [
         { label: 'atajos', field: true },
-        { label: 'Atajos', value: 'App', target: true },
+        { label: 'Atajos', value: 'App', target: true, icon: '/tutorial/shortcuts-icon.webp' },
       ],
     },
   },
@@ -123,7 +131,7 @@ export const STEP_ART: Readonly<Record<'es' | 'en', Readonly<Partial<Record<stri
       title: 'Search',
       rows: [
         { label: 'shortcuts', field: true },
-        { label: 'Shortcuts', value: 'App', target: true },
+        { label: 'Shortcuts', value: 'App', target: true, icon: '/tutorial/shortcuts-icon.webp' },
       ],
     },
   },

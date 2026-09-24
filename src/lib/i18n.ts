@@ -164,6 +164,8 @@ export const DICTIONARY = {
     capture_callout_title: 'Vincula tu banco ahora',
     capture_callout_text: 'Conecta los SMS de tu banco con Atajos de iOS y tus gastos se guardan solos.',
     capture_callout_aria: 'Vincular la captura automática de SMS con Atajos',
+    quick_add_test_ok:
+      '✓ Conectado: tu iPhone llega a Reasonny. Esta prueba no trae un SMS, así que no se guarda ningún gasto; el próximo mensaje de tu banco sí.',
     dashboard_export_csv: 'CSV',
     dashboard_export_csv_title: 'Exportar todas las transacciones a CSV',
     dashboard_recent_title: 'Últimos movimientos',
@@ -435,6 +437,8 @@ export const DICTIONARY = {
     capture_callout_title: 'Link your bank now',
     capture_callout_text: 'Connect your bank texts to iOS Shortcuts and your spending records itself.',
     capture_callout_aria: 'Link automatic SMS capture with Shortcuts',
+    quick_add_test_ok:
+      '✓ Connected: your iPhone reaches Reasonny. This test carries no text message, so no spend is saved; the next one from your bank will be.',
     dashboard_export_csv: 'CSV',
     dashboard_export_csv_title: 'Export every transaction to CSV',
     dashboard_recent_title: 'Recent activity',

@@ -5004,6 +5004,19 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+/* The real app icon, so step one is recognised rather than read. The label
+   takes the free space, which keeps "App" pinned to the right. */
+.art-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+
+.art-icon + .art-label {
+  flex: 1;
+}
+
 /* A search box, drawn as the field it is. */
 .art-row--field {
   background: rgba(255, 255, 255, 0.05);
@@ -5409,7 +5422,59 @@ textarea:focus-visible {
 
 .ingest-fullscreen .ingest-track {
   margin-bottom: 18px;
-  height: 14px;
+  height: 22px;
+}
+
+/* ── Progress that is felt, not just shown ──────────────────────────────────
+   Nineteen steps is a long way on a phone, and the bar is the only thing on
+   the screen that says the end is getting closer. So it is thick enough to
+   notice, it pops on every advance (the track is keyed by step), and a light
+   sweeps along the filled part. Transform and opacity only: the compositor
+   runs all three, so none of it costs INP. */
+.ingest-track {
+  animation: ingestTrackPop 420ms var(--ease-out);
+}
+
+@keyframes ingestTrackPop {
+  0% { transform: scaleY(1); }
+  35% { transform: scaleY(1.35); }
+  100% { transform: scaleY(1); }
+}
+
+.ingest-fill {
+  position: relative;
+  overflow: hidden;
+}
+
+.ingest-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-120%);
+  animation: ingestSweep 2.2s var(--ease-out) infinite;
+}
+
+@keyframes ingestSweep {
+  0% { transform: translateX(-120%); }
+  60%, 100% { transform: translateX(260%); }
+}
+
+.ingest-percent {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--landing-champagne-gold);
+  text-shadow: 0 0 14px rgba(240, 122, 172, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ingest-track,
+  .ingest-fill::after {
+    animation: none;
+  }
 }
 
 .ingest-fullscreen .ingest-step {

@@ -402,12 +402,12 @@ export function buildSteps(locale: Ui): Step[] {
         },
         {
           id: 'save_shortcut',
-          title: 'Check it and tap the blue ✓',
+          title: 'Test it with ▶, then tap the blue ✓',
           body: (
             <>
-              It should look like this: location, address, <em>POST</em>, your key, and three fields in lowercase with blue bubbles. Then tap the <strong>✓</strong> at the top right.
-              <IngestCallout icon="Check">
-                From now on, every bank text records the spend on its own.
+              It should look like this: location, address, <em>POST</em>, your key, and three fields in lowercase with blue bubbles. Tap <strong>▶</strong> at the bottom right once, then the <strong>✓</strong> at the top right.
+              <IngestCallout icon="AlertTriangle">
+                If the iPhone asks to use your location or to connect to <em>reasonny.vercel.app</em>, choose <strong>Allow</strong>. Those questions cannot appear when a text arrives, and without the answer the automation stalls and the spend is lost.
               </IngestCallout>
             </>
           ),
@@ -588,12 +588,12 @@ export function buildSteps(locale: Ui): Step[] {
       },
       {
         id: 'save_shortcut',
-        title: 'Revísalo y toca el ✓ azul',
+        title: 'Pruébalo con ▶ y toca el ✓ azul',
         body: (
           <>
-            Debe verse así: ubicación, dirección, <em>POST</em>, tu llave y tres campos en minúscula con burbujas azules. Luego toca el <strong>✓</strong> arriba a la derecha.
-            <IngestCallout icon="Check">
-              Desde ahora, cada SMS del banco registra el gasto solo.
+            Debe verse así: ubicación, dirección, <em>POST</em>, tu llave y tres campos en minúscula con burbujas azules. Toca <strong>▶</strong> abajo a la derecha una vez, y luego el <strong>✓</strong> arriba a la derecha.
+            <IngestCallout icon="AlertTriangle">
+              Si el iPhone pregunta si puede usar tu ubicación o conectarse a <em>reasonny.vercel.app</em>, elige <strong>Permitir</strong>. Esas preguntas no pueden salir cuando llega un SMS, y sin la respuesta la automatización se queda esperando y el gasto se pierde.
             </IngestCallout>
           </>
         ),
@@ -1109,11 +1109,18 @@ export function IngestSetup({
               )}
 
               <span className="ingest-count">{copy.stepCount(index + 1, steps.length)}</span>
+              <span className="ingest-percent" aria-hidden="true">
+                {progress}%
+              </span>
             </div>
 
             {/* scaleX rather than width: width is a layout property and animating it
                 is what the design system forbids. */}
+            {/* Keyed by the step so the pop replays on every advance: the bar is
+                the one thing on this screen that says "you are getting there",
+                and a change nobody notices says nothing. */}
             <div
+              key={`track-${index}`}
               className="ingest-track"
               role="progressbar"
               aria-valuenow={progress}
