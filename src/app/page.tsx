@@ -12,18 +12,18 @@ import { LandingSectionUnderstand } from '@/components/landing/landing-section-u
 import { LandingTopBar } from '@/components/landing/landing-top-bar';
 
 const DESCRIPTION =
-  'Reasonny es un asistente financiero personal: registra tus gastos con casi cero esfuerzo ' +
-  'y te explica cómo te estás comportando, sin que tengas que abrir la app.';
+  'Pagas como siempre y Reasonny anota el gasto, lo clasifica y te dice cómo vas. ' +
+  'Sin abrir ninguna pantalla y sin escribir montos. Gratis, sin tarjeta.';
 
 export const metadata: Metadata = {
-  title: 'Reasonny — Tu dinero, con claridad total',
+  title: 'Reasonny — Tus gastos se registran solos',
   description: DESCRIPTION,
   alternates: {
     canonical: '/',
     languages: { 'es-CO': '/', 'x-default': '/' },
   },
   openGraph: {
-    title: 'Reasonny — Tu dinero, con claridad total',
+    title: 'Reasonny — Tus gastos se registran solos',
     description: DESCRIPTION,
     url: '/',
     siteName: 'Reasonny',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Reasonny — Tu dinero, con claridad total',
+    title: 'Reasonny — Tus gastos se registran solos',
     description: DESCRIPTION,
     images: ['/images/og.jpg'],
   },

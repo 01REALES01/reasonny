@@ -60,7 +60,7 @@ export function LandingGrandFinaleFooter(): React.ReactElement {
 
           <div className="landing-finale-cta-group">
             <Link href="/sign-in" className="landing-gold-cta-btn landing-finale-cta-btn">
-              <span>Probar Reasonny gratis</span>
+              <span>Crear cuenta con tu correo</span>
               <span aria-hidden="true"> →</span>
             </Link>
           </div>
@@ -72,6 +72,7 @@ export function LandingGrandFinaleFooter(): React.ReactElement {
             <a href="#features-zero-touch" className="landing-finale-nav-item">Registro sin esfuerzo</a>
             <a href="#features-telegram" className="landing-finale-nav-item">Notificaciones en Telegram</a>
             <a href="#features-vision" className="landing-finale-nav-item">Conciliación por extracto</a>
+            <a href="#features-faq" className="landing-finale-nav-item">Preguntas frecuentes</a>
             <a href="#features-telemetry" className="landing-finale-nav-item">Insights sobre tu comportamiento</a>
           </div>
 

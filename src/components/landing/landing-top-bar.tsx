@@ -4,11 +4,10 @@ import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
 
 const NAV_LINKS = [
-  { label: 'Filosofía', href: '#chapter-observe' },
-  { label: 'Sin fricción', href: '#features-zero-touch' },
-  { label: 'Tu tarjeta', href: '#features-card' },
+  { label: 'Cómo funciona', href: '#features-zero-touch' },
+  { label: 'Tus bancos', href: '#features-card' },
   { label: 'Privacidad', href: '#features-security' },
-  { label: 'Insights', href: '#features-telemetry' },
+  { label: 'Preguntas', href: '#features-faq' },
 ];
 
 /**
@@ -80,7 +79,7 @@ export function LandingTopBar(): React.ReactElement {
           {/* Desktop Top CTA */}
           <div className="landing-top-actions">
             <Link href="/sign-in" className="landing-top-cta">
-              <span>Probar ahora</span>
+              <span>Crear cuenta</span>
               <span aria-hidden="true"> →</span>
             </Link>
           </div>
@@ -122,7 +121,7 @@ export function LandingTopBar(): React.ReactElement {
         </button>
 
         <Link href="/sign-in" className="landing-mobile-dock-cta">
-          <span>Probar ahora</span>
+          <span>Crear cuenta</span>
           <span aria-hidden="true"> →</span>
         </Link>
       </aside>
@@ -141,7 +140,9 @@ export function LandingTopBar(): React.ReactElement {
               onClick={() => setIsMobileOpen(false)}
               aria-label="Cerrar navegación"
             >
-              ✕
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
@@ -166,10 +167,10 @@ export function LandingTopBar(): React.ReactElement {
               className="landing-mobile-cta-btn"
               onClick={() => setIsMobileOpen(false)}
             >
-              Comenzar sin costo →
+              Crear cuenta con tu correo →
             </Link>
             <div className="landing-mobile-trust-note">
-              <span>🔒 Sincronización de solo lectura</span>
+              <span>Sincronización de solo lectura</span>
               <span>·</span>
               <span>Sin publicidad</span>
             </div>

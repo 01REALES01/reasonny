@@ -15,7 +15,7 @@ export function LandingSectionTrust(): React.ReactElement {
         </p>
 
         <Link href="/sign-in" className="landing-gold-cta-btn">
-          <span>Comenzar ahora</span>
+          <span>Crear cuenta con tu correo</span>
           <span aria-hidden="true"> →</span>
         </Link>
       </div>
