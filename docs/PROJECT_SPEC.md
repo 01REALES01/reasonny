@@ -1,9 +1,9 @@
 # Especificación Técnica y Arquitectura del Sistema
 ## RealMoney — Gestión Financiera Personal con Ingesta Asistida por IA
 
-**Versión:** 3.1.0
-**Fecha:** 24 de agosto de 2026
-**Estado:** Borrador de trabajo — Fase 0 pendiente de validación
+**Versión:** 3.2.0
+**Fecha:** 25 de septiembre de 2026
+**Estado:** En producción con 3 usuarios reales. Fases 1 y 4 construidas; orden de lo que sigue en `IMPLEMENTATION_PLAN.md` §4.5
 **Autor:** Jean Paul Reales
 **Documentos hermanos:** `IMPLEMENTATION_PLAN.md` (cómo y en qué orden) · `AUDIT.md` (defectos de la v1) · `METRICS.md` (mediciones)
 
@@ -25,6 +25,18 @@
 | 6 | Nueva **§3.6**: orden obligatorio de respuesta del `callback_query` (`answerCallbackQuery` inmediato, edición de mensaje para el resultado real, idempotencia ante reintentos) | Auditoría externa, con corrección |
 | 7 | Fricción verificada de Zod v4 con `drizzle-zod` y `@hookform/resolvers`, con issues concretos. Fijar versiones exactas en B1 | Auditoría externa, verificado |
 | 8 | Nueva decisión abierta §10.3: medir los gestos reales del Nivel 2 en la Fase 0 | Auditoría externa |
+
+**Cambios v3.1 → v3.2 (usuarios reales, 25-sep-2026):**
+
+| # | Corrección | Origen |
+| :--- | :--- | :--- |
+| 1 | §4.2: las filas del OCR van a un **staging propio** y se **reconcilian** contra lo que ya entró; ya no se insertan como `pending_review` en `transactions` | Plan de Fase 2 |
+| 2 | §4.2: los PDF (con contraseña incluida) se convierten en imágenes **en el teléfono**; la clave nunca sale del dispositivo | Plan de Fase 2 |
+| 3 | §2 y §8.1: Upstash diferido a la Fase 7; la cuota se cuenta en la base | Plan de Fase 2 |
+| 4 | §2 y §8.3: Gemini **solo en plan de pago**: el gratuito puede usar los datos para mejorar productos de Google, inaceptable con datos de terceros | Usuarios reales |
+| 5 | §8.1: coste real de WhatsApp verificado. Los mensajes dentro de la ventana de 24 h son gratis; la afirmación de que se cobrarían desde el 1-oct-2026 era incorrecta | Verificación contra Meta |
+| 6 | §8.3 y §9: la Ley 1581 aplica **desde ahora** (bloque H1), no desde la Fase 7 | Usuarios reales |
+| 7 | §2: Next.js 16 y Neon Auth con OTP por correo, como ya estaba en `CLAUDE.md` | Sincronización |
 
 *No adoptado:* el cron de ping para mantener Neon caliente. Contradice el presupuesto de 100 CU-h/mes del free tier que la propia auditoría cita. Se reconsiderará solo con una medición que lo justifique.
 
@@ -85,19 +97,19 @@ Cada fila incluye la contrapartida. Una tabla de stack sin columna de costos es 
 
 | Capa | Tecnología | Por qué | Contrapartida asumida |
 | :--- | :--- | :--- | :--- |
-| **Framework** | Next.js 15+ (App Router) | Un solo repo para PWA y endpoints. Server Components reducen JS en cliente. | El App Router tiene aristas (caching, `use client`). **Runtime Node, región `iad1`** — no Edge global: la DB vive en una región y distribuir el cómputo empeora la latencia. |
+| **Framework** | Next.js 16 (App Router) | Un solo repo para PWA y endpoints. Server Components reducen JS en cliente. | El App Router tiene aristas (caching, `use client`). **Runtime Node, región `iad1`** — no Edge global: la DB vive en una región y distribuir el cómputo empeora la latencia. |
 | **Lenguaje** | TypeScript 5+ (strict) | Tipado extremo a extremo sobre operaciones monetarias. | Ninguna relevante. |
 | **Base de datos** | **Neon (PostgreSQL serverless)** | Postgres real. **Branching**: cada PR y cada migración se prueba contra una copia instantánea de producción — la ventaja decisiva frente a Supabase para este proyecto. Free tier: 100 proyectos, 100 CU-h/proyecto/mes, 0.5 GB. | **Cold start de 300ms a ~2.6s (p95)** tras auto-suspensión (5 min por defecto). Impacto directo en el webhook de ingesta — ver §4.3. En free tier no puedes mantenerlo caliente: 730 h/mes excede las 100 CU-h. |
 | **ORM** | Drizzle ORM | Type-safe, sin capa de runtime pesada, migraciones SQL legibles. | **`drizzle-orm/neon-http` no soporta transacciones.** El batch-create de OCR las necesita → decisión tomada: **`drizzle-orm/neon-serverless`** (WebSocket). |
-| **Autenticación** | **Neon Auth (Managed Better Auth)** | Better Auth gestionado. Métodos: **magic link + Google + Apple**. 60K MAU gratis. Sincroniza usuarios al esquema `neon_auth` de tu propia base, consultable con Drizzle. Migrable a Better Auth autoalojado — es la misma librería. | Los IDs de usuario son **TEXT**, no UUID. La sincronización a `neon_auth.users_sync` es asíncrona: no pongas FKs duras contra esa tabla. **Apple es obligatorio** si se ofrece Google y algún día se empaqueta para App Store. |
-| **Mensajería** | **Telegram Bot API** | Notificación nativa instantánea con inline keyboards. Gratis e ilimitado, contenido totalmente dinámico, sin aprobación previa de plantillas. Es la superficie de captura del Nivel 2. | Requiere que el usuario tenga Telegram. La migración a WhatsApp está prevista y acotada por criterio — ver §9 y §11 (P5). |
+| **Autenticación** | **Neon Auth (Managed Better Auth)** | Better Auth gestionado. Métodos: **código de un solo uso por correo + Google** (Neon Auth no tiene magic link; verificado el 27-ago-2026). Crea tablas reales en la propia base, consultables con Drizzle. Migrable a Better Auth autoalojado. | IDs de usuario **UUID**. **Apple es obligatorio** si se ofrece Google y algún día se empaqueta para App Store; diferido hasta entonces. |
+| **Mensajería** | **Telegram Bot API** · **WhatsApp Cloud API** (bloque W1) | Telegram: inline keyboards, gratis, contenido dinámico sin plantillas. WhatsApp: el canal que los usuarios ya tienen abierto; lo que abre el usuario es gratis. | Telegram exige tenerlo instalado. WhatsApp: fuera de la ventana de 24 h solo plantillas aprobadas, con botones fijos — la pregunta de categoría cuesta 3 gestos, no 2 (ver §8.1). |
 | **Almacenamiento de archivos** | **Cloudflare R2** (bucket privado + signed URLs) | Neon no tiene object storage. R2 no cobra egreso. | Un servicio más que configurar. Los recibos **nunca** se sirven por URL pública. |
 | **Estilos & UI** | Tailwind CSS v4 + Radix UI + Lucide | Sistema de diseño sin overhead en runtime. Radix aporta accesibilidad real. | **Framer Motion queda fuera de la v1** (~50KB gz contra el presupuesto de **P7**). **Glassmorphism queda fuera de la lista de transacciones**: `backdrop-filter` con scroll largo en Safari iOS destruye el framerate justo en la pantalla principal. Se permite en tarjetas estáticas. |
 | **PWA** | Serwist + Web App Manifest | Instalación en pantalla de inicio, pantalla completa, caché offline. | iOS no soporta Background Sync ni Background Fetch, y el push web exige instalación. **No importa:** la captura no pasa por la PWA — ver §12.1. |
-| **Visión / OCR** | Google Gemini Flash (multimodal) | Buena relación precisión/costo para extractos. Salida estructurada por schema. | Latencia real **2–6s**, no <1.5s. Acepta un subconjunto de OpenAPI 3.0 Schema, **no Zod**. Envías datos financieros a un tercero — ver §8.3. |
+| **Visión / OCR y lenguaje** | Google Gemini Flash / Flash-Lite **en plan de pago**, por REST | Un solo adaptador (`infrastructure/ai/gemini.ts`) para el OCR (Fase 2) y para entender texto libre en el chat (bloque L1). Salida estructurada por schema. | Latencia real **2–6s** en visión. El schema que acepta es un subconjunto: se verifica contra el modelo antes de fijarlo. Envías datos financieros a un tercero — ver §8.3. El plan gratuito queda descartado: puede usar lo enviado para mejorar productos de Google. |
 | **Validación** | **Zod v4** | `z.toJSONSchema()` nativo, necesario para la salida estructurada de Gemini sin conversión manual. | **Fricción verificada en el ecosistema, a comprobar en B1 antes de fijar `package.json`:** `drizzle-zod` 0.8.3 con `coerce: true` convierte `number` y `date` en `unknown` ([drizzle-orm#5659](https://github.com/drizzle-team/drizzle-orm/issues/5659)). `@hookform/resolvers` soporta v3.25+ y v4.0+ en runtime, pero ciertos pares de versiones fallan el overload a nivel de tipos ([resolvers#842](https://github.com/react-hook-form/resolvers/issues/842)). Fijar versiones exactas, no rangos. |
 | **Regex segura** | **`node-re2`** | RE2 no hace backtracking: garantiza tiempo lineal sobre patrones de usuario. | Dependencia nativa. Si no está disponible en el entorno de despliegue, se elimina la opción de regex — ver §3.4. |
-| **Rate limiting** | Upstash Redis | El endpoint de OCR cuesta dinero por invocación. Sin límite, el abuso es tu factura. | Servicio adicional; free tier suficiente para un usuario. |
+| **Rate limiting** | Cuota contada en la propia base; **Upstash diferido a la Fase 7** | El endpoint de OCR cuesta dinero por invocación. Con pocos usuarios, un `COUNT` de importaciones del día basta. | Con muchos usuarios concurrentes el conteo en base deja de ser suficiente; ahí entra Upstash. |
 | **Observabilidad** | Sentry + logs estructurados | Una ingesta que falla en silencio es peor que un error visible. | — |
 
 ---
@@ -223,34 +235,37 @@ sequenceDiagram
     autonumber
     actor Usuario
     participant PWA
-    participant API as /api/v1/ocr/parse-statement
     participant R2 as Cloudflare R2
+    participant API as /api/v1/statements/[id]/extract
     participant AI as Gemini Flash
     participant DB as Neon Postgres
 
-    Usuario->>PWA: Selecciona capturas del extracto
-    PWA->>PWA: Comprime en cliente (evita el límite de ~4.5MB de body)
-    PWA->>R2: Sube vía signed URL
-    PWA->>API: POST { objectKeys[] }
-    API->>API: Rate limit + cuota de OCR
-    API->>AI: Imagen + JSON Schema (Zod v4 -> toJSONSchema)
-    Note over AI: 2-6s reales. Respuesta en streaming al cliente.
-    AI-->>API: Transacciones con confidence por fila
-    API->>API: Valida con Zod. Cross-check: suma extraida vs total del extracto
-    API->>DB: INSERT status='pending_review'
-    API-->>PWA: Filas + flags de baja confianza
-    PWA->>Usuario: Revisión por lotes. Filas dudosas RESALTADAS.
-    Note over Usuario: Sin "confirmar todo" a ciegas:<br/>las filas de baja confianza exigen toque explícito
+    Usuario->>PWA: Elige el PDF del extracto o fotos
+    PWA->>PWA: PDF con clave: se pide y se abre AQUÍ (pdf.js)
+    PWA->>PWA: Cada página a WebP ≤1600 px
+    PWA->>R2: Sube vía URL firmada (no pasa por Vercel)
+    PWA->>API: Extraer
+    API->>API: Cuota del día (contada en la base)
+    API->>AI: Imágenes + schema (Zod v4 -> JSON Schema)
+    Note over AI: 2-6 s por página. Progreso en streaming.
+    AI-->>API: Filas con monto COMO TEXTO y confidence
+    API->>API: Zod + money.ts + cross-check contra el total
+    API->>DB: Reconciliar contra transactions del rango
+    API->>DB: statement_rows: ya estaba / nueva / dudosa
+    API-->>PWA: Filas agrupadas
+    PWA->>Usuario: Nuevas primero; dudosas exigen toque; ya estaban colapsadas
     Usuario->>PWA: Confirma
-    PWA->>API: POST /batch-create
-    API->>DB: Transacción única: status='confirmed'
+    PWA->>DB: UNA transacción: INSERT de las aceptadas (idempotency_key = id de la fila)
 ```
+
+**Por qué un staging y no `pending_review` en `transactions`** (cambio de v3.2): la mayoría de filas de un extracto ya existen, porque entraron por SMS. Meterlas en `transactions` para después borrarlas ensucia el ledger, el índice de duplicados y el motor de reglas. Una fila extraída no es una transacción hasta que el usuario la confirma.
 
 **Control de alucinación** (ausente en la v1, que proponía "confirmación en 1 solo clic" sobre datos de un LLM que representan dinero):
 - `confidence` por fila devuelto por el modelo.
+- El monto llega como **texto** y lo convierte `core/money.ts`: un número JSON del modelo ya es un double.
 - Cross-check aritmético contra el total del extracto cuando sea visible. Descuadre → banner de advertencia.
-- Detección de duplicados contra transacciones ya existentes en el rango de fechas.
-- Las filas con `confidence < 0.85` o marcadas como duplicado posible **no** se incluyen en "confirmar todas"; requieren toque individual.
+- Reconciliación contra transacciones ya existentes: mismo monto, fecha ±2 días, comercio parecido. Dos candidatos para una fila → dudosa, nunca adivina.
+- Las filas con `confidence < 0.85` o dudosas **no** se incluyen en "confirmar todas"; requieren toque individual.
 
 **La revisión de OCR vive solo en la PWA.** Un chat es lineal y no se puede escanear; revisar 40 filas en Telegram sería peor. Ver **P9**.
 
@@ -599,14 +614,14 @@ La v1 afirmaba "sin costes de servidor fijo". Es cierto solo hasta cierto punto.
 | Neon | Free (0.5 GB, 100 CU-h/mes) | Launch, ~$0.106/CU-h, sin mínimo mensual |
 | Vercel | Hobby | Pro $20/mes |
 | **Telegram** | **$0, ilimitado** | **$0, ilimitado** |
-| **WhatsApp Cloud API** | No se usa | Por mensaje, según país y categoría. **Desde el 1 de octubre de 2026 Meta cobra también las plantillas utility y los mensajes dentro de la ventana de 24h** (gratis hasta el 30 de septiembre) |
-| Gemini Flash | Céntimos/mes | Escala con el volumen de OCR — **la partida a vigilar** |
+| **WhatsApp Cloud API** | ≈ US$0,07/mes con 3 usuarios (estimado) | Gratis lo que abre el usuario y las respuestas dentro de la ventana de 24 h. Se paga la plantilla enviada **fuera** de la ventana: utility ≈ US$0,0008 en Colombia, marketing ≈ US$0,0125 (verificado el 25-sep-2026) |
+| Gemini Flash-Lite / Flash (pago) | < US$1/mes con 3 usuarios | Flash-Lite de US$0,10 a US$0,30 por millón de tokens de entrada según versión. Escala con el OCR — **la partida a vigilar**. Alerta de presupuesto en US$5 |
 | Cloudflare R2 | Free | ~$0.015/GB-mes, sin egreso |
-| Upstash | Free | ~$10/mes |
+| Upstash | No se usa (diferido) | ~$10/mes, desde la Fase 7 |
 
 **Punto de ruptura del free tier:** ~0.5 GB de almacenamiento o 100 CU-h/mes. Con scale-to-zero y un usuario, estás lejos. Con 50 usuarios activos, no.
 
-Que Telegram sea gratis e ilimitado es lo que permite que el Nivel 2 mande un mensaje por transacción sin pensar en el coste. En WhatsApp ese mismo diseño serían ~100 mensajes facturables al mes.
+Que Telegram sea gratis e ilimitado es lo que permite que el Nivel 2 mande un mensaje por transacción sin pensar en el coste. En WhatsApp ese mismo diseño se paga solo cuando la pregunta sale fuera de la ventana de 24 h, a menos de un centavo de dólar cada una: el límite de WhatsApp es de forma (plantillas fijas), no de coste.
 
 ### 8.2 Copias de seguridad y exportación
 - **Export a CSV/JSON desde la Fase 1.** Es la función que da confianza y la que te protege de tu propio bug.
@@ -614,7 +629,9 @@ Que Telegram sea gratis e ilimitado es lo que permite que el Nivel 2 mande un me
 - El branching de Neon actúa como point-in-time recovery.
 
 ### 8.3 Tratamiento de datos
-Enviar extractos bancarios a Google es tu decisión mientras seas el único usuario. Al abrir a terceros en Colombia aplica la **Ley 1581 de 2012 (habeas data)**, que regula el tratamiento y la **transferencia internacional** de datos personales financieros y exige consentimiento informado y política de tratamiento publicada. Es un requisito de la **Fase 7**, no un detalle posterior: condiciona si puedes cobrar por esto.
+Desde septiembre de 2026 la app tiene usuarios terceros, así que la **Ley 1581 de 2012 (habeas data)** aplica **ya**: regula el tratamiento y la **transferencia internacional** de datos personales financieros, y exige autorización previa e informada (que se pueda probar) y una política de tratamiento publicada. El mínimo se construye en el bloque **H1** (`IMPLEMENTATION_PLAN.md` §4.5); la revisión legal completa sigue en la Fase 7, antes de cobrar.
+
+**Gemini solo en plan de pago.** En el gratuito Google puede usar lo que se le envía para mejorar sus productos. Con los extractos y mensajes de terceros eso no es aceptable, así que la API se usa siempre con la facturación activada.
 
 Adicionalmente, la SFC promueve la educación financiera pero la **asesoría algorítmica (roboadvisors) es un vacío regulatorio** en Colombia. De ahí el principio **P4**.
 
@@ -639,14 +656,21 @@ FASE 1 — ALGO QUE YA USES (~10-12 días)
  ├── B8: PWA + presupuesto de rendimiento.
  └── B9: instrumentación y líneas base.
 
-FASE 2 — OCR: mayor valor por esfuerzo
- ├── R2 + Gemini Flash + Zod v4. Batch review con confidence y cross-check.
- └── Golden set de ≥20 extractos. Acumula los comercios que entrenan la Fase 4.
+BLOQUES DE §4.5 DEL PLAN (25-sep-2026, 3 usuarios reales, todos con iPhone)
+ ├── H1: habeas data mínimo (política, autorización probable, borrar cuenta).
+ ├── L1: capa LLM agnóstica del canal (texto libre + consultas por function calling).
+ ├── W1: WhatsApp como adaptador de la capa de notificación.
+ └── A1: captura en Android — diferida a propósito.
+
+FASE 2 — OCR: mayor valor por esfuerzo (después de H1, L1 y W1)
+ ├── PDF desbloqueado en el teléfono + R2 con URL firmada + Gemini (pago) + Zod v4.
+ ├── Staging + reconciliación contra lo que ya entró. Revisión con confidence y cross-check.
+ └── Golden set con los extractos que haya, creciendo hasta ≥20. Enseña comercios al motor.
 
 FASE 3 — DASHBOARD
  └── Flujo de caja, categorías, presupuestos por periodo. Agregaciones AT TIME ZONE.
 
-FASE 4 — INGESTA AUTOMÁTICA + TELEGRAM (solo si Fase 0 dio verde)
+FASE 4 — INGESTA AUTOMÁTICA + TELEGRAM  ✅ construida antes que la 2 y la 3
  ├── /api/v1/quick-add: API keys hasheadas, rate limit, idempotencia.
  ├── Motor de reglas (Nivel 1) entrenado con los comercios de la Fase 2.
  ├── Cliente de Telegram: inline keyboards (Nivel 2), registro por texto, consultas.
@@ -655,7 +679,7 @@ FASE 4 — INGESTA AUTOMÁTICA + TELEGRAM (solo si Fase 0 dio verde)
 FASE 5 — INSIGHTS Y GAMIFICACIÓN
  ├── Detección de anomalías con rigor estadístico (P2).
  ├── Digest semanal (P5). Logros por comportamiento (P1).
- └── Criterio de escalado a WhatsApp: ≥5 usuarios que no usen Telegram, o apertura real.
+ └── (El criterio de escalado a WhatsApp se sustituyó por el bloque W1.)
 
 FASE 6 — RAG DE EDUCACIÓN FINANCIERA
  └── Corpus curado + pgvector + verificación de cita + ruta de rechazo (P3, P4).
@@ -663,7 +687,7 @@ FASE 6 — RAG DE EDUCACIÓN FINANCIERA
 FASE 7 — MULTI-TENANT DE VERDAD (solo si se cumple el criterio de §1.4)
  ├── RLS con pg_session_jwt, rol sin BYPASSRLS, JWK validado.
  ├── Cuotas, facturación, observabilidad.
- └── Política de tratamiento de datos conforme a Ley 1581.
+ └── Revisión legal completa de la Ley 1581 (el mínimo ya está en H1).
 ```
 
 `user_id` y las políticas RLS existen desde la Fase 1: son baratos y quitarlos después duele. Lo que se aplaza no es la arquitectura multi-tenant, es la **inversión** en multi-tenant.
@@ -677,8 +701,8 @@ Un spec honesto declara lo que aún no sabe.
 1. **¿Qué porcentaje captura realmente la automatización de Wallet?** — resuelve la Fase 0.
 2. **¿Se puede silenciar el banner del trigger de Wallet?** Apple lo fuerza en automatizaciones de Mensajes; para Wallet está sin confirmar. Determina si el Nivel 1 es realmente invisible. — resuelve la Fase 0.
 3. **¿Cuántos gestos cuesta realmente el Nivel 2?** Los botones inline son contenido del mensaje, no acciones de notificación: en iOS el banner probablemente exige pulsación larga para expandirlos. Prueba de 10 minutos (crear bot, enviarse un mensaje con `inline_keyboard`, observar el banner en pantalla bloqueada). Si resultan ser 3 gestos o obliga a abrir Telegram, el Nivel 1 pasa de "deseable" a "imprescindible" y sube la prioridad del motor de reglas. — resuelve la Fase 0.
-4. **¿Los SMS de Bancolombia llegan como SMS o como push?** Si es push, esa vía no existe en iOS y la Fase 4 se reduce a Wallet.
-5. **¿Nequi?** Sin Apple Pay ni SMS parseable, su gasto solo entra por OCR, manual o texto en Telegram.
+4. ~~**¿Los SMS de Bancolombia llegan como SMS o como push?**~~ **Resuelta:** llegan como SMS; hay parsers en producción para Bancolombia y Banco de Bogotá.
+5. **¿Nequi y Nu?** En iPhone, por chat (Telegram, y WhatsApp desde W1) o por OCR. En Android podrían entrar solos leyendo la notificación (bloque A1, diferido).
 6. **¿Multi-moneda?** El esquema lo soporta; la UI asume COP. Decidir antes de la Fase 3.
 
 ---

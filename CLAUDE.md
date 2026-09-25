@@ -13,40 +13,44 @@ Si el spec y el plan se contradicen, **gana el plan** y el spec se corrige.
 
 ## Estado actual del repositorio
 
-**Pre-implementación.** El repo contiene únicamente `docs/`, `README.md`, `CLAUDE.md` y `.gitignore`. No hay `src/`, no hay `package.json`, no hay commits todavía (la rama actual es `master`; la rama principal del proyecto será `main`).
+**En producción** (`reasonny.vercel.app`) con **3 usuarios reales, todos con iPhone** (25-sep-2026). Ya no es un proyecto de un solo usuario, y eso cambia dos cosas: la **Ley 1581 (habeas data) aplica desde ahora**, no desde la Fase 7, y los datos de terceros no pueden ir a un plan de IA que entrene con ellos.
 
-La Fase 0 (validación empírica de la cobertura de Wallet) **no ha corrido**. Su resultado condiciona el alcance de la Fase 4 — ver `docs/IMPLEMENTATION_PLAN.md` §6.
+| Fase | Estado |
+| :--- | :--- |
+| 0 — Validación | Parcial: las mediciones de Wallet y de gestos siguen `pendiente` en `docs/METRICS.md` |
+| 1 — Núcleo (B0-B9) | ✅ Hecha. Líneas base tomadas el 23-sep-2026 |
+| 4 — Ingesta + Telegram | ✅ Hecha **antes** que la 2 y la 3: SMS de Bancolombia y Banco de Bogotá, motor de reglas, captura por chat, `/saldo` `/hoy` `/mes` |
+| 2 — OCR | Planificada en detalle (`docs/IMPLEMENTATION_PLAN.md` §9), sin empezar |
+| 3, 5, 6, 7 | Sin empezar |
 
-**Orden de construcción — Fase 1** (`docs/IMPLEMENTATION_PLAN.md` §7). No se salta ni se adelanta:
+**Orden de trabajo vigente** (decidido el 25-sep-2026, `docs/IMPLEMENTATION_PLAN.md` §4.5). No se salta ni se adelanta:
 
-| | Bloque | Entregable principal |
+| | Bloque | Por qué en este lugar |
 | :--- | :--- | :--- |
-| B0 | Sincronización de documentos | ✅ hecho (los cuatro documentos de `docs/`) |
-| B1 | Infraestructura y modelo de datos | `drizzle.config.ts`, `src/infrastructure/db/{client,schema}.ts`, `drizzle/migrations/` |
-| B2 | Aritmética monetaria | `src/core/money.ts` + `money.test.ts` (100% cobertura) |
-| B3 | Autenticación | `src/app/(auth)/`, `src/lib/auth.ts` |
-| B4 | Repositorios y aislamiento | `src/core/repositories/`, `src/core/types.ts`, `tests/architecture.test.ts` |
-| B5 | Entrada manual rápida | `src/app/(dashboard)/nuevo/`, `src/app/actions/transactions.ts` |
-| B6 | Lista y total del mes | `src/app/(dashboard)/page.tsx`, `analytics.service.ts` |
-| B7 | Export CSV | `src/app/api/v1/export/route.ts` |
-| B8 | PWA y presupuesto de rendimiento | `manifest.ts`, `robots.ts`, `sitemap.ts`, Serwist |
-| B9 | Instrumentación y líneas base | `src/lib/telemetry.ts`, `docs/METRICS.md` |
+| H1 | **Habeas data mínimo** | Hay datos de terceros desde ya |
+| L1 | **Capa LLM agnóstica del canal** (Gemini de pago) | La reusan Telegram, WhatsApp y el OCR |
+| W1 | **WhatsApp** como adaptador de la capa de notificación | Es el canal que los usuarios ya tienen abierto |
+| F2 | **OCR de extractos** | Completa el mes; llega con Gemini ya integrado |
+| A1 | Captura en Android | **Diferida a propósito**: primero se prueba todo en iPhone |
 
-**Núcleo Sagrado:** las fases 0-3 se construyen sí o sí. Las fases 4-7 son proyectos derivados y cada una exige **4-8 semanas de uso diario sostenido** del núcleo antes de empezarse, verificado contra `docs/METRICS.md` y no contra la sensación. La Fase 4 además exige que la Fase 0 dé verde.
+**Núcleo Sagrado:** la regla de "4-8 semanas de uso antes de una fase derivada" existía para no construir sobre un núcleo que nadie usa. El núcleo se usa 16 de 17 días (`docs/METRICS.md`), así que el reordenamiento está justificado — pero se registró como decisión, no se saltó en silencio. Cualquier cambio de orden futuro, igual.
 
-La lista de lo que **no** se construye en Fase 1 está en `docs/IMPLEMENTATION_PLAN.md` §10.
+La lista de lo que está fuera de alcance vive en `docs/IMPLEMENTATION_PLAN.md` §10.
 
 ---
 
 ## Comandos
 
-**Gestor: `pnpm`.** Todavía no existe `package.json` — se fija en **B1**, con versiones **exactas** y tras verificar la matriz `zod@4` × `drizzle-zod` × `@hookform/resolvers` en un proyecto de prueba (`docs/IMPLEMENTATION_PLAN.md` §B1).
-
-Comandos que la verificación de Fase 1 (§11 del plan) da por existentes:
+**Gestor: `pnpm`**, versiones **exactas** en `package.json`, sin rangos `^`.
 
 ```bash
-pnpm test                          # Vitest. Debe incluir money.ts al 100% y el test de arquitectura
-pnpm drizzle-kit migrate           # SIEMPRE primero contra un branch de Neon creado desde main
+pnpm test                 # Vitest: money.ts al 100% y el test de arquitectura incluidos
+pnpm typecheck            # tsc --noEmit
+pnpm db:migrate           # scripts/db-migrate.mts, NUNCA drizzle-kit directo. Branch de Neon primero
+pnpm test:isolation       # aislamiento entre usuarios, contra un branch de Neon
+pnpm metrics:report       # lecturas para docs/METRICS.md
+pnpm telegram:dev         # el bot en local, por long polling
+pnpm telegram:webhook     # registra el webhook y los comandos del bot
 ```
 
 Con Vitest, para un archivo o un caso concreto:
@@ -173,7 +177,7 @@ clients/telegram · app/(dashboard) · app/api/v1     ← traducen entrada/salid
               infrastructure/db (Drizzle → Neon)
 ```
 
-`core/money.ts` y `core/categorization.ts` son funciones puras: se testean sin base de datos. `infrastructure/` guarda los adaptadores de terceros (`ai/gemini.ts`, `storage/r2.ts`, `messaging/telegram.ts`, `sms-parsers/`), y `core/services/notification.service.ts` es **agnóstico del proveedor** — por eso migrar a WhatsApp en Fase 7 es configuración, no reescritura.
+`core/money.ts` y `core/categorization.ts` son funciones puras: se testean sin base de datos. `infrastructure/` guarda los adaptadores de terceros (`ai/gemini.ts`, `storage/r2.ts`, `messaging/telegram.ts`, `sms-parsers/`), y `core/services/notification.service.ts` es **agnóstico del proveedor** — por eso añadir WhatsApp (bloque W1) es un adaptador nuevo, no una reescritura.
 
 ```
 src/
@@ -288,11 +292,15 @@ Referencia rápida. Desarrollo completo en `docs/IMPLEMENTATION_PLAN.md` §3.
 
 ## Stack fijado
 
-Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth / Managed Better Auth (**OTP por correo** + Google; Apple diferido) · Cloudflare R2 · Telegram Bot API · Gemini Flash · **Zod v4** · `node-re2` · Upstash · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
+Next.js 16 (App Router, runtime **Node**, región `iad1` — no Edge) · TypeScript strict · Neon Postgres · Drizzle con **`neon-serverless`** (WebSocket; `neon-http` no soporta transacciones) · Neon Auth / Managed Better Auth (**OTP por correo** + Google; Apple diferido) · Cloudflare R2 · Telegram Bot API · WhatsApp Cloud API (próximo) · Gemini Flash-Lite / Flash **en plan de pago** · **Zod v4** · `node-re2` · Tailwind v4 + Radix + Lucide · Serwist · Vitest.
 
 **Neon Auth no tiene magic link** (verificado el 27-ago-2026: `/sign-in/magic-link` responde 404, `/email-otp/*` está vivo). Lo passwordless es un **código de un solo uso por correo**, no un enlace. Se comporta igual y en móvil es mejor: no saca al usuario de la app y no lo consumen los escáneres de enlaces corporativos. Apple queda fuera hasta que la App Store esté sobre la mesa — cuesta $99/año por un requisito condicional.
 
 **Next 16, no 15** (cambiado el 27-ago-2026). La versión fijada era 15 para que el plugin de Serwist funcionara sobre webpack en B8. Se cambió porque `@neondatabase/auth`, el cliente oficial de Neon Auth, exige `next >= 16` — y la autenticación no es sitio para salirse del camino soportado. **Consecuencia para B8:** Next 16 usa Turbopack por defecto y `@serwist/next` no lo soporta; hay que usar el *configurator mode* de Serwist (que sí lo soporta) o forzar `next build --webpack`. Decidir con una prueba, no de antemano.
+
+**Gemini siempre en plan de pago** (decidido el 25-sep-2026). En el gratuito Google puede usar lo que se le envía para mejorar sus productos; con extractos y mensajes de terceros eso no es aceptable. El plan de pago no es una compra: se activa la facturación en el proyecto de la API key y se cobra por token (centavos al mes a este volumen), con alerta de presupuesto de US$5.
+
+**Upstash, diferido a la Fase 7.** Con un puñado de usuarios, la cuota de OCR se cuenta en la propia base (`COUNT` de importaciones del día) y no hace falta un servicio más.
 
 **Gestor de paquetes: `pnpm`.** Versiones **exactas**, sin rangos `^` — hay fricción conocida entre Zod v4, `drizzle-zod` y `@hookform/resolvers` (ver `docs/PROJECT_SPEC.md` §2).
 

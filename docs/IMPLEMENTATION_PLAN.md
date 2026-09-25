@@ -4,7 +4,7 @@
 > Complementa a `PROJECT_SPEC.md` (arquitectura) y `AUDIT.md` (defectos corregidos de la v1).
 > Al aprobarse, este documento se copia al proyecto como `IMPLEMENTATION_PLAN.md`.
 >
-> ⚠️ **`PROJECT_SPEC.md` v2.0 está desactualizado.** Se escribió antes de decidir Telegram, la arquitectura de captura en tres niveles, P1-P9, la gamificación, el RAG y la disciplina de métricas. Sincronizarlo a v3.0 es el **bloque B0**, antes de escribir código.
+> **Estado (25-sep-2026):** en producción con 3 usuarios reales. Fases 1 y 4 hechas; el orden de lo que sigue cambió y está registrado en §4.5.
 
 ## Índice
 
@@ -42,6 +42,8 @@ Adoptada de la auditoría externa (`auditoria_gm.md`, Riesgo 1), que la formuló
 | **4, 5, 6, 7** | **Proyectos derivados** | Cada una requiere **4-8 semanas de uso sostenido** del núcleo antes de empezarse. La Fase 4 además exige que la Fase 0 dé verde |
 
 No es una recomendación blanda: si el núcleo no se está usando a diario, empezar la Fase 4 es construir sobre algo que ya fracasó. La condición se verifica contra el dato de uso diario de `METRICS.md`, no contra la sensación.
+
+> **Revisión del 25-sep-2026.** La Fase 4 se construyó antes que la 2 y la 3, porque la captura por SMS resultó viable antes que el OCR. La condición que la regla protegía sí se cumple: el núcleo se usa **16 de 17 días** (`METRICS.md`, «Uso diario»). Con 3 usuarios reales, el orden de lo que queda se decidió de nuevo en **§4.5**. La regla sigue vigente para todo lo demás: un cambio de orden se registra ahí, con su porqué, no se hace en silencio.
 
 ### Criterio de éxito
 
@@ -103,13 +105,19 @@ La SFC promueve explícitamente la educación financiera; la asesoría algorítm
 | Cuándo | Por evento, instantáneo | Semanal |
 | Volumen | ~100/mes | ~4/mes |
 | Texto | Dinámico e imprescindible | Encaja en plantilla |
-| Canal | **Telegram** (gratis, ilimitado, sin aprobación) | **WhatsApp** (alcance) |
+| Canal | **Telegram**, y **WhatsApp** desde el bloque W1 (§4.5) | **WhatsApp** (alcance) |
 
-**Captura:** instantánea siempre. Sin límite de frecuencia, porque en Telegram no cuesta.
+**Captura:** instantánea siempre. Sin límite de frecuencia, porque en Telegram no cuesta y en WhatsApp casi tampoco (ver abajo).
 
-**Insights:** semanal, nunca diario. Desde el **1 de octubre de 2026** Meta cobra por plantillas utility y por mensajes dentro de la ventana de 24h (hasta el 30 de septiembre son gratis). Además coincide con el mejor diseño conductual: el nudge diario se silencia.
+**Insights:** semanal, nunca diario. Coincide con el mejor diseño conductual: el nudge diario se silencia.
 
-Restricción de WhatsApp que motiva el reparto: **no permite texto arbitrario proactivo.** Las plantillas se aprueban previamente con variables en huecos definidos — inviable para "$12.000 en Juan Valdez", aceptable para un resumen semanal.
+**Lo que cuesta WhatsApp de verdad** (verificado el 25-sep-2026 contra la documentación de Meta; corrige la versión anterior de este párrafo, que decía que desde el 1-oct-2026 se cobrarían los mensajes dentro de la ventana):
+
+- **Gratis:** todo lo que no es plantilla dentro de la ventana de 24 h que abre el usuario al escribir, y las plantillas utility enviadas dentro de esa ventana. Eso cubre «12000 almuerzo», `/hoy` y cualquier respuesta del bot.
+- **Se paga:** una plantilla que el negocio envía **fuera** de la ventana. Utility en Colombia ≈ **US$0,0008** por mensaje; marketing ≈ US$0,0125. La pregunta de categoría tras un SMS, si el usuario no ha escrito en el día, es exactamente eso.
+- Estimado con 3 usuarios: unas 90 plantillas al mes ≈ **US$0,07/mes**. Se vuelve a medir contra la tarifa oficial antes de construir W1.
+
+La restricción que sigue vigente es de **forma**, no de coste: fuera de la ventana solo se puede mandar una plantilla aprobada, con texto fijo, variables en huecos y botones fijos. Los botones de categoría de cada usuario no caben en ella: la pregunta proactiva se convierte en una plantilla con un botón «Elegir categoría» que abre la ventana, y la lista llega después. Son **3 gestos**, no los 2 de Telegram, y se mide.
 
 ### P6 — Ninguna métrica se reporta sin n, metodología y línea base
 
@@ -227,15 +235,15 @@ Limitaciones documentadas del trigger de Wallet: **solo NFC**; **dispara en tran
 
 | Capa | Elección | Contrapartida asumida |
 | :--- | :--- | :--- |
-| Framework | Next.js 15 (App Router) | Runtime **Node, región `iad1`** — no Edge global: la DB vive en una región y distribuir el cómputo empeora la latencia. |
+| Framework | Next.js 16 (App Router) | Runtime **Node, región `iad1`** — no Edge global: la DB vive en una región y distribuir el cómputo empeora la latencia. |
 | Base de datos | **Neon** | Cold start **300ms-2.6s (p95)** tras auto-suspensión. En free tier no se puede mantener caliente (730h/mes vs 100 CU-h). Ventaja decisiva: **branching** — cada migración y cada test corre contra copia instantánea de producción. |
 | ORM | Drizzle + **`neon-serverless`** (WebSocket) | `neon-http` **no soporta transacciones** y el batch-create de la Fase 2 las necesita. Fijado ahora para evitar migración dolorosa. |
-| Auth | **Neon Auth** (Managed Better Auth) | IDs de usuario **TEXT**, no UUID. Sincronización a `neon_auth.users_sync` asíncrona: sin FK duras contra esa tabla. Métodos: magic link + Google + **Apple** (obligatorio en App Store si hay otro social). |
+| Auth | **Neon Auth** (Managed Better Auth) | IDs de usuario **UUID**. Métodos: código de un solo uso por correo + Google (Neon Auth no tiene magic link). **Apple** diferido hasta que la App Store esté sobre la mesa. |
 | Archivos | **Cloudflare R2** (privado + signed URLs) | Neon no tiene object storage. Recibos nunca por URL pública. |
-| OCR | Gemini Flash | Latencia real **2-6s**, no <1.5s. Acepta subconjunto de OpenAPI 3.0, **no Zod**. |
+| OCR y lenguaje | Gemini Flash / Flash-Lite, **plan de pago** | Latencia real **2-6s** en visión, no <1.5s. Schema de salida: un subconjunto, se verifica contra el modelo. Un solo adaptador para OCR (F2) y texto libre (L1). |
 | Validación | **Zod v4** | `z.toJSONSchema()` nativo. Zod v3 obligaba a conversión manual del schema. |
 | Notificaciones | **Telegram → WhatsApp** | Capa agnóstica del proveedor. Se desarrolla contra Telegram (API gratis, sin aprobaciones, misma arquitectura) y se despliega en WhatsApp con la lógica ya probada. Evita el peaje de iteración de las plantillas. |
-| Rate limiting | Upstash Redis | El endpoint de OCR cuesta dinero por invocación: sin límite, el abuso es tu factura. |
+| Rate limiting | Cuota en la propia base (Upstash diferido a la Fase 7) | El endpoint de OCR cuesta dinero por invocación: sin límite, el abuso es tu factura. Con pocos usuarios, contar las importaciones del día basta. |
 
 ### 4.4 Modelo de seguridad
 
@@ -245,6 +253,29 @@ La v1 afirmaba que RLS garantizaba aislamiento a nivel de motor. Falso con esta 
 - **Defensa en profundidad:** RLS escrito y activo, adoptado de verdad en Fase 7 con rol sin `BYPASSRLS` y JWK validado. Advertencia de Neon: sin validación JWK, `request.jwt.claims` es modificable por cualquier usuario de base de datos.
 - **API keys:** tabla aparte, `sha256(key)` almacenado, formato `rm_live_<32 bytes hex>`, mostrada una sola vez, con `last_used_at` / `revoked_at` / `expires_at`.
 - **ReDoS:** las regex de usuario se ejecutan **solo con `node-re2`** (sin backtracking, tiempo lineal). Si RE2 no está disponible, se elimina la opción de regex.
+
+### 4.5 Reordenamiento con usuarios reales (25-sep-2026)
+
+**Qué cambió.** La app tiene 3 usuarios además del autor, **todos con iPhone**. El plan se escribió para un solo usuario, y tres de sus supuestos dejaron de valer:
+
+1. **El coste de WhatsApp.** El criterio de escalado (§9, Fase 5) lo justificaba con «coste por mensaje sin beneficio». Medido contra la tarifa real, los mensajes que abre el usuario son gratis y el resto cuesta ≈ US$0,07/mes a este volumen (P5). La barrera era el coste, y el coste ya no existe.
+2. **Los datos de terceros.** La Ley 1581 se había dejado para la Fase 7, «al abrir a terceros». Ya hay terceros.
+3. **El plan gratuito de Gemini.** Era aceptable con los extractos del autor. En el gratuito Google puede usar lo que se le envía para mejorar sus productos; con datos de otros, no.
+
+**Orden nuevo**, y el porqué de cada lugar:
+
+| # | Bloque | Por qué aquí |
+| :--- | :--- | :--- |
+| H1 | **Habeas data mínimo** | Es una obligación que ya existe, no una función. Va primero y es pequeño |
+| L1 | **Capa LLM agnóstica del canal** | Resuelve dos cosas que hoy fallan: el parser estricto rechaza «gasté 12 lucas en el almuerzo», y las consultas solo existen como comandos. La reusan W1 y F2 |
+| W1 | **WhatsApp** | El canal que los usuarios ya tienen abierto. Llega como adaptador fino sobre L1 y la capa de notificación |
+| F2 | **Fase 2 — OCR** | Sigue siendo núcleo y sigue planificada completa (§9). Llega con el adaptador de Gemini ya construido y probado en L1 |
+| A1 | **Captura en Android** | **Diferida a propósito.** Todos los usuarios tienen iPhone; primero se prueba el flujo completo ahí y después se amplía el rango |
+| — | Fases 3, 5, 6, 7 | Sin cambios de contenido; van después |
+
+**Lo que NO cambia:** la Fase 2 no se descarta ni se degrada — se mueve dos lugares. La auto-categorización (4,8 %) sigue siendo la métrica central, y el OCR sigue siendo lo que más comercios le enseña al motor.
+
+**El coste de esta decisión, dicho:** la medición de 4 semanas del canal Telegram (`METRICS.md`, «Captura por canal», hasta el 21-oct-2026) queda contaminada en cuanto L1 y W1 estén en producción. Se registra el día del cambio como delta, no se reinterpreta la línea base.
 
 ---
 
@@ -529,7 +560,35 @@ Las cuatro en negrita son las que sostienen una conversación técnica de verdad
 
 ## 9. Fases 2-7
 
-**Fase 2 — OCR / Vision.** Subida a R2 con signed URL (evita el límite de ~4.5MB de body de Vercel), compresión en cliente, Gemini Flash con Zod v4 → `toJSONSchema`, streaming de resultados. Batch review con `confidence` por fila, resaltado de filas dudosas y cross-check aritmético contra el total del extracto. Las filas con `confidence < 0.85` o marcadas como posible duplicado **no** entran en "confirmar todas". Golden set de ≥20 extractos. *Aquí está el grueso del aprendizaje de AI engineering.*
+### Bloques de §4.5 (antes de la Fase 2)
+
+**H1 — Habeas data mínimo.** Lo que la Ley 1581 pide desde el primer dato de un tercero, sin convertirlo en un proyecto legal:
+- **Política de tratamiento publicada** (`/privacidad`, pública e indexable): qué se recoge, para qué, quién lo procesa, cómo pedir acceso, corrección y borrado.
+- **Autorización previa, expresa e informada:** casilla en el alta que enlaza la política. Se guarda qué versión se aceptó y cuándo (tabla `consents`), porque la ley exige poder **probar** la autorización, no solo haberla pedido.
+- **Encargados declarados** (quién procesa los datos por cuenta del producto): Neon, Vercel, Cloudflare, Google (Gemini), Telegram y, desde W1, Meta. La **transferencia internacional** (los servidores están fuera de Colombia) se declara en la política.
+- **Derechos del titular:** el export CSV ya cubre el acceso; falta **borrar la cuenta** y todo lo que cuelga de ella.
+- *Límite honesto:* esto es el mínimo que un proyecto personal puede sostener. Antes de cobrar o abrir de verdad, lo revisa un abogado; no lo sustituye este plan.
+
+**L1 — Capa LLM agnóstica del canal.** Gemini Flash-Lite **en plan de pago**, por REST, en `infrastructure/ai/gemini.ts` (el mismo adaptador que usará F2). Dos usos, y en ninguno el modelo calcula dinero:
+- **Entender lo que el parser estricto rechaza.** `core/quick-entry.ts` sigue siendo la primera puerta y rechaza en vez de adivinar. Solo cuando rechaza, el modelo extrae **el monto como texto**, el comercio y la fecha; el monto pasa por `core/money.ts`. Si el modelo tampoco está seguro, pregunta en vez de guardar.
+- **Consultas libres** («¿cuánto llevo en comida este mes?»): el modelo **elige** uno de los servicios que ya responden `/saldo`, `/hoy` y `/mes`, con sus argumentos; la cifra sale de SQL con `AT TIME ZONE` y el modelo solo la narra. Es *function calling*, **no RAG**: RAG sirve para citar documentos (Fase 6), no para consultar los datos propios.
+- **Se mide:** tasa de mensajes rescatados que el parser estricto rechazaba, tasa de aciertos contra un set etiquetado de frases reales (anonimizadas), coste y latencia p50/p95.
+
+**W1 — WhatsApp.** Un adaptador más en `infrastructure/messaging/`, sobre la capa de notificación que ya no depende del proveedor y sobre L1. Cloud API directo de Meta, sin intermediario. Webhook verificado por firma, idempotente sobre el id del mensaje (Meta reintenta, igual que Telegram). La pregunta de categoría fuera de la ventana de 24 h va como plantilla utility aprobada (ver P5). Se mide lo mismo que en Telegram, por canal, y los gestos por transacción (P5 predice 3).
+
+**A1 — Captura en Android (diferida).** Hallazgo que se deja escrito para no perderlo: Android permite a apps como MacroDroid reenviar los SMS al mismo `/api/v1/quick-add` **y leer las notificaciones de otras apps**, cosa que iOS no permite. Eso haría automáticas las compras con **Nequi y Nu**, que en iPhone solo entran por chat. Se retoma cuando el flujo completo esté probado en iPhone.
+
+**Fase 2 — OCR / Vision.** Plan detallado del 25-sep-2026; corrige a `PROJECT_SPEC.md` §4.2 donde difiere.
+
+- **Staging propio, no `pending_review` en `transactions`.** La mayoría de filas de un extracto ya existen (entraron por SMS). Insertarlas en `transactions` y borrarlas después ensucia el ledger, el índice de duplicados y el motor de reglas. Una fila extraída **no es una transacción hasta que se confirma**: tablas `statement_imports` y `statement_rows`.
+- **Reconciliación antes que revisión.** Cada fila se clasifica en *ya estaba* (casa con una transacción existente: mismo monto, fecha ±2 días, comercio parecido sobre `normalizeMerchant`), *nueva* o *dudosa*. Dos candidatos para una fila → dudosa: nunca adivina. La pantalla muestra primero lo nuevo; lo que ya estaba va colapsado.
+- **El monto llega como texto** («46.872,00») y lo convierte `core/money.ts`. Un número JSON del modelo ya es un double.
+- **Los PDF se convierten en imágenes en el teléfono** con `pdfjs-dist` (cargado solo en `/extracto`). Si el PDF trae contraseña, se pide y se abre ahí: **la clave nunca sale del teléfono**. Gemini siempre recibe imágenes.
+- **Subida directa a R2 con URL firmada** (`aws4fetch`, no el SDK de AWS): el archivo no pasa por Vercel (límite ~4,5 MB). Bucket privado; los originales se borran solos a los 30 días.
+- **Cuota en la propia base, no Upstash** (diferido a la Fase 7): con pocos usuarios basta contar las importaciones del día.
+- **Confirmar es una sola transacción de base de datos**, con la id de cada fila como `idempotency_key`: reintentar confirmar no duplica. Lo confirmado entra con `source='ocr_screenshot'` y enseña comercios al motor de reglas.
+- **Revisión solo en la PWA**, con el cross-check aritmético contra el total del extracto; las filas con `confidence < 0.85` o dudosas no entran en «confirmar todas». Estado por fila para proteger el INP (P7).
+- **Golden set:** los extractos que haya, fuera del repo, con la salida correcta anotada a mano. La línea base se publica con ese `n`, y el set crece cada mes hasta ≥20. Precisión **por campo**, tasa de alucinación, coste y latencia en `METRICS.md`. *Aquí está el grueso del aprendizaje de AI engineering.*
 
 **Fase 3 — Dashboard, presupuestos, PWA completa.** Agregaciones con `AT TIME ZONE`. Presupuestos por periodo (tabla `budgets`, no valor único en `categories` — eso reescribía la historia retroactivamente).
 
@@ -552,6 +611,8 @@ Las cuatro en negrita son las que sostienen una conversación técnica de verdad
 - Digest semanal por **P5**, sobre la capa de notificación agnóstica ya construida en la Fase 4.
 - Logros según **P1**.
 
+> **Criterio de escalado a WhatsApp — sustituido el 25-sep-2026 por §4.5 (bloque W1).** Se conserva el texto original porque explica el razonamiento; su premisa de coste resultó falsa al medirla (P5).
+>
 > **Criterio de escalado a WhatsApp — esto es lo que significa "con fundamentos".**
 > No se migra por intuición ni por que suene mejor. Se activa cuando se cumple **al menos uno**:
 >
@@ -562,7 +623,7 @@ Las cuatro en negrita son las que sostienen una conversación técnica de verdad
 
 **Fase 6 — RAG de educación financiera.** Corpus curado, embeddings en `pgvector` sobre Neon, recuperación + **verificación de cita** + ruta de rechazo, según **P3** y **P4**. Enrutado por arquetipo, sin exponer la etiqueta.
 
-**Fase 7 — Multi-tenant de verdad.** RLS con `pg_session_jwt`, rol sin `BYPASSRLS`, JWK validado. Cuotas, facturación, observabilidad. Política de tratamiento de datos conforme a **Ley 1581 de 2012** (habeas data), que regula la transferencia internacional de datos financieros — relevante porque los extractos van a Google.
+**Fase 7 — Multi-tenant de verdad.** RLS con `pg_session_jwt`, rol sin `BYPASSRLS`, JWK validado. Cuotas, facturación, observabilidad. La revisión legal completa de la **Ley 1581 de 2012** (habeas data) antes de cobrar. El mínimo obligatorio ya no espera a esta fase: se adelantó al bloque **H1** (§4.5) porque hay usuarios terceros desde septiembre de 2026.
 
 ---
 
@@ -577,9 +638,9 @@ Las cuatro en negrita son las que sostienen una conversación técnica de verdad
 **Subida de fotos para OCR por Telegram** — descartada por ahora (§Fase 4). Podría añadirse más adelante como *solo subida*, con la revisión siempre en la PWA.
 
 **Decisiones abiertas:**
-1. ¿Qué porcentaje captura realmente Wallet? → Fase 0.
-2. ¿Los SMS de Bancolombia llegan como SMS o como push? Si es push, esa vía no existe en iOS.
-3. ¿Nequi? Sin Apple Pay ni SMS parseable, solo entra por OCR o manual.
+1. ¿Qué porcentaje captura realmente Wallet? → Fase 0, sigue pendiente.
+2. ~~¿Los SMS de Bancolombia llegan como SMS o como push?~~ **Resuelta:** llegan como SMS y hay parsers en producción para Bancolombia y Banco de Bogotá.
+3. ¿Nequi y Nu? En iPhone, por chat (Telegram hoy, WhatsApp desde W1) y por OCR (F2). En Android podrían entrar solos leyendo la notificación (A1, diferido).
 4. ¿Multi-moneda? El esquema lo soporta; la UI asume COP. Decidir antes de Fase 3.
 
 ---
