@@ -22,8 +22,8 @@ const EXPENSE_VERB = /\b(transferiste|pagaste|compraste|retiraste)\b/i;
 
 /**
  * Purchases at a store, POS, or digital merchant:
- * "Compraste $46.872,00 en HANNA HOPS USAQUEN con tu T.Deb *5381, el 17/09/2026..."
- * "Compraste $13.957,00 en UBER*RIDES con tu T.Deb *2621, el 17/09/2026..."
+ * "Compraste $38.450,00 en BAR GENERICO CENTRO con tu T.Deb *1111, el 17/09/2026..."
+ * "Compraste $11.200,00 en APP*VIAJES con tu T.Deb *2222, el 17/09/2026..."
  * "Pagaste $15,000.00 en RESTAURANTE con tu T.Deb *1234, el 17/09/2026..."
  * "Compraste $50,000 en EXITO el 17/09/2026..."
  */
@@ -43,7 +43,7 @@ const INCOMING_FROM = /\bde\s+(.+?)\s+(?:a|en)\s+tu\s+cuenta/i;
 const OUTGOING_TO_NAME =
   /\bcuenta\s+\*{1,2}\d{4}\s+a\s+(?!la\s+(?:llave|cuenta)\b)(.+?)\s+el\s+\d{2}\//i;
 
-/** "a la cuenta *3227909149" - a transfer to an account with no recipient name */
+/** "a la cuenta *3000000002" - a transfer to an account with no recipient name */
 const OUTGOING_TO_ACCOUNT = /\ba\s+la\s+cuenta\s+\*{0,2}(\d+)/i;
 
 /** "a la llave 3107568746" - a QR or Bre-b payment with no name attached. */

@@ -57,7 +57,7 @@ const DATE = /(\d{2})\/(\d{2})\/(\d{2}(?:\d{2})?)/;
 /** `20:18:00` and `13:15` both appear, from the same bank. */
 const TIME = /(\d{1,2}):(\d{2})(?::(\d{2}))?/;
 
-/** `*1724` · `**1724` · `Tarjeta Débito 0655` · `T.Deb *5381` · `T.Cred *1234` */
+/** `*9999` · `**9999` · `Tarjeta Débito 1111` · `T.Deb *1111` · `T.Cred *1234` */
 const ACCOUNT_MASK =
   /\*{1,2}(\d{4})|(?:(?:Tarjeta\s+[A-Za-zÁ-ú]+|T\.(?:Deb|Cred))\s+\*?)(\d{4})/i;
 
