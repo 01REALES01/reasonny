@@ -259,11 +259,12 @@ describe('Analytics Service & Timezone Boundaries', () => {
       expect(data.categoryBreakdown).toHaveLength(1);
       expect(data.uncategorizedCount).toBe(0);
 
-      // The oldest listed row is older than the week, so the totals reach it.
+      // The query reaches back to the previous week's Monday (2026-08-17) to compute
+      // real week-over-week comparison metrics without extra roundtrips.
       expect(getDailyExpenseTotals).toHaveBeenCalledWith(
         userId,
         'America/Bogota',
-        '2026-08-20 00:00:00',
+        '2026-08-17 00:00:00',
       );
       expect(data.recentDays).toHaveLength(1);
       // The day's SQL total, not the one row the list happened to fetch.
@@ -276,6 +277,8 @@ describe('Analytics Service & Timezone Boundaries', () => {
       ]);
       expect(data.week.todayExpenseMinor).toBe(1000000n);
       expect(data.week.weekExpenseMinor).toBe(3000000n);
+      expect(data.week.prevWeekSameDaysExpenseMinor).toBe(9000000n);
+      expect(data.week.weekOverWeekDeltaPct).toBe(-67);
     });
   });
 

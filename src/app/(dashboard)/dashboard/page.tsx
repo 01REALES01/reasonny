@@ -61,6 +61,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       {/* 1. Authentic Luxury Velvet Balance Hero with Live Sync Heartbeat */}
       <BalanceHero
         totalBalanceMinor={data.totalBalanceMinor}
+        monthExpenseMinor={data.monthlyTotals.totalExpenseMinor}
         currency={data.baseCurrency}
         userEmail={session.email}
         displayName={profile.fullName}
@@ -69,6 +70,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         lastCaptureAt={data.lastCaptureAt}
         autoCaptureCount={data.autoCaptureCount}
         timeZone={data.timezone}
+        accounts={data.accounts}
       />
 
       {/* Only until the pipe has actually delivered something. See the note in

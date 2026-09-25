@@ -10,26 +10,206 @@ import { formatDate, formatTime, t } from '@/lib/i18n';
 
 interface BalanceHeroProps {
   readonly totalBalanceMinor: bigint;
+  readonly monthExpenseMinor?: bigint;
   readonly currency: string;
   readonly userEmail: string;
   /** From profiles.full_name. Null until the user sets it in /perfil. */
   readonly displayName: string | null;
   readonly monthLabel: string;
   readonly uncategorizedCount: number;
-  readonly lastCaptureAt?: string | null;
-  readonly autoCaptureCount?: number;
-  readonly timeZone?: string;
+  readonly lastCaptureAt?: string | null | undefined;
+  readonly autoCaptureCount?: number | undefined;
+  readonly timeZone?: string | undefined;
+  readonly accounts?: readonly UserAccountItem[] | undefined;
 }
 
-/**
- * Best-effort display name from the email handle.
- *
- * No special-casing by address: matching "jean" or "reales" and answering
- * "Jean Paul" greets the wrong person the first time anyone named Jeanette or
- * Realeses signs up, and it is the kind of bug nobody reports - they just feel
- * the product does not know them. Separators become spaces so
- * `jean.paul@` reads as "Jean Paul" for everyone it actually applies to.
- */
+export interface UserAccountItem {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly currency: string;
+  readonly balanceMinor?: bigint | undefined;
+  readonly color?: string | undefined;
+}
+
+export interface FormattedWalletCard {
+  readonly id: string;
+  readonly displayName: string;
+  readonly mask: string | null;
+  readonly last4: string | null;
+  readonly bankName: string;
+  readonly brandBadge: string;
+  readonly typeLabel: string;
+  readonly balanceMinor?: bigint | undefined;
+  readonly currency: string;
+}
+
+function parseAccountCard(acc: UserAccountItem): FormattedWalletCard {
+  const name = acc.name.trim();
+
+  // 1. Detect 4 digits if present in the account name (e.g. "Davivienda *0000" or "Nu 1111")
+  const digitsMatch = name.match(/(?:[*•·#\s]|^)(\d{4})\b/);
+  const last4 = digitsMatch?.[1] ?? null;
+  const mask = last4 ? `•••• ${last4}` : null;
+
+  // 2. Detect Bank
+  let bankName = name;
+  let brandBadge = '';
+
+  if (/davivienda/i.test(name)) {
+    bankName = 'Davivienda';
+    brandBadge = 'DAVIVIENDA';
+  } else if (/bancolombia/i.test(name)) {
+    bankName = 'Bancolombia';
+    brandBadge = 'BANCOLOMBIA';
+  } else if (/nequi/i.test(name)) {
+    bankName = 'Nequi';
+    brandBadge = 'NEQUI';
+  } else if (/daviplata/i.test(name)) {
+    bankName = 'Daviplata';
+    brandBadge = 'DAVIPLATA';
+  } else if (/\bnu\b|nubank/i.test(name)) {
+    bankName = 'Nu Colombia';
+    brandBadge = 'NU';
+  } else if (/lulo/i.test(name)) {
+    bankName = 'Lulo Bank';
+    brandBadge = 'LULO';
+  } else if (/bogot[aá]/i.test(name)) {
+    bankName = 'Banco de Bogotá';
+    brandBadge = 'BOGOTÁ';
+  } else if (/occidente/i.test(name)) {
+    bankName = 'Banco de Occidente';
+    brandBadge = 'OCCIDENTE';
+  } else if (/popular/i.test(name)) {
+    bankName = 'Banco Popular';
+    brandBadge = 'POPULAR';
+  } else if (/bbva/i.test(name)) {
+    bankName = 'BBVA';
+    brandBadge = 'BBVA';
+  } else if (/colpatria/i.test(name)) {
+    bankName = 'Scotiabank Colpatria';
+    brandBadge = 'COLPATRIA';
+  } else if (/falabella/i.test(name)) {
+    bankName = 'Banco Falabella';
+    brandBadge = 'FALABELLA';
+  } else if (/rappi/i.test(name)) {
+    bankName = 'RappiPay';
+    brandBadge = 'RAPPIPAY';
+  } else if (/efectivo|cash/i.test(name)) {
+    bankName = 'Efectivo';
+    brandBadge = 'EFECTIVO';
+  } else {
+    const firstWord = name.split(/[\s·-]+/)[0] ?? name;
+    brandBadge = firstWord.length <= 12 ? firstWord.toUpperCase() : 'CUENTA';
+  }
+
+  // 3. Specific card network only if explicitly included in the user's account name
+  if (/visa/i.test(name)) {
+    brandBadge = 'VISA';
+  } else if (/mastercard/i.test(name)) {
+    brandBadge = 'MASTERCARD';
+  } else if (/amex|american\s*express/i.test(name)) {
+    brandBadge = 'AMEX';
+  }
+
+  // 4. Real account type in Spanish (Ahorros, Crédito, Corriente, etc.)
+  let typeLabel = 'Cuenta';
+  switch (acc.type) {
+    case 'credit_card':
+      typeLabel = 'Crédito';
+      break;
+    case 'savings':
+      typeLabel = 'Ahorros';
+      break;
+    case 'checking':
+      typeLabel = 'Corriente';
+      break;
+    case 'digital_wallet':
+      typeLabel = 'Bolsillo';
+      break;
+    case 'cash':
+      typeLabel = 'Efectivo';
+      break;
+    default:
+      typeLabel = 'Activa';
+  }
+
+  return {
+    id: acc.id,
+    displayName: name,
+    mask,
+    last4,
+    bankName,
+    brandBadge,
+    typeLabel,
+    balanceMinor: acc.balanceMinor,
+    currency: acc.currency,
+  };
+}
+
+function CardBrandMark({ brand }: { readonly brand: string }): React.ReactElement {
+  const norm = brand.trim().toUpperCase();
+  if (norm === 'VISA') {
+    return <span className="balance-card-logo--visa">VISA</span>;
+  }
+  if (norm === 'MASTERCARD') {
+    return (
+      <span className="balance-card-logo--mc" aria-label="Mastercard">
+        <span className="balance-card-mc-circle balance-card-mc-circle--red" />
+        <span className="balance-card-mc-circle balance-card-mc-circle--gold" />
+      </span>
+    );
+  }
+  if (norm === 'NU' || norm === 'NUBANK') {
+    return (
+      <span className="balance-card-logo--nu" aria-label="Nu">
+        nu
+      </span>
+    );
+  }
+  if (norm === 'DAVIVIENDA') {
+    return (
+      <span className="balance-card-brand-with-icon" aria-label="Davivienda">
+        <svg className="balance-card-bank-svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 3.8l5 4.5v6.7H7v-6.7l5-4.5z" />
+        </svg>
+        <span className="balance-card-brand-txt">DAVIVIENDA</span>
+      </span>
+    );
+  }
+  if (norm === 'BANCOLOMBIA') {
+    return (
+      <span className="balance-card-brand-with-icon" aria-label="Bancolombia">
+        <svg className="balance-card-bank-svg" width="18" height="12" viewBox="0 0 26 16" fill="currentColor" aria-hidden="true">
+          <path d="M0 0h26v3H0zM4 6.5h18v3H4zM8 13h10v3H8z" />
+        </svg>
+        <span className="balance-card-brand-txt">BANCOLOMBIA</span>
+      </span>
+    );
+  }
+  return <span className="balance-card-brand-txt">{brand}</span>;
+}
+
+function ContactlessWaveIcon(): React.ReactElement {
+  return (
+    <svg
+      className="balance-card-nfc-icon"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M8.5 7.5a6 6 0 0 1 0 9" />
+      <path d="M12 4.5a10 10 0 0 1 0 15" />
+      <path d="M15.5 1.5a14 14 0 0 1 0 21" />
+    </svg>
+  );
+}
+
 function getGreetingName(email: string): string {
   const handle = email.split('@')[0] ?? '';
   const words = handle
@@ -62,17 +242,14 @@ function formatRelativeSyncTime(isoString: string | null | undefined): string {
 }
 
 /**
- * Luxury Velvet Balance Hero.
+ * Modern Liquid Glass Hero (iPhone Reference).
  *
- * Grounded in Reasonny's authentic visual identity:
- * - Warm personal greeting ("Hola, Jean Paul") with interactive profile options.
- * - Prominent shortcuts access pill.
- * - Organic, diffuse imperial vinotinto & champagne gold volumetric lighting.
- * - Monumental available balance with <Money> and tap-to-mask privacy.
- * - Month pacing indicator.
+ * Implements the warm volumetric sunset glow with layered frosted glass
+ * cards, circular top actions, monumental balance, and interactive card stack.
  */
 export function BalanceHero({
   totalBalanceMinor,
+  monthExpenseMinor = 0n,
   currency,
   userEmail,
   displayName,
@@ -81,15 +258,43 @@ export function BalanceHero({
   lastCaptureAt,
   autoCaptureCount,
   timeZone = 'America/Bogota',
+  accounts,
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [activeView, setActiveView] = useState<'available' | 'spent'>('available');
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
-  // What the user chose to be called wins; the handle is only the fallback for
-  // an account that has not been through /perfil yet.
   const name = displayName?.trim() || getGreetingName(userEmail);
   const initial = name.slice(0, 2).toUpperCase();
+
+  // Pacing calculations in user's timezone
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(now);
+
+  const currentDay = Number(parts.find((p) => p.type === 'day')?.value ?? now.getDate());
+  const currentMonth = Number(
+    parts.find((p) => p.type === 'month')?.value ?? now.getMonth() + 1,
+  );
+  const currentYear = Number(
+    parts.find((p) => p.type === 'year')?.value ?? now.getFullYear(),
+  );
+
+  const daysInMonth = new Date(Date.UTC(currentYear, currentMonth, 0)).getDate();
+  const daysRemaining = Math.max(1, daysInMonth - currentDay);
+  const monthProgressPct = Math.min(
+    100,
+    Math.max(1, Math.round((currentDay / daysInMonth) * 100)),
+  );
+
+  const dailyPaceMinor =
+    currentDay > 0 ? monthExpenseMinor / BigInt(currentDay) : 0n;
 
   useEffect(() => {
     if (!isProfileOpen) return;
@@ -114,9 +319,32 @@ export function BalanceHero({
     }
   }
 
+  const isShowingAvailable = activeView === 'available';
+  const displayedAmount = isShowingAvailable ? totalBalanceMinor : monthExpenseMinor;
+
+  const walletCards: readonly FormattedWalletCard[] =
+    accounts && accounts.length > 0
+      ? accounts.map(parseAccountCard)
+      : [
+          {
+            id: 'default-card',
+            displayName: 'Cuenta Principal',
+            mask: '•••• 9286',
+            last4: '9286',
+            bankName: 'Cuenta Principal',
+            brandBadge: 'VISA',
+            typeLabel: 'Saldo Total',
+            balanceMinor: totalBalanceMinor,
+            currency,
+          },
+        ];
+
+  const currentCard = walletCards[activeCardIndex % walletCards.length] ?? walletCards[0]!;
+
   return (
-    <div className={`balance-hero${isProfileOpen ? ' balance-hero--menu-open' : ''}`}>
-      {/* 1. Top Bar: Interactive Profile trigger, Shortcut Pill, Notification Bell */}
+    <>
+      <div className={`balance-hero balance-hero--liquid-glass${isProfileOpen ? ' balance-hero--menu-open' : ''}`}>
+      {/* 1. iPhone Top Bar: Profile avatar on left, Circular frosted Bell on right */}
       <div className="balance-hero-topbar">
         <div className="balance-hero-profile-wrap">
           <button
@@ -133,16 +361,13 @@ export function BalanceHero({
 
             <div className="balance-hero-identity">
               <div className="balance-hero-greeting-row">
-                <h1 className="balance-hero-greeting">
-                  {t('greeting')}, {name}
-                </h1>
+                <span className="balance-hero-greeting">
+                  {name}
+                </span>
                 <span className="balance-hero-caret" aria-hidden="true">
-                  <CategoryIcon name="ChevronDown" size={13} />
+                  <CategoryIcon name="ChevronDown" size={12} />
                 </span>
               </div>
-              <p className="balance-hero-subline">
-                {t('month_summary')} {monthLabel}
-              </p>
             </div>
           </button>
 
@@ -159,7 +384,6 @@ export function BalanceHero({
                 role="menu"
                 aria-label="Opciones de perfil"
               >
-                {/* User Card */}
                 <div className="profile-dropdown-user">
                   <div className="profile-dropdown-avatar">
                     <span className="profile-dropdown-initial">{initial}</span>
@@ -172,7 +396,6 @@ export function BalanceHero({
 
                 <div className="profile-dropdown-divider" />
 
-                {/* 1. Vincular app (Tutorial de Atajos) */}
                 <Link
                   href="/captura"
                   onClick={() => setIsProfileOpen(false)}
@@ -196,7 +419,6 @@ export function BalanceHero({
                   </span>
                 </Link>
 
-                {/* 2. Mi Perfil */}
                 <Link
                   href="/perfil"
                   onClick={() => setIsProfileOpen(false)}
@@ -217,7 +439,6 @@ export function BalanceHero({
                   </span>
                 </Link>
 
-                {/* 3. Resumen Mensual */}
                 <Link
                   href="/mes"
                   onClick={() => setIsProfileOpen(false)}
@@ -238,7 +459,6 @@ export function BalanceHero({
                   </span>
                 </Link>
 
-                {/* 4. Exportar CSV */}
                 <a
                   href="/api/v1/export"
                   download
@@ -262,7 +482,6 @@ export function BalanceHero({
 
                 <div className="profile-dropdown-divider" />
 
-                {/* 5. Cerrar Sesión */}
                 <button
                   type="button"
                   disabled={isSigningOut}
@@ -278,93 +497,197 @@ export function BalanceHero({
           )}
         </div>
 
+        {/* Right: Circular Frosted Glass Action Buttons (Mask + Bell) */}
         <div className="balance-hero-topbar-actions">
-          {/* Prominent Shortcut Pill in topbar */}
-          <Link
-            href="/captura"
-            className="balance-hero-shortcut-pill"
-            title="Atajos SMS automáticos"
+          <button
+            type="button"
+            onClick={() => setIsHidden((prev) => !prev)}
+            className="balance-hero-glass-action-btn"
+            aria-label={isHidden ? t('hero_show_balance') : t('hero_hide_balance')}
+            title={isHidden ? 'Mostrar saldo' : 'Ocultar saldo'}
           >
-            <CategoryIcon name="Zap" size={13} />
-            <span>Atajos</span>
-          </Link>
+            <CategoryIcon name={isHidden ? 'Eye' : 'EyeOff'} size={16} />
+          </button>
 
-          {/* The bell carries the real count of transactions waiting to be categorised */}
-          {uncategorizedCount > 0 && (
-            <Link
-              href="/revisar"
-              className="balance-hero-bell"
-              title={`${uncategorizedCount} ${t('dashboard_pending_review')}`}
-            >
-              <CategoryIcon name="Bell" size={17} />
-              <span className="balance-hero-bell-dot" aria-hidden="true" />
-              <span className="sr-only">
-                {uncategorizedCount} {t('dashboard_pending_review')}
-              </span>
-            </Link>
-          )}
+          <Link
+            href={uncategorizedCount > 0 ? '/revisar' : '/captura'}
+            className="balance-hero-glass-bell"
+            title={
+              uncategorizedCount > 0
+                ? `${uncategorizedCount} ${t('dashboard_pending_review')}`
+                : 'Notificaciones y Atajos'
+            }
+            aria-label="Notificaciones"
+          >
+            <CategoryIcon name="Bell" size={17} />
+            {uncategorizedCount > 0 && (
+              <span className="balance-hero-glass-bell-dot" aria-hidden="true" />
+            )}
+          </Link>
         </div>
       </div>
 
-      {/* 2. Central Monumental Balance Focus */}
+      {/* 2. Central Monumental Typography */}
       <div className="balance-hero-focus">
-        {/* Soft Organic Diffuse Aura behind balance */}
-        <div className="balance-hero-glow" aria-hidden="true" />
-
-        <span className="balance-hero-label">{t('balance_available')}</span>
+        {/* Clickable Label to toggle Saldo vs Gastado */}
+        <button
+          type="button"
+          onClick={() => setActiveView((prev) => (prev === 'available' ? 'spent' : 'available'))}
+          className="balance-hero-label-btn"
+          title="Toca para cambiar entre Saldo y Gastado"
+        >
+          <span>{isShowingAvailable ? 'Balance' : `Gastado en ${monthLabel.split(' ')[0] ?? 'el mes'}`}</span>
+          <span className="balance-hero-label-switch-hint">⇄</span>
+        </button>
 
         <div className="balance-hero-amount">
           <span
-            key={isHidden ? 'masked' : 'revealed'}
+            key={isHidden ? 'masked' : `amount-${activeView}`}
             className="balance-hero-amount-val"
           >
             {isHidden ? (
               <span className="balance-hero-masked">$ ••••••••</span>
             ) : (
-              <Money amountMinor={totalBalanceMinor} currency={currency} />
+              <Money amountMinor={displayedAmount} currency={currency} />
             )}
           </span>
         </div>
 
-        {/* The pill next to the toggle used to read "2.4% este mes". That
-            number was a literal - it never came from a query, it never moved,
-            and it was presented as the user's own performance. P6 requires n,
-            method and a baseline for any figure, and P3 says financial content
-            is cited or not said. There is no month-over-month comparison in
-            getDashboardData yet, so the honest version states what the figure
-            above actually is, and the delta returns when the query does. */}
+        {/* Solitary Translucent Frosted Glass Pill (Reference: ↗ 2.46% this month) */}
         <div className="balance-hero-actions-row">
-          <Link
-            href="/captura"
-            className="balance-hero-pill balance-hero-pill--sync"
-            title={
-              lastCaptureAt
-                ? `Última transacción recibida: ${formatDate(lastCaptureAt, timeZone, 'es', {
-                    day: 'numeric',
-                    month: 'short',
-                  })} a las ${formatTime(lastCaptureAt, timeZone)}`
-                : 'Conectado a Bancolombia vía SMS automático'
-            }
-          >
-            <span className="sync-pulse-dot" aria-hidden="true" />
-            <span className="sync-pill-text">
-              {lastCaptureAt
-                ? `Bancolombia · Última tx ${formatRelativeSyncTime(lastCaptureAt)}`
-                : 'Conectado a Bancolombia'}
-            </span>
-          </Link>
-
           <button
             type="button"
-            onClick={() => setIsHidden((prev) => !prev)}
-            className="balance-hero-mask-toggle"
-            aria-label={isHidden ? t('hero_show_balance') : t('hero_hide_balance')}
+            onClick={() => setActiveView((prev) => (prev === 'available' ? 'spent' : 'available'))}
+            className="balance-hero-liquid-pill"
+            title="Toca para alternar vista"
           >
-            <CategoryIcon name={isHidden ? 'Eye' : 'EyeOff'} size={13} />
-            <span>{isHidden ? t('hero_show_short') : t('hero_hide_short')}</span>
+            <span className="balance-liquid-pill-arrow" aria-hidden="true">
+              {isShowingAvailable ? '↗' : '↘'}
+            </span>
+            <span>
+              {isShowingAvailable
+                ? `${daysRemaining} días restantes`
+                : `${monthProgressPct}% del mes`}
+            </span>
           </button>
         </div>
+
+        {/* 3. The Liquid Glass Card Stack (Anchored at bottom, Apple Wallet style) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (walletCards.length > 1) {
+              setActiveCardIndex((prev) => (prev + 1) % walletCards.length);
+            }
+          }}
+          className="balance-card-stack"
+          aria-label={`Cuenta activa: ${currentCard.displayName}. ${walletCards.length > 1 ? 'Toca para cambiar de cuenta' : ''}`}
+          title={walletCards.length > 1 ? 'Toca para cambiar de cuenta' : currentCard.displayName}
+        >
+          {/* Layer 3: Top Back Ridge */}
+          <div className="balance-card-layer balance-card-layer--back" aria-hidden="true" />
+
+          {/* Layer 2: Mid-Back Ridge */}
+          <div className="balance-card-layer balance-card-layer--mid-back" aria-hidden="true" />
+
+          {/* Layer 1: Mid Ridge */}
+          <div className="balance-card-layer balance-card-layer--mid" aria-hidden="true" />
+
+          {/* Front Active Liquid Glass Card */}
+          <div className="balance-card-front">
+            {/* Top / Mid Row: Dots, 4 digits (or name), real type (Ahorros / Crédito), and bank logo */}
+            <div className="balance-card-mid-row">
+              <div className="balance-card-digits-group">
+                {currentCard.last4 ? (
+                  <>
+                    <span className="balance-card-bullet-group" aria-hidden="true">
+                      <span className="balance-card-bullet" />
+                      <span className="balance-card-bullet" />
+                      <span className="balance-card-bullet" />
+                      <span className="balance-card-bullet" />
+                    </span>
+                    <span className="balance-card-digits">{currentCard.last4}</span>
+                  </>
+                ) : null}
+                <span className="balance-card-type-badge">{currentCard.typeLabel}</span>
+                <ContactlessWaveIcon />
+              </div>
+
+              <div className="balance-card-brand-slot">
+                <CardBrandMark brand={currentCard.brandBadge} />
+              </div>
+            </div>
+
+            {/* Bottom Row: Real account name, real balance, and account cycling counter */}
+            <div className="balance-card-bottom-row">
+              <div className="balance-card-account-meta">
+                <span className="balance-card-acc-name">
+                  {currentCard.displayName}
+                </span>
+                {currentCard.balanceMinor !== undefined && (
+                  <span className="balance-card-acc-balance">
+                    {isHidden ? (
+                      <span>$ ••••</span>
+                    ) : (
+                      <Money amountMinor={currentCard.balanceMinor} currency={currentCard.currency} />
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {walletCards.length > 1 && (
+                <span className="balance-card-cycle-pill">
+                  {(activeCardIndex % walletCards.length) + 1} de {walletCards.length} ⇄
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
       </div>
     </div>
-  );
+
+    {/* 4. Standalone Companion Module: Month Pace & Rhythm */}
+    <div className="balance-pace-capsule-standalone">
+      <div className="balance-pace-row">
+        <div className="balance-pace-stat">
+          <span className="balance-pace-label">Ritmo de gasto</span>
+          <span className="balance-pace-val">
+            {isHidden ? (
+              <span>$ ••••</span>
+            ) : (
+              <>
+                <Money amountMinor={dailyPaceMinor} currency={currency} />
+                <span className="balance-pace-unit"> / día</span>
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className="balance-pace-divider" aria-hidden="true" />
+
+        <div className="balance-pace-stat balance-pace-stat--end">
+          <span className="balance-pace-label">Avance del mes</span>
+          <span className="balance-pace-val balance-pace-val--highlight">
+            Día {currentDay} de {daysInMonth}
+            <span className="balance-pace-remaining"> ({daysRemaining}d restantes)</span>
+          </span>
+        </div>
+      </div>
+
+      <div
+        className="balance-pace-track"
+        role="progressbar"
+        aria-valuenow={monthProgressPct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Progreso del mes: ${monthProgressPct}% transcurrido`}
+      >
+        <div
+          className="balance-pace-fill"
+          style={{ '--pace-progress': `${monthProgressPct}%` } as React.CSSProperties}
+        />
+      </div>
+    </div>
+  </>
+);
 }

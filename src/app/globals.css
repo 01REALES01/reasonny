@@ -2376,6 +2376,60 @@ textarea:focus-visible {
     0 2px 0 0 rgba(255, 255, 255, 0.1) inset;
 }
 
+/* Liquid Glass iPhone Aesthetic (RealMoney Signature Wine & Champagne Palette) */
+.balance-hero--liquid-glass,
+.balance-hero--liquid-sunset {
+  border-radius: 40px;
+  border: 1.2px solid rgba(228, 204, 166, 0.28);
+  background:
+    /* Deep radiant ruby-wine backlight from behind the cards, matching the app's signature tone */
+    radial-gradient(130% 115% at 50% 88%, rgba(225, 55, 110, 0.72) 0%, rgba(188, 38, 88, 0.52) 42%, rgba(142, 28, 68, 0.25) 75%, transparent 100%),
+    /* Warm champagne reflection at the base rim */
+    radial-gradient(100% 70% at 50% 100%, rgba(228, 204, 166, 0.22) 0%, transparent 60%),
+    /* Soft rose crown illumination from above */
+    radial-gradient(90% 65% at 50% -10%, rgba(245, 130, 180, 0.45) 0%, transparent 65%),
+    /* Continuous signature illuminated wine body — luminous from top to bottom, never muddy dark */
+    linear-gradient(174deg, #99234b 0%, #831b3e 36%, #941f47 68%, #af2654 100%);
+  box-shadow:
+    0 24px 60px -15px rgba(185, 35, 85, 0.55),
+    0 1.5px 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 -1px 1px 0 rgba(228, 204, 166, 0.3) inset;
+  padding: 22px 0 0;
+  margin: 10px 6px 0;
+  overflow: hidden;
+}
+
+.balance-hero--liquid-glass .balance-hero-avatar,
+.balance-hero--liquid-sunset .balance-hero-avatar {
+  background: linear-gradient(135deg, rgba(228, 204, 166, 0.2), rgba(228, 204, 166, 0.06));
+  border: 1.5px solid var(--landing-champagne-gold);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(228, 204, 166, 0.4);
+}
+
+.balance-hero--liquid-glass .balance-hero-initial,
+.balance-hero--liquid-sunset .balance-hero-initial {
+  color: var(--landing-champagne-gold);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.balance-hero--liquid-glass .balance-hero-greeting,
+.balance-hero--liquid-sunset .balance-hero-greeting {
+  color: var(--landing-warm-white);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.balance-hero--liquid-glass .balance-hero-caret,
+.balance-hero--liquid-sunset .balance-hero-caret {
+  color: var(--landing-champagne-gold);
+  opacity: 0.75;
+}
+
 .balance-hero--menu-open {
   isolation: auto !important;
   z-index: 1000 !important;
@@ -2386,9 +2440,10 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   position: relative;
   z-index: 2;
+  padding: 0 16px;
 }
 
 .balance-hero--menu-open .balance-hero-topbar {
@@ -2396,8 +2451,8 @@ textarea:focus-visible {
 }
 
 .balance-hero-avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, rgba(228, 204, 166, 0.18), rgba(228, 204, 166, 0.05));
   border: 1.5px solid var(--landing-champagne-gold);
@@ -2527,8 +2582,6 @@ textarea:focus-visible {
   transform: scale(0.92);
 }
 
-/* Was the literal #ff4757, which is neither a token nor the palette's red. The
-   semantic ramp is validated; the dot is a real alert, so it uses it. */
 .balance-hero-bell-dot {
   position: absolute;
   top: 10px;
@@ -2538,6 +2591,48 @@ textarea:focus-visible {
   border-radius: var(--radius-full);
   background: var(--critical);
   box-shadow: 0 0 8px var(--critical);
+}
+
+/* iPhone Style Frosted Glass Bell Button */
+.balance-hero-glass-bell,
+.balance-hero-glass-action-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: rgba(228, 204, 166, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(228, 204, 166, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--landing-champagne-gold);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(228, 204, 166, 0.35);
+  transition: transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.balance-hero-glass-bell:active,
+.balance-hero-glass-action-btn:active {
+  transform: scale(0.92);
+  opacity: 0.9;
+}
+
+.balance-hero-glass-bell-dot {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--landing-gold-solid);
+  box-shadow: 0 0 10px rgba(212, 179, 130, 0.9);
+  border: 1.5px solid #360d1c;
 }
 
 /* ── Menú Desplegable de Perfil ────────────────────────────────────────────── */
@@ -2760,6 +2855,12 @@ textarea:focus-visible {
   z-index: 1;
 }
 
+.balance-hero--liquid-glass .balance-hero-focus,
+.balance-hero--liquid-sunset .balance-hero-focus {
+  padding: 8px 0 0;
+  width: 100%;
+}
+
 /* Champagne, not wine: the aura behind the figure is the warm light the wine
    is lit BY, so it has to be a different temperature from the card or it just
    makes the middle muddier. blur() on a static element is composited once, not
@@ -2782,6 +2883,40 @@ textarea:focus-visible {
   z-index: -1;
 }
 
+/* View switcher for BalanceHero */
+.balance-hero-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+}
+
+.balance-view-chip {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.balance-view-chip:active {
+  transform: scale(0.96);
+}
+
+.balance-view-chip--active {
+  background: var(--brand-tint);
+  color: var(--landing-champagne-gold);
+  border-color: var(--landing-champagne-border);
+}
+
 /* The eyebrow reads as a label, so it goes champagne with the landing's wide
    tracking rather than another grey line - it was competing with the greeting
    above it at nearly the same size and colour. */
@@ -2795,6 +2930,36 @@ textarea:focus-visible {
   margin-bottom: 10px;
 }
 
+.balance-hero-label-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--landing-champagne-gold);
+  opacity: 0.9;
+  transition: transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.balance-hero-label-btn:active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
+
+.balance-hero-label-switch-hint {
+  font-size: 12px;
+  opacity: 0.65;
+  color: var(--landing-champagne-gold);
+}
+
 /* Fixed 42px on every phone meant the figure was cramped on a 430px screen and
    overflowing on a 360px one. clamp() ties it to the viewport, and the tighter
    tracking is what makes a large number read as editorial instead of just big. */
@@ -2806,6 +2971,17 @@ textarea:focus-visible {
   line-height: 1;
   text-shadow: 0 2px 30px rgba(90, 10, 35, 0.55);
   margin-bottom: 18px;
+}
+
+.balance-hero--liquid-glass .balance-hero-amount,
+.balance-hero--liquid-sunset .balance-hero-amount {
+  font-size: clamp(2.75rem, 12.5vw, 3.65rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--landing-warm-white);
+  line-height: 1.05;
+  text-shadow: 0 4px 30px rgba(90, 10, 35, 0.6);
+  margin-bottom: 12px;
 }
 
 .balance-hero-amount-val {
@@ -2913,6 +3089,443 @@ textarea:focus-visible {
   transform: scale(0.97);
 }
 
+/* Translucent Liquid Glass Pill (RealMoney Champagne Frosted Glass) */
+/* Translucent Liquid Glass Pill (RealMoney Champagne Frosted Glass) */
+.balance-hero-liquid-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 18px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--landing-warm-white);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.35);
+  transition: transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.balance-hero-liquid-pill:active {
+  transform: scale(0.95);
+  opacity: 0.85;
+}
+
+.balance-liquid-pill-arrow {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--landing-champagne-gold);
+}
+
+/* ── Interactive Liquid Glass Card Stack (iPhone Wallet Style) ─────────────── */
+.balance-card-stack {
+  width: 100%;
+  margin: 28px 0 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: left;
+  outline: none;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.balance-card-stack:active {
+  transform: scale(0.985);
+}
+
+.balance-card-layer {
+  position: relative;
+  height: 14px;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-top: 1.4px solid rgba(255, 255, 255, 0.6);
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.balance-card-layer--back {
+  width: 86%;
+  opacity: 0.5;
+  margin-bottom: -6px;
+}
+
+.balance-card-layer--mid-back {
+  width: 92%;
+  opacity: 0.7;
+  margin-bottom: -6px;
+}
+
+.balance-card-layer--mid {
+  width: 97%;
+  opacity: 0.88;
+  margin-bottom: -6px;
+}
+
+.balance-card-front {
+  width: 100%;
+  padding: 20px 18px 22px;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  background: linear-gradient(
+    168deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.75);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow:
+    0 -10px 30px rgba(140, 25, 65, 0.25),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0.5px rgba(228, 204, 166, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 120px;
+}
+
+.balance-card-mid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-card-digits-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.balance-card-bullet-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+}
+
+.balance-card-bullet {
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: var(--radius-full);
+  background: var(--landing-warm-white);
+  opacity: 0.9;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+.balance-card-digits {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--landing-warm-white);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.balance-card-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--landing-champagne-gold);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  padding: 2px 7px;
+  line-height: 1;
+}
+
+.balance-card-nfc-icon {
+  color: rgba(255, 255, 255, 0.75);
+  margin-left: 2px;
+}
+
+.balance-card-brand-slot {
+  display: flex;
+  align-items: center;
+}
+
+.balance-card-logo--visa {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  color: var(--landing-warm-white);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.balance-card-logo--nu {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--landing-warm-white);
+  line-height: 0.9;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.balance-card-logo--mc {
+  display: inline-flex;
+  align-items: center;
+}
+
+.balance-card-mc-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.balance-card-mc-circle--red {
+  background: var(--critical);
+  margin-right: -5px;
+}
+
+.balance-card-mc-circle--gold {
+  background: var(--landing-gold-solid);
+  opacity: 0.92;
+}
+
+.balance-card-brand-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--landing-warm-white);
+}
+
+.balance-card-bank-svg {
+  color: var(--landing-champagne-gold);
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+
+.balance-card-brand-txt {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--landing-warm-white);
+  opacity: 0.9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.balance-card-bottom-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-card-account-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.balance-card-acc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.balance-card-type-dot {
+  opacity: 0.5;
+}
+
+.balance-card-acc-type {
+  color: var(--landing-champagne-gold);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.balance-card-acc-balance {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--landing-champagne-gold);
+  letter-spacing: -0.01em;
+}
+
+.balance-card-cycle-pill {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--landing-champagne-dim);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+/* 4. Standalone Companion Module: Month Pace & Rhythm */
+.balance-pace-capsule-standalone {
+  margin: 14px 6px 0;
+  padding: 14px 18px 12px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(200, 50, 95, 0.22) 0%, transparent 75%),
+    linear-gradient(168deg, rgba(82, 18, 40, 0.75) 0%, rgba(52, 12, 26, 0.65) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(228, 204, 166, 0.22);
+  border-top: 1.2px solid rgba(255, 255, 255, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow:
+    0 10px 28px -8px rgba(120, 22, 58, 0.35),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.2);
+}
+
+.balance-pace-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-pace-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.balance-pace-stat--end {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.balance-pace-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.balance-pace-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--landing-champagne-dim);
+}
+
+.balance-pace-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--landing-warm-white);
+  white-space: nowrap;
+}
+
+.balance-pace-val--highlight {
+  color: var(--landing-champagne-gold);
+}
+
+.balance-pace-remaining {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.balance-pace-unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.balance-pace-track {
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.balance-pace-fill {
+  height: 100%;
+  width: var(--pace-progress, 0%);
+  background: var(--landing-gold-solid);
+  border-radius: var(--radius-full);
+  transform-origin: left;
+  animation: paceFillGrow var(--duration-slow) var(--ease-out) both;
+}
+
+@keyframes paceFillGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Glass Pacing Capsule modifier (legacy) */
+.balance-hero-pace-capsule--glass {
+  margin-top: 18px;
+  background: rgba(228, 204, 166, 0.08);
+  border: 1px solid rgba(228, 204, 166, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 1px 0.5px rgba(228, 204, 166, 0.25);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-label {
+  color: var(--landing-champagne-dim);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-val {
+  color: var(--landing-warm-white);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-val--highlight {
+  color: var(--landing-champagne-gold);
+  font-weight: 700;
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-remaining {
+  color: var(--ink-muted);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-divider {
+  background: rgba(228, 204, 166, 0.16);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.balance-hero-pace-capsule--glass .balance-pace-fill {
+  background: var(--landing-gold-solid);
+}
+
 /* 3. This week at a glance */
 .fin-stat-label {
   font-size: 10px;
@@ -2934,9 +3547,21 @@ textarea:focus-visible {
 
 .week-card-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.week-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.week-card-sublabel {
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 500;
 }
 
 .week-card-head .fin-stat-label {
@@ -2951,20 +3576,90 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+.week-card-total-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.week-card-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.week-card-delta-arrow {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.week-card-delta-badge--up {
+  color: var(--landing-champagne-gold);
+  background: rgba(228, 204, 166, 0.1);
+  border: 1px solid rgba(228, 204, 166, 0.2);
+}
+
+.week-card-delta-badge--down {
+  color: var(--positive);
+  background: rgba(52, 199, 123, 0.1);
+  border: 1px solid rgba(52, 199, 123, 0.2);
+}
+
+.week-card-delta-badge--neutral {
+  color: var(--ink-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .week-bars {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  gap: 6px;
   margin: 16px 0 0;
   padding: 0;
 }
 
-.week-bar {
+.week-bar-item {
+  display: flex;
+  justify-content: center;
+}
+
+.week-bar-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  margin: 0;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  min-height: 94px;
+  border-radius: 12px;
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.week-bar-btn:active {
+  transform: scale(0.95);
+}
+
+.week-bar-btn:focus-visible {
+  outline: 2px solid var(--landing-champagne-gold);
+  outline-offset: 2px;
+}
+
+/* Dim other bars when one is selected */
+.week-bars--has-selection .week-bar-btn:not(.week-bar--selected) {
+  opacity: 0.45;
 }
 
 .week-bar-track {
@@ -2976,6 +3671,39 @@ textarea:focus-visible {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   overflow: hidden;
+}
+
+.week-bar-btn:hover .week-bar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.week-bar--selected .week-bar-track {
+  box-shadow: 0 0 0 2px var(--landing-champagne-gold), 0 0 14px var(--landing-gold-glow);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.week-bar--selected .week-bar-fill {
+  background: var(--landing-gold-solid);
+}
+
+.week-bar--selected .week-bar-day {
+  color: var(--landing-champagne-gold);
+  font-weight: 800;
+}
+
+.week-bar-indicator {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--landing-champagne-gold);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.week-bar--selected .week-bar-indicator {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* The bar is a full-height block scaled down, not a sized one: height is a
@@ -3014,6 +3742,129 @@ textarea:focus-visible {
   font-weight: 600;
   color: var(--ink-muted);
   text-transform: uppercase;
+}
+
+/* Tactile Inspector Box */
+.week-card-inspector {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(228, 204, 166, 0.07);
+  border: 1px solid var(--landing-champagne-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: inspectorSlideIn var(--duration-fast) var(--ease-out) both;
+}
+
+@keyframes inspectorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.week-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.week-inspector-date-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.week-inspector-badge-day {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--landing-champagne-gold);
+  text-transform: capitalize;
+}
+
+.week-inspector-date-full {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.week-inspector-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+}
+
+.week-inspector-close:hover {
+  color: var(--landing-warm-white);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.week-inspector-close:active {
+  transform: scale(0.92);
+}
+
+.week-inspector-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.week-inspector-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--landing-warm-white);
+  letter-spacing: -0.02em;
+}
+
+.week-inspector-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-context-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+
+.week-context-pill--pct {
+  background: rgba(228, 204, 166, 0.14);
+  color: var(--landing-champagne-gold);
+  border: 1px solid rgba(228, 204, 166, 0.25);
+}
+
+.week-context-pill--peak {
+  background: var(--brand-tint);
+  color: var(--landing-champagne-gold);
+  border: 1px solid var(--brand-500);
+}
+
+.week-context-pill--zero {
+  background: rgba(52, 199, 123, 0.14);
+  color: var(--positive);
+  border: 1px solid rgba(52, 199, 123, 0.25);
+}
+
+.week-context-pill--neutral {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-muted);
 }
 
 .week-card-foot {
@@ -3128,8 +3979,9 @@ textarea:focus-visible {
       rgba(228, 204, 166, 0.03) 45%,
       rgba(228, 204, 166, 0.02) 100%
     ),
-    radial-gradient(120% 42% at 50% 0%, rgba(168, 54, 98, 0.34) 0%, transparent 72%),
-    linear-gradient(to bottom, var(--app-ground-lit) 0%, var(--app-ground) 60%);
+    radial-gradient(120% 55% at 50% 20%, rgba(185, 45, 90, 0.38) 0%, rgba(135, 28, 65, 0.18) 50%, transparent 80%),
+    radial-gradient(110% 40% at 50% 0%, rgba(205, 55, 108, 0.42) 0%, transparent 72%),
+    linear-gradient(to bottom, #2a1120 0%, #1f0b17 50%, #150610 100%);
   background-color: var(--app-ground);
 }
 
@@ -3346,14 +4198,15 @@ textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 10px 20px 4px;
+  margin: 12px 6px 4px;
   padding: 12px 16px;
   border-radius: 20px;
   background:
-    radial-gradient(100% 120% at 0% 0%, rgba(240, 100, 160, 0.18) 0%, transparent 60%),
-    linear-gradient(135deg, rgba(35, 10, 20, 0.95) 0%, rgba(18, 5, 11, 0.98) 100%);
-  border: 1px solid rgba(228, 204, 166, 0.26);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    radial-gradient(100% 120% at 0% 0%, rgba(225, 55, 110, 0.22) 0%, transparent 60%),
+    linear-gradient(168deg, rgba(78, 18, 38, 0.82) 0%, rgba(48, 11, 24, 0.85) 100%);
+  border: 1px solid rgba(228, 204, 166, 0.24);
+  border-top: 1.2px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 0 10px 28px -6px rgba(130, 25, 62, 0.35), inset 0 1px 0.5px rgba(255, 255, 255, 0.15);
   animation: enter-callout 220ms var(--ease-out);
 }
 

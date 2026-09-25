@@ -42,6 +42,21 @@ export interface WeekSpending {
   readonly days: DailyExpenseTotal[];
   readonly todayExpenseMinor: bigint;
   readonly weekExpenseMinor: bigint;
+  /** Expense in the previous week across the same days (Monday to today). Null if no baseline. */
+  readonly prevWeekSameDaysExpenseMinor?: bigint | null;
+  /** Full previous week total expense (Monday to Sunday). Null if no data. */
+  readonly prevWeekTotalExpenseMinor?: bigint | null;
+  /** Percentage change vs same period last week (+X or -X). Null if no baseline. */
+  readonly weekOverWeekDeltaPct?: number | null;
+}
+
+export interface DashboardAccount {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly currency: string;
+  readonly balanceMinor: bigint;
+  readonly color: string;
 }
 
 export interface DashboardData {
@@ -56,6 +71,7 @@ export interface DashboardData {
   readonly currentMonthLabel: string;
   readonly lastCaptureAt: string | null;
   readonly autoCaptureCount: number;
+  readonly accounts?: readonly DashboardAccount[];
 }
 
 /**
@@ -332,7 +348,9 @@ export async function getDashboardData(
   // a wrong total under the last header whenever that day had more.
   const oldestListed = recentTransactions.at(-1);
   const oldestDay = oldestListed ? readDay(oldestListed.transactionDate) : today;
-  const since = oldestDay < weekDays[0]! ? oldestDay : weekDays[0]!;
+  const prevWeekMonday = shiftDayKey(weekDays[0]!, -7);
+  const prevWeekDays = Array.from({ length: 7 }, (_, i) => shiftDayKey(prevWeekMonday, i));
+  const since = oldestDay < prevWeekMonday ? oldestDay : prevWeekMonday;
 
   // toAccountId, not `as any`. The cast defeated the branded type at exactly
   // the boundary it exists to guard: `as any` would have let a userId, a
@@ -351,6 +369,41 @@ export async function getDashboardData(
     dailyTotals.find((d) => d.day === day)?.totalExpenseMinor ?? 0n;
   const weekTotals = weekDays.map((day) => ({ day, totalExpenseMinor: totalFor(day) }));
 
+  // Index of today in the week (0 = Monday, ..., 6 = Sunday)
+  const todayIndex = weekDays.indexOf(today);
+  const activeDaysCount = todayIndex >= 0 ? todayIndex + 1 : 7;
+  const sameDaysLastWeek = prevWeekDays.slice(0, activeDaysCount);
+
+  const prevWeekSameDaysExpenseMinor = sameDaysLastWeek.reduce(
+    (total, day) => total + totalFor(day),
+    0n,
+  );
+  const prevWeekTotalExpenseMinor = prevWeekDays.reduce(
+    (total, day) => total + totalFor(day),
+    0n,
+  );
+
+  const thisWeekSoFarMinor = weekTotals
+    .slice(0, activeDaysCount)
+    .reduce((total, d) => total + d.totalExpenseMinor, 0n);
+
+  let weekOverWeekDeltaPct: number | null = null;
+  if (prevWeekSameDaysExpenseMinor > 0n) {
+    const deltaMinor = thisWeekSoFarMinor - prevWeekSameDaysExpenseMinor;
+    weekOverWeekDeltaPct = Math.round(
+      Number((deltaMinor * 1000n) / prevWeekSameDaysExpenseMinor) / 10,
+    );
+  }
+
+  const dashboardAccounts: DashboardAccount[] = accounts.map((acc, index) => ({
+    id: acc.id,
+    name: acc.name,
+    type: acc.type,
+    currency: acc.currency,
+    balanceMinor: balances[index]?.balanceMinor ?? acc.initialBalanceMinor ?? 0n,
+    color: acc.color,
+  }));
+
   const capitalizedMonth =
     bounds.monthName.charAt(0).toUpperCase() + bounds.monthName.slice(1);
 
@@ -366,10 +419,14 @@ export async function getDashboardData(
       days: weekTotals,
       todayExpenseMinor: totalFor(today),
       weekExpenseMinor: weekTotals.reduce((total, d) => total + d.totalExpenseMinor, 0n),
+      prevWeekSameDaysExpenseMinor,
+      prevWeekTotalExpenseMinor,
+      weekOverWeekDeltaPct,
     },
     uncategorizedCount,
     currentMonthLabel: `${capitalizedMonth} ${bounds.year}`,
     lastCaptureAt: captureStatus.lastAt ? captureStatus.lastAt.toISOString() : null,
     autoCaptureCount: captureStatus.count,
+    accounts: dashboardAccounts,
   };
 }
