@@ -146,9 +146,19 @@ export function LandingBanksSection(): React.ReactElement {
         </p>
       </div>
 
+      {/* La línea del martes, que llega desde arriba, se reparte aquí. */}
+      <div className="landing-banks-fork" aria-hidden="true">
+        <span className="landing-banks-fork-stem" />
+        <span className="landing-banks-fork-bar" />
+        <span className="landing-banks-fork-drop landing-banks-fork-drop--left" />
+        <span className="landing-banks-fork-drop landing-banks-fork-drop--mid" />
+        <span className="landing-banks-fork-drop landing-banks-fork-drop--right" />
+      </div>
+
       <div className="landing-banks-grid">
         {FLOWS.map((flow) => (
           <div key={flow.key} className={`landing-banks-card${flow.manual ? ' landing-banks-card--manual' : ''}`}>
+            <span className="landing-banks-card-spark" aria-hidden="true" />
             <FlowArt flow={flow} />
             <h4 className="landing-banks-card-title">{flow.title}</h4>
             <p className="landing-banks-card-text">{flow.text}</p>

@@ -6276,15 +6276,21 @@ h1.landing-word-center {
   /* De borde a borde del viewport, no dentro de la medida. */
   margin-left: calc(-1 * clamp(16px, 5vw, 80px));
   margin-right: calc(-1 * clamp(16px, 5vw, 80px));
+  /* El hueco hasta los bancos lo ocupa el hilo, que va pegado debajo: con
+     margen, la bajada llegaría al borde y la curva empezaría más abajo. */
+  margin-bottom: 0;
 }
 
 .is-track .landing-journey-stage {
+  /* El relleno inferior es parte del recorrido de la bajada: la línea
+     llega hasta el borde del escenario, no hasta el de la pista. */
+  --j-pb: 36px;
   position: sticky;
   top: 0;
   display: flex;
   height: 100svh;
   box-sizing: border-box;
-  padding: 96px 0 36px;
+  padding: 96px 0 var(--j-pb);
   overflow: clip;
 }
 
@@ -6372,6 +6378,194 @@ h1.landing-word-center {
   will-change: transform, opacity;
 }
 
+/* ── La salida: el trazo gira y baja ─────────────────────────────────────
+   Del último nodo sigue de largo hasta pasar «Fin de mes», que se monta
+   debajo; gira en ángulo recto y baja al borde del escenario (la salida).
+   Ya suelta la sección, sigue en curva hasta el nodo sobre el titular de
+   los bancos (el hilo). El hook solo escribe transform y opacity; el revelado del hilo
+   son dos traslaciones opuestas, no stroke-dashoffset, que repinta. */
+
+.landing-journey-exit {
+  display: none;
+}
+
+/* Su ancho es el tramo recto: lo que el momento anterior sobresale por
+   debajo del último nodo, más un respiro. El hook lo mide. */
+.is-track .landing-journey-exit {
+  display: block;
+  position: absolute;
+  top: 50%;
+  bottom: calc(-1 * var(--j-pb));
+  left: calc(var(--j-dot) / 2);
+  width: calc(var(--j-w) * var(--j-overlap) + 24px);
+  pointer-events: none;
+}
+
+.landing-journey-run,
+.landing-journey-drop {
+  position: absolute;
+  display: block;
+  background: rgba(240, 122, 172, 0.16);
+}
+
+.landing-journey-run {
+  top: -0.5px;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.landing-journey-drop {
+  top: 0;
+  bottom: 0;
+  right: -0.5px;
+  width: 1px;
+}
+
+.landing-journey-run-line {
+  display: block;
+  height: 100%;
+  background: #f07aac;
+  box-shadow: 0 0 12px rgba(240, 122, 172, 0.55);
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+}
+
+.landing-journey-drop-line {
+  display: block;
+  height: 100%;
+  background: linear-gradient(to bottom, #f07aac, rgba(240, 122, 172, 0.6));
+  box-shadow: 0 0 12px rgba(240, 122, 172, 0.55);
+  transform-origin: top center;
+  transform: scaleY(0);
+  will-change: transform;
+}
+
+/* La punta: lo que hace que se lea como algo que avanza y no como una
+   barra que crece. */
+.landing-journey-drop-tip,
+.landing-journey-thread-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #fff1f7;
+  box-shadow:
+    0 0 0 3px rgba(240, 122, 172, 0.28),
+    0 0 18px 5px rgba(240, 122, 172, 0.75);
+  opacity: 0;
+  transition: opacity 160ms linear;
+  will-change: transform, opacity;
+}
+
+.landing-journey-thread {
+  display: none;
+}
+
+.landing-journey-thread.is-live {
+  display: block;
+  position: relative;
+  height: clamp(200px, 30svh, 320px);
+  /* El mismo ancho que la pista: la curva sale de donde quedó el nodo. */
+  margin: 0 calc(-1 * clamp(16px, 5vw, 80px));
+  pointer-events: none;
+}
+
+.landing-journey-thread-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.landing-journey-thread-rail,
+.landing-journey-thread-glow,
+.landing-journey-thread-lit {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.landing-journey-thread-rail {
+  stroke: rgba(240, 122, 172, 0.16);
+  stroke-width: 1;
+}
+
+/* Un trazo ancho y tenue debajo hace de halo: un filtro de sombra en el
+   SVG costaría pintura, esto no. */
+.landing-journey-thread-glow {
+  stroke: rgba(240, 122, 172, 0.2);
+  stroke-width: 6;
+}
+
+.landing-journey-thread-lit {
+  stroke: #f07aac;
+  stroke-width: 1.25;
+}
+
+.landing-journey-thread-reveal {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  transform: translate3d(0, -100%, 0);
+  will-change: transform;
+}
+
+.landing-journey-thread-inner {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, 100%, 0);
+  will-change: transform;
+}
+
+/* El nodo de llegada. El hook mide su centro para terminar ahí la curva:
+   moverlo aquí mueve la curva. */
+.landing-journey-thread-land {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  width: 11px;
+  height: 11px;
+  margin: 0 0 -5.5px -5.5px;
+  border-radius: 50%;
+  background: #f07aac;
+  box-shadow:
+    0 0 0 4px rgba(240, 122, 172, 0.16),
+    0 0 18px 3px rgba(240, 122, 172, 0.6);
+  opacity: 0.25;
+  transform: scale(0.4);
+  transition:
+    opacity 320ms var(--ease-out),
+    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.landing-journey-thread-land::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 122, 172, 0.8);
+  opacity: 0;
+}
+
+.is-landed .landing-journey-thread-land {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.is-landed .landing-journey-thread-land::after {
+  animation: landing-thread-ring 900ms var(--ease-out) both;
+}
+
+@keyframes landing-thread-ring {
+  from { opacity: 0.9; transform: scale(1); }
+  to   { opacity: 0;   transform: scale(4.5); }
+}
+
 @media (max-width: 900px) {
   .landing-journey-pin.is-track {
     --j-w: 76vw;
@@ -6381,7 +6575,8 @@ h1.landing-word-center {
   .is-track .landing-journey-stage {
     padding-top: max(64px, calc(env(safe-area-inset-top) + 40px), 9svh);
     /* La barra inferior fija mide ~70 px. */
-    padding-bottom: 96px;
+    --j-pb: 96px;
+    padding-bottom: var(--j-pb);
   }
 
   .is-track .landing-journey-track {
@@ -6702,9 +6897,132 @@ h1.landing-word-center {
   color: #8f7484;
 }
 
+/* ── La horquilla: el hilo del martes se reparte en las tres tarjetas ──
+   El nodo de llegada queda sobre el titular; la horquilla retoma el trazo
+   bajo el subtítulo, así que se lee como una sola línea que pasa detrás
+   del texto. Por defecto está dibujada: sin scroll-driven animations (o
+   con movimiento reducido) se ve quieta y completa. */
+
+.landing-banks .landing-banks-head {
+  margin-bottom: 0;
+}
+
+.landing-banks-fork {
+  /* Centro de la primera columna: tres columnas iguales y dos huecos de
+     16 px en la rejilla. */
+  --fork-col: calc((100% - 32px) / 6);
+  position: relative;
+  height: clamp(44px, 5vw, 60px);
+  view-timeline: --banks-fork block;
+}
+
+.landing-banks-fork > span {
+  position: absolute;
+  display: block;
+}
+
+.landing-banks-fork-stem {
+  top: 10px;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  height: calc(50% - 10px);
+  background: linear-gradient(to bottom, rgba(240, 122, 172, 0), #f07aac);
+  transform-origin: top center;
+}
+
+.landing-banks-fork-bar {
+  top: 50%;
+  left: var(--fork-col);
+  right: var(--fork-col);
+  height: 1px;
+  background: linear-gradient(to right, rgba(240, 122, 172, 0.45), #f07aac 50%, rgba(240, 122, 172, 0.45));
+  box-shadow: 0 0 10px rgba(240, 122, 172, 0.4);
+  transform-origin: center;
+}
+
+.landing-banks-fork-drop {
+  top: 50%;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, #f07aac, rgba(240, 122, 172, 0.35));
+  transform-origin: top center;
+}
+
+.landing-banks-fork-drop--left { left: calc(var(--fork-col) - 0.5px); }
+.landing-banks-fork-drop--mid { left: calc(50% - 0.5px); }
+.landing-banks-fork-drop--right { right: calc(var(--fork-col) - 0.5px); }
+
+.landing-banks-card {
+  position: relative;
+}
+
+/* Donde el trazo toca la tarjeta, su filo se enciende. */
+.landing-banks-card-spark {
+  position: absolute;
+  top: -1px;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(to right, rgba(240, 122, 172, 0), #f07aac, rgba(240, 122, 172, 0));
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-banks-fork-stem {
+      animation: landing-fork-grow-y linear both;
+      animation-timeline: --banks-fork;
+      animation-range: cover 4% cover 14%;
+    }
+
+    .landing-banks-fork-bar {
+      animation: landing-fork-grow-x linear both;
+      animation-timeline: --banks-fork;
+      animation-range: cover 14% cover 24%;
+    }
+
+    .landing-banks-fork-drop {
+      animation: landing-fork-grow-y linear both;
+      animation-timeline: --banks-fork;
+      animation-range: cover 24% cover 32%;
+    }
+
+    /* Mide su propia entrada: en el teléfono las tarjetas van apiladas y
+       cada una se enciende al llegar, no las tres a la vez. */
+    .landing-banks-card-spark {
+      animation: landing-fork-spark linear both;
+      animation-timeline: view();
+      animation-range: cover 26% cover 40%;
+    }
+  }
+
+  @keyframes landing-fork-grow-y {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+
+  @keyframes landing-fork-grow-x {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  @keyframes landing-fork-spark {
+    from { opacity: 0;   transform: scaleX(0.2); }
+    to   { opacity: 0.8; transform: scaleX(1); }
+  }
+}
+
 @media (max-width: 820px) {
   .landing-banks-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Una sola columna: el trazo baja recto a la primera tarjeta. */
+  .landing-banks-fork-bar,
+  .landing-banks-fork-drop--left,
+  .landing-banks-fork-drop--right {
+    display: none;
   }
 }
 

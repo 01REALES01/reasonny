@@ -46,6 +46,14 @@ const DAY_STEPS: ReadonlyArray<{ readonly minute: number; readonly total: number
  * Convierte el scroll vertical en avance horizontal (landing.css → "UN
  * MARTES — la línea en zigzag").
  *
+ * La línea no se corta al final: cuando el martes termina, sigue de largo
+ * más allá del último nodo (debajo de él se monta «Fin de mes», y bajar
+ * ahí mismo tacharía su texto), gira en ángulo recto como los tallos,
+ * baja hasta el borde de la pantalla fijada y, ya suelta la
+ * sección, sigue en curva hasta el nodo sobre el titular de los bancos. Un
+ * trazo que se interrumpe al cambiar de sección dice «esto se acabó»; uno
+ * que continúa dice «esto sigue», que es lo que queremos que se sienta.
+ *
  * El movimiento es CONTINUO y proporcional al dedo: un intento anterior se
  * detenía en cada momento, y un scroll que avanza sin que nada se mueva se
  * siente como un tirón, no como una pausa. Solo hay dos reposos cortos: al
@@ -67,6 +75,10 @@ interface Pace {
   /** Reposos al fijarse y al final, en fracciones del alto de pantalla. */
   readonly holdStart: number;
   readonly holdEnd: number;
+  /** Scroll que tarda la línea en bajar del último nodo al borde de la
+   *  pantalla, en fracciones del alto. Va después del reposo final: primero
+   *  se lee el cierre quieto, después la línea se va. */
+  readonly drop: number;
   /** Un momento empieza a armarse con su borde izquierdo en `from` y queda
    *  entero en `to` (fracciones del ancho de pantalla). */
   readonly from: number;
@@ -81,25 +93,47 @@ interface Pace {
    armar antes de pasar por el centro. */
 function paceFor(vw: number): Pace {
   return vw > 900
-    ? { ratio: 1.1, holdStart: 0.12, holdEnd: 0.4, from: 0.98, to: 0.55 }
-    : { ratio: 1.2, holdStart: 0.1, holdEnd: 0.45, from: 0.95, to: 0.08 };
+    ? { ratio: 1.1, holdStart: 0.12, holdEnd: 0.18, drop: 0.36, from: 0.98, to: 0.55 }
+    : { ratio: 1.2, holdStart: 0.1, holdEnd: 0.2, drop: 0.4, from: 0.95, to: 0.08 };
 }
+
+/* Ya suelta la sección, px de línea por px de scroll. Por debajo de 1 la
+   punta sube despacio por la pantalla mientras la línea crece: se ve
+   dibujarse. A 1 se quedaría clavada en el borde inferior y la línea
+   parecería estática, entrando ya pintada. */
+const THREAD_PACE = 0.5;
+const THREAD_SAMPLES = 48;
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v));
 }
 
-function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
+function useJourneyTrack(
+  pinRef: React.RefObject<HTMLDivElement | null>,
+  threadRef: React.RefObject<HTMLDivElement | null>,
+): void {
   useEffect(() => {
     const pin = pinRef.current;
-    if (!pin) return;
+    const thread = threadRef.current;
+    if (!pin || !thread) return;
     const stage = pin.querySelector<HTMLElement>('.landing-journey-stage');
     const track = pin.querySelector<HTMLElement>('.landing-journey-track');
     const intro = pin.querySelector<HTMLElement>('.landing-journey-intro');
     const list = pin.querySelector<HTMLElement>('.landing-journey');
     const fill = pin.querySelector<HTMLElement>('.landing-journey-line-fill');
     const steps = Array.from(pin.querySelectorAll<HTMLElement>('.landing-journey-moment'));
+    const exit = pin.querySelector<HTMLElement>('.landing-journey-exit');
+    const dropBox = pin.querySelector<HTMLElement>('.landing-journey-drop');
+    const runLine = pin.querySelector<HTMLElement>('.landing-journey-run-line');
+    const dropLine = pin.querySelector<HTMLElement>('.landing-journey-drop-line');
+    const dropTip = pin.querySelector<HTMLElement>('.landing-journey-drop-tip');
+    const reveal = thread.querySelector<HTMLElement>('.landing-journey-thread-reveal');
+    const inner = thread.querySelector<HTMLElement>('.landing-journey-thread-inner');
+    const threadTip = thread.querySelector<HTMLElement>('.landing-journey-thread-tip');
+    const land = thread.querySelector<HTMLElement>('.landing-journey-thread-land');
+    const paths = Array.from(thread.querySelectorAll<SVGPathElement>('path'));
     if (!stage || !track || !list || steps.length < 2) return;
+    if (!exit || !dropBox || !runLine || !dropLine || !dropTip || !reveal || !inner || !threadTip || !land) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let frame = 0;
@@ -114,16 +148,46 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
     let span = 1;
     let nodes: number[] = [];
     let arrivals: number[] = [];
+    // La salida: la bajada dentro de la pantalla fijada y la curva de fuera.
+    let dropStart = 0;
+    let dropSpan = 1;
+    let runLen = 0;
+    let dropLen = 0;
+    let threadH = 0;
+    let threadEnd = 0;
+    let curveX: number[] = [];
+    let curveY: number[] = [];
     // Lo último escrito, para no reescribir lo que no cambió.
     let lastX = -1;
     let lastT: string[] = [];
     let lastFill = '';
     let lastIntro = '';
+    let lastExit = '';
+
+    /** x de la curva a una altura dada. La curva baja siempre, así que la
+     *  altura la identifica: basta interpolar entre las muestras. */
+    function curveXAt(y: number): number {
+      let lo = 0;
+      let hi = curveY.length - 1;
+      while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1;
+        if (curveY[mid]! <= y) lo = mid;
+        else hi = mid;
+      }
+      const span = curveY[hi]! - curveY[lo]!;
+      const k = span > 0 ? (y - curveY[lo]!) / span : 0;
+      return curveX[lo]! + (curveX[hi]! - curveX[lo]!) * k;
+    }
 
     function render(): void {
       frame = 0;
       if (!active) return;
       const sc = -pin!.getBoundingClientRect().top;
+      renderTrack(sc);
+      renderExit(sc);
+    }
+
+    function renderTrack(sc: number): void {
       const x = Math.round(Math.min(distance, Math.max(0, (sc - startPx) / ratio)));
       if (x === lastX) return;
       lastX = x;
@@ -165,6 +229,37 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
       }
     }
 
+    /* La bajada llega al borde de la pantalla justo cuando la sección se
+       suelta (`total`), y en ese mismo píxel empieza la curva: el borde
+       inferior del escenario fijado ES el borde superior del hilo. Por eso
+       no hace falta leer la posición del hilo: sale de la del pin. */
+    function renderExit(sc: number): void {
+      const d = clamp01((sc - dropStart) / dropSpan);
+      const c = Math.round(Math.min(threadEnd, Math.max(0, (sc - total) * THREAD_PACE)));
+      const key = `${d.toFixed(3)}|${c}`;
+      if (key === lastExit) return;
+      lastExit = key;
+
+      // Velocidad constante a lo largo de la L: el tramo recto y la bajada
+      // se reparten el recorrido según su largo.
+      const along = d * (runLen + dropLen);
+      const run = runLen > 0 ? clamp01(along / runLen) : 1;
+      const fall = dropLen > 0 ? clamp01((along - runLen) / dropLen) : 1;
+      runLine!.style.transform = `scaleX(${run.toFixed(3)})`;
+      dropLine!.style.transform = `scaleY(${fall.toFixed(3)})`;
+      dropTip!.style.transform = `translate3d(${Math.round(run * runLen)}px, ${Math.round(fall * dropLen)}px, 0)`;
+      dropTip!.style.opacity = d > 0 && c === 0 ? '1' : '0';
+
+      // Revelado con dos transforms opuestos en vez de stroke-dashoffset:
+      // el marco baja hasta `c` y el dibujo sube lo mismo, así que se
+      // queda quieto y solo cambia cuánto se ve. Todo en el compositor.
+      reveal!.style.transform = `translate3d(0, ${c - threadH}px, 0)`;
+      inner!.style.transform = `translate3d(0, ${threadH - c}px, 0)`;
+      threadTip!.style.transform = `translate3d(${curveXAt(c).toFixed(1)}px, ${c}px, 0)`;
+      threadTip!.style.opacity = c > 0 && c < threadEnd ? '1' : '0';
+      thread!.classList.toggle('is-landed', c >= threadEnd);
+    }
+
     function schedule(): void {
       if (!frame) frame = requestAnimationFrame(render);
     }
@@ -173,14 +268,20 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
       active = false;
       pin!.classList.remove('is-track');
       pin!.style.removeProperty('--journey-height');
+      thread!.classList.remove('is-live', 'is-landed');
       track!.style.transform = '';
       if (fill) fill.style.transform = '';
       if (intro) intro.style.opacity = '';
       steps.forEach((el) => el.style.removeProperty('--t'));
+      for (const el of [runLine, dropLine, dropTip, reveal, inner, threadTip]) {
+        el!.style.transform = '';
+        el!.style.opacity = '';
+      }
       lastX = -1;
       lastT = [];
       lastFill = '';
       lastIntro = '';
+      lastExit = '';
     }
 
     function evaluate(): void {
@@ -201,13 +302,19 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
         return;
       }
 
+      thread!.classList.add('is-live');
+
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const pace = paceFor(vw);
       distance = Math.max(0, track!.scrollWidth - stage!.clientWidth);
       ratio = pace.ratio;
       startPx = vh * pace.holdStart;
-      total = startPx + distance * ratio + vh * pace.holdEnd;
+      dropStart = startPx + distance * ratio + vh * pace.holdEnd;
+      dropSpan = vh * pace.drop;
+      total = dropStart + dropSpan;
+      runLen = exit!.offsetWidth;
+      dropLen = dropBox!.offsetHeight;
 
       lefts = steps.map((el) => el.getBoundingClientRect().left);
       span = vw * (pace.from - pace.to);
@@ -218,6 +325,32 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
       const listLeft = list!.getBoundingClientRect().left;
       const dot = steps[0]!.querySelector<HTMLElement>('.landing-journey-dot')?.offsetWidth ?? 0;
       nodes = lefts.map((l) => l - listLeft + dot / 2);
+
+      // La curva sale de donde termina la bajada con la pista ya quieta y
+      // aterriza en el punto que el CSS le da al nodo de llegada: el CSS
+      // manda dónde, aquí solo se mide.
+      const threadW = thread!.clientWidth;
+      threadH = thread!.clientHeight;
+      threadEnd = land!.offsetTop + land!.offsetHeight / 2;
+      const endX = land!.offsetLeft + land!.offsetWidth / 2;
+      const threadLeft = thread!.getBoundingClientRect().left;
+      const startX = Math.min(threadW - 8, Math.max(8, lefts[lefts.length - 1]! - distance + exit!.offsetLeft + runLen - threadLeft));
+      const c1 = threadEnd * 0.55;
+      const c2 = threadEnd * 0.45;
+      const d = `M ${startX.toFixed(1)} 0 C ${startX.toFixed(1)} ${c1.toFixed(1)} ${endX.toFixed(1)} ${c2.toFixed(1)} ${endX.toFixed(1)} ${threadEnd.toFixed(1)}`;
+      paths.forEach((p) => p.setAttribute('d', d));
+      curveX = [];
+      curveY = [];
+      for (let i = 0; i <= THREAD_SAMPLES; i++) {
+        const t = i / THREAD_SAMPLES;
+        const u = 1 - t;
+        const a = u * u * u;
+        const b = 3 * u * u * t;
+        const e = 3 * u * t * t;
+        const f = t * t * t;
+        curveX.push((a + b) * startX + (e + f) * endX);
+        curveY.push(b * c1 + e * c2 + f * threadEnd);
+      }
 
       pin!.style.setProperty('--journey-height', `${Math.round(total + stage!.clientHeight)}px`);
       active = true;
@@ -246,7 +379,7 @@ function useJourneyTrack(pinRef: React.RefObject<HTMLDivElement | null>): void {
       reduceMotion.removeEventListener('change', evaluate);
       reset();
     };
-  }, [pinRef]);
+  }, [pinRef, threadRef]);
 }
 
 /* ── Piezas ─────────────────────────────────────────────────────────── */
@@ -391,188 +524,222 @@ function StatementArt(): React.ReactElement {
 
 export function LandingDayJourney(): React.ReactElement {
   const pinRef = useRef<HTMLDivElement>(null);
-  useJourneyTrack(pinRef);
+  const threadRef = useRef<HTMLDivElement>(null);
+  useJourneyTrack(pinRef, threadRef);
 
   // La categoría que eliges a las 13:05 es la que aparece aprendida a las
   // 13:06: el ejemplo se comporta como el bot.
   const [choice, setChoice] = useState<string>('Restaurante');
 
   return (
-    <div ref={pinRef} className="landing-journey-pin">
-      <div className="landing-journey-stage">
-        <div className="landing-journey-track">
-          <div className="landing-journey-intro">
-            <div className="landing-journey-intro-top">
-              <h3 className="landing-journey-intro-title">
-                Un martes cualquiera, <span className="landing-headline-gold">de principio a fin.</span>
-              </h3>
+    <>
+      <div ref={pinRef} className="landing-journey-pin">
+        <div className="landing-journey-stage">
+          <div className="landing-journey-track">
+            <div className="landing-journey-intro">
+              <div className="landing-journey-intro-top">
+                <h3 className="landing-journey-intro-title">
+                  Un martes cualquiera, <span className="landing-headline-gold">de principio a fin.</span>
+                </h3>
+              </div>
+              <div className="landing-journey-intro-node" aria-hidden="true">
+                <span className="landing-journey-intro-hint">
+                  Sigue bajando <span className="landing-journey-intro-arrow">→</span>
+                </span>
+              </div>
+              <p className="landing-journey-intro-text">
+                Tres gastos, una pregunta y una consulta. Junto a cada hora, lo que te costó.
+              </p>
             </div>
-            <div className="landing-journey-intro-node" aria-hidden="true">
-              <span className="landing-journey-intro-hint">
-                Sigue bajando <span className="landing-journey-intro-arrow">→</span>
-              </span>
-            </div>
-            <p className="landing-journey-intro-text">
-              Tres gastos, una pregunta y una consulta. Junto a cada hora, lo que te costó.
-            </p>
-          </div>
 
-          <ol id="features-telemetry" className="landing-journey">
-            <li className="landing-journey-line" aria-hidden="true">
-              <span className="landing-journey-line-fill" />
-            </li>
-            <Moment
-              id="features-zero-touch"
-              side="up"
-              hour="9:41"
-              cost="0 toques"
-              title="Pagas el café con Apple Pay y sigues caminando."
-              text={
-                <>
-                  El Atajo lee la alerta del banco y lo guarda <strong>antes</strong> de clasificarlo: perder
-                  un gasto es peor que tenerlo sin etiqueta.
-                </>
-              }
-              artifact={
-                <div className="landing-journey-receipt">
-                  <span className="landing-journey-receipt-nfc" aria-hidden="true">
-                    <CategoryIcon name="Nfc" size={16} />
-                  </span>
-                  <div className="landing-journey-receipt-body">
-                    <div className="landing-journey-receipt-row">
-                      <span className="landing-journey-receipt-merchant">Starbucks Reserva</span>
-                      <span className="landing-journey-receipt-amount">
-                        <Money amountMinor={1850000n} currency="COP" />
+            <ol id="features-telemetry" className="landing-journey">
+              <li className="landing-journey-line" aria-hidden="true">
+                <span className="landing-journey-line-fill" />
+              </li>
+              <Moment
+                id="features-zero-touch"
+                side="up"
+                hour="9:41"
+                cost="0 toques"
+                title="Pagas el café con Apple Pay y sigues caminando."
+                text={
+                  <>
+                    El Atajo lee la alerta del banco y lo guarda <strong>antes</strong> de clasificarlo: perder
+                    un gasto es peor que tenerlo sin etiqueta.
+                  </>
+                }
+                artifact={
+                  <div className="landing-journey-receipt">
+                    <span className="landing-journey-receipt-nfc" aria-hidden="true">
+                      <CategoryIcon name="Nfc" size={16} />
+                    </span>
+                    <div className="landing-journey-receipt-body">
+                      <div className="landing-journey-receipt-row">
+                        <span className="landing-journey-receipt-merchant">Starbucks Reserva</span>
+                        <span className="landing-journey-receipt-amount">
+                          <Money amountMinor={1850000n} currency="COP" />
+                        </span>
+                      </div>
+                      <span className="landing-journey-ok">
+                        <CategoryIcon name="Check" size={12} />
+                        Cafetería, por una regla que ya conocía
                       </span>
                     </div>
-                    <span className="landing-journey-ok">
-                      <CategoryIcon name="Check" size={12} />
-                      Cafetería, por una regla que ya conocía
-                    </span>
                   </div>
-                </div>
-              }
-            />
+                }
+              />
 
-            <Moment
-              id="features-telegram"
-              side="down"
-              hour="13:05"
-              cost="te pregunta"
-              title="Un sitio nuevo: no adivina, te pregunta por Telegram."
-              artifact={
-                <BotBubble>
-                  <p className="landing-journey-bubble-text">
-                    <strong><Money amountMinor={4250000n} currency="COP" /></strong> en La Puerta Falsa. ¿En qué
-                    categoría va?
-                  </p>
-                  <div className="landing-journey-keys">
-                    {CATEGORY_CHOICES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setChoice(cat)}
-                        aria-pressed={choice === cat}
-                        className={`landing-journey-key${choice === cat ? ' landing-journey-key--on' : ''}`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </BotBubble>
-              }
-            />
-
-            <Moment
-              side="up"
-              hour="13:06"
-              cost="2 toques"
-              title={<>Tocas «{choice}» y queda como regla.</>}
-              text="La próxima compra ahí entra sola, por el Atajo o por el chat."
-              artifact={<RulesArt choice={choice} />}
-            />
-
-            <Moment
-              side="down"
-              hour="19:30"
-              cost="1 mensaje"
-              title="Pagas el taxi en efectivo y escribes «12000 taxi»."
-              text="Ni el efectivo, ni Nequi, ni los QR mandan alerta: una línea de chat los cubre."
-              artifact={
-                <div className="landing-journey-chat">
-                  <UserBubble>12000 taxi</UserBubble>
+              <Moment
+                id="features-telegram"
+                side="down"
+                hour="13:05"
+                cost="te pregunta"
+                title="Un sitio nuevo: no adivina, te pregunta por Telegram."
+                artifact={
                   <BotBubble>
                     <p className="landing-journey-bubble-text">
-                      <span className="landing-journey-ok">
-                        <CategoryIcon name="Check" size={12} /> Guardado · Transporte
-                      </span>
-                      <Money amountMinor={1200000n} currency="COP" /> · ya conocía «taxi»
+                      <strong><Money amountMinor={4250000n} currency="COP" /></strong> en La Puerta Falsa. ¿En qué
+                      categoría va?
                     </p>
+                    <div className="landing-journey-keys">
+                      {CATEGORY_CHOICES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setChoice(cat)}
+                          aria-pressed={choice === cat}
+                          className={`landing-journey-key${choice === cat ? ' landing-journey-key--on' : ''}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
                   </BotBubble>
+                }
+              />
+
+              <Moment
+                side="up"
+                hour="13:06"
+                cost="2 toques"
+                title={<>Tocas «{choice}» y queda como regla.</>}
+                text="La próxima compra ahí entra sola, por el Atajo o por el chat."
+                artifact={<RulesArt choice={choice} />}
+              />
+
+              <Moment
+                side="down"
+                hour="19:30"
+                cost="1 mensaje"
+                title="Pagas el taxi en efectivo y escribes «12000 taxi»."
+                text="Ni el efectivo, ni Nequi, ni los QR mandan alerta: una línea de chat los cubre."
+                artifact={
+                  <div className="landing-journey-chat">
+                    <UserBubble>12000 taxi</UserBubble>
+                    <BotBubble>
+                      <p className="landing-journey-bubble-text">
+                        <span className="landing-journey-ok">
+                          <CategoryIcon name="Check" size={12} /> Guardado · Transporte
+                        </span>
+                        <Money amountMinor={1200000n} currency="COP" /> · ya conocía «taxi»
+                      </p>
+                    </BotBubble>
+                  </div>
+                }
+              />
+
+              <Moment
+                side="up"
+                hour="22:10"
+                cost="1 consulta"
+                title="Antes de dormir, escribes /hoy."
+                text="Las mismas cifras que la app, sumadas en tu zona horaria."
+                artifact={<TodayArt />}
+              />
+
+              <Moment
+                id="features-vision"
+                side="down"
+                hour="Fin de mes"
+                cost="En camino"
+                soon
+                title="El extracto recupera lo que se escapó."
+                text={
+                  <>
+                    <strong>Todavía no está construido</strong>: hoy ese hueco lo cubre el chat.
+                  </>
+                }
+                artifact={<StatementArt />}
+              />
+
+              <li className="landing-journey-moment landing-journey-moment--up landing-journey-moment--end">
+                <div className="landing-journey-body">
+                  <div className="landing-journey-copy">
+                  <p className="landing-journey-end-title">El martes, completo.</p>
+                  <dl className="landing-journey-tally">
+                    <div className="landing-journey-tally-item">
+                      <dt>gastos</dt>
+                      <dd>{EXPENSES_IN_THE_DAY}</dd>
+                    </div>
+                    <div className="landing-journey-tally-item">
+                      <dt>toques</dt>
+                      <dd>2</dd>
+                    </div>
+                    <div className="landing-journey-tally-item">
+                      <dt>mensaje</dt>
+                      <dd>1</dd>
+                    </div>
+                    <div className="landing-journey-tally-item">
+                      <dt>formularios</dt>
+                      <dd>0</dd>
+                    </div>
+                  </dl>
+                  <p className="landing-journey-end-note">
+                    A mano habrían sido {EXPENSES_IN_THE_DAY * MANUAL_STEPS_PER_EXPENSE} pasos: los{' '}
+                    {MANUAL_STEPS_PER_EXPENSE} de arriba, una vez por gasto.
+                  </p>
+                  </div>
                 </div>
-              }
-            />
 
-            <Moment
-              side="up"
-              hour="22:10"
-              cost="1 consulta"
-              title="Antes de dormir, escribes /hoy."
-              text="Las mismas cifras que la app, sumadas en tu zona horaria."
-              artifact={<TodayArt />}
-            />
-
-            <Moment
-              id="features-vision"
-              side="down"
-              hour="Fin de mes"
-              cost="En camino"
-              soon
-              title="El extracto recupera lo que se escapó."
-              text={
-                <>
-                  <strong>Todavía no está construido</strong>: hoy ese hueco lo cubre el chat.
-                </>
-              }
-              artifact={<StatementArt />}
-            />
-
-            <li className="landing-journey-moment landing-journey-moment--up landing-journey-moment--end">
-              <div className="landing-journey-body">
-                <div className="landing-journey-copy">
-                <p className="landing-journey-end-title">El martes, completo.</p>
-                <dl className="landing-journey-tally">
-                  <div className="landing-journey-tally-item">
-                    <dt>gastos</dt>
-                    <dd>{EXPENSES_IN_THE_DAY}</dd>
-                  </div>
-                  <div className="landing-journey-tally-item">
-                    <dt>toques</dt>
-                    <dd>2</dd>
-                  </div>
-                  <div className="landing-journey-tally-item">
-                    <dt>mensaje</dt>
-                    <dd>1</dd>
-                  </div>
-                  <div className="landing-journey-tally-item">
-                    <dt>formularios</dt>
-                    <dd>0</dd>
-                  </div>
-                </dl>
-                <p className="landing-journey-end-note">
-                  A mano habrían sido {EXPENSES_IN_THE_DAY * MANUAL_STEPS_PER_EXPENSE} pasos: los{' '}
-                  {MANUAL_STEPS_PER_EXPENSE} de arriba, una vez por gasto.
-                </p>
+                <div className="landing-journey-node" aria-hidden="true">
+                  <span className="landing-journey-dot" />
                 </div>
-              </div>
 
-              <div className="landing-journey-node" aria-hidden="true">
-                <span className="landing-journey-dot" />
-              </div>
-            </li>
-          </ol>
+                {/* La salida: de largo, giro y bajada hasta el borde del escenario. */}
+                <span className="landing-journey-exit" aria-hidden="true">
+                  <span className="landing-journey-run">
+                    <span className="landing-journey-run-line" />
+                  </span>
+                  <span className="landing-journey-drop">
+                    <span className="landing-journey-drop-line" />
+                  </span>
+                  <span className="landing-journey-drop-tip" />
+                </span>
+              </li>
+            </ol>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* El hilo hasta los bancos. Solo existe mientras la pista está activa:
+          en la versión vertical no hay línea horizontal que continuar. La
+          vía tenue va fuera del revelado para que se vea el camino antes que
+          el trazo. Los `d` los escribe el hook, medidos. */}
+      <div ref={threadRef} className="landing-journey-thread" aria-hidden="true">
+        <svg className="landing-journey-thread-svg">
+          <path className="landing-journey-thread-rail" />
+        </svg>
+        <div className="landing-journey-thread-reveal">
+          <div className="landing-journey-thread-inner">
+            <svg className="landing-journey-thread-svg">
+              <path className="landing-journey-thread-glow" />
+              <path className="landing-journey-thread-lit" />
+            </svg>
+          </div>
+        </div>
+        <span className="landing-journey-thread-tip" />
+        <span className="landing-journey-thread-land" />
+      </div>
+    </>
   );
 }
