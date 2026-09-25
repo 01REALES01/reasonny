@@ -92,11 +92,11 @@
      rather than a black, and champagne carries the illumination: it is the
      accent the palette already had and the one that reads as value rather
      than as warning. */
-  --app-ground: #1c0f18;
-  --app-ground-lit: #2a1424;
+  --app-ground: #230813;
+  --app-ground-lit: #340e1d;
   --app-champagne-veil: rgba(228, 204, 166, 0.05);
-  /* Panels lift off the ground instead of sinking into it. */
-  --app-panel: rgba(56, 18, 36, 0.68);
+  /* Panels lift off the ground with illuminated vinotinto depth */
+  --app-panel: rgba(78, 18, 38, 0.82);
   --app-panel-border: rgba(228, 204, 166, 0.25);
 
   /* Hero balance card (DESIGN_SYSTEM.md 6.1) — still the single gradient in the
@@ -3387,21 +3387,21 @@ textarea:focus-visible {
 /* 4. Standalone Companion Module: Month Pace & Rhythm */
 .balance-pace-capsule-standalone {
   margin: 14px 6px 0;
-  padding: 14px 18px 12px;
+  padding: 15px 18px 13px;
   border-radius: 24px;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(200, 50, 95, 0.22) 0%, transparent 75%),
-    linear-gradient(168deg, rgba(82, 18, 40, 0.75) 0%, rgba(52, 12, 26, 0.65) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+    radial-gradient(120% 90% at 50% 0%, rgba(145, 34, 72, 0.28) 0%, transparent 70%),
+    linear-gradient(168deg, rgba(82, 19, 42, 0.85) 0%, rgba(52, 12, 26, 0.9) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(228, 204, 166, 0.22);
   border-top: 1.2px solid rgba(255, 255, 255, 0.32);
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-shadow:
-    0 10px 28px -8px rgba(120, 22, 58, 0.35),
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.2);
+    0 12px 32px -8px rgba(95, 18, 48, 0.42),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.18);
 }
 
 .balance-pace-row {
@@ -3535,11 +3535,21 @@ textarea:focus-visible {
 }
 
 .week-card {
-  margin: 16px 20px 4px;
-  padding: 18px 18px 16px;
-  border-radius: 24px;
-  background: var(--app-panel);
-  border: 1px solid var(--app-panel-border);
+  margin: 14px 6px 4px;
+  padding: 20px 18px 18px;
+  border-radius: 28px;
+  background:
+    /* Subtle vinotinto light sheen at the top */
+    radial-gradient(120% 80% at 50% 0%, rgba(145, 34, 72, 0.3) 0%, transparent 70%),
+    /* Rich luminous vinotinto glass body */
+    linear-gradient(168deg, rgba(82, 19, 42, 0.85) 0%, rgba(52, 12, 26, 0.9) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(228, 204, 166, 0.22);
+  border-top: 1.2px solid rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 16px 40px -10px rgba(95, 18, 48, 0.45),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.18);
   position: relative;
   z-index: 2;
 }
@@ -3904,7 +3914,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 20px 8px;
+  padding: 14px 6px 8px;
 }
 
 .fin-action-btn {
@@ -3943,10 +3953,15 @@ textarea:focus-visible {
 
 .fin-action-btn--secondary {
   flex: 1;
-  background: rgba(228, 204, 166, 0.08);
-  border: 1px solid var(--app-panel-border);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(145, 34, 72, 0.25) 0%, transparent 70%),
+    linear-gradient(168deg, rgba(78, 18, 38, 0.78) 0%, rgba(48, 11, 24, 0.85) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(228, 204, 166, 0.24);
+  border-top: 1.2px solid rgba(255, 255, 255, 0.3);
   color: var(--landing-champagne-gold);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px -4px rgba(80, 14, 38, 0.35);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3972,15 +3987,19 @@ textarea:focus-visible {
      warm veil from the top, a soft rose bloom behind the hero, and the plum
      ground beneath both. Three stops, none of them black. */
   background-image:
+    /* Delicate champagne veil */
     linear-gradient(
       to bottom,
       var(--app-champagne-veil) 0%,
-      rgba(228, 204, 166, 0.03) 45%,
-      rgba(228, 204, 166, 0.02) 100%
+      rgba(228, 204, 166, 0.02) 60%,
+      transparent 100%
     ),
-    radial-gradient(120% 55% at 50% 20%, rgba(185, 45, 90, 0.38) 0%, rgba(135, 28, 65, 0.18) 50%, transparent 80%),
-    radial-gradient(110% 40% at 50% 0%, rgba(205, 55, 108, 0.42) 0%, transparent 72%),
-    linear-gradient(to bottom, #2a1120 0%, #1f0b17 50%, #150610 100%);
+    /* Radiant illuminated vinotinto aura behind the week card and movements */
+    radial-gradient(130% 65% at 50% 55%, rgba(135, 26, 58, 0.28) 0%, rgba(92, 16, 40, 0.16) 50%, transparent 85%),
+    /* Upper illuminated vinotinto bloom behind hero and pace capsule */
+    radial-gradient(120% 48% at 50% 12%, rgba(145, 30, 66, 0.32) 0%, transparent 75%),
+    /* Authentic, deep, illuminated vinotinto ground — never fading to muddy black */
+    linear-gradient(178deg, #2f0b1a 0%, #240814 35%, #290a18 70%, #1e0611 100%);
   background-color: var(--app-ground);
 }
 
@@ -4198,14 +4217,16 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 12px;
   margin: 12px 6px 4px;
-  padding: 12px 16px;
-  border-radius: 20px;
+  padding: 13px 16px;
+  border-radius: 22px;
   background:
-    radial-gradient(100% 120% at 0% 0%, rgba(225, 55, 110, 0.22) 0%, transparent 60%),
-    linear-gradient(168deg, rgba(78, 18, 38, 0.82) 0%, rgba(48, 11, 24, 0.85) 100%);
+    radial-gradient(100% 120% at 0% 0%, rgba(145, 34, 72, 0.3) 0%, transparent 65%),
+    linear-gradient(168deg, rgba(80, 18, 40, 0.85) 0%, rgba(50, 11, 25, 0.9) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(228, 204, 166, 0.24);
   border-top: 1.2px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 10px 28px -6px rgba(130, 25, 62, 0.35), inset 0 1px 0.5px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 32px -8px rgba(95, 18, 48, 0.4), inset 0 1px 0.5px rgba(255, 255, 255, 0.18);
   animation: enter-callout 220ms var(--ease-out);
 }
 
