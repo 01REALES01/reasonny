@@ -266,7 +266,7 @@ La v1 afirmaba que RLS garantizaba aislamiento a nivel de motor. Falso con esta 
 
 | # | Bloque | Por qué aquí |
 | :--- | :--- | :--- |
-| H1 | **Habeas data mínimo** | Es una obligación que ya existe, no una función. Va primero y es pequeño |
+| H1 | **Habeas data mínimo** + registro con Google | Es una obligación que ya existe, no una función. Va primero y es pequeño. Google entra aquí porque la autorización tiene que cubrir **todos** los caminos de alta |
 | L1 | **Capa LLM agnóstica del canal** | Resuelve dos cosas que hoy fallan: el parser estricto rechaza «gasté 12 lucas en el almuerzo», y las consultas solo existen como comandos. La reusan W1 y F2 |
 | W1 | **WhatsApp** | El canal que los usuarios ya tienen abierto. Llega como adaptador fino sobre L1 y la capa de notificación |
 | F2 | **Fase 2 — OCR** | Sigue siendo núcleo y sigue planificada completa (§9). Llega con el adaptador de Gemini ya construido y probado en L1 |
@@ -567,6 +567,9 @@ Las cuatro en negrita son las que sostienen una conversación técnica de verdad
 - **Autorización previa, expresa e informada:** casilla en el alta que enlaza la política. Se guarda qué versión se aceptó y cuándo (tabla `consents`), porque la ley exige poder **probar** la autorización, no solo haberla pedido.
 - **Encargados declarados** (quién procesa los datos por cuenta del producto): Neon, Vercel, Cloudflare, Google (Gemini), Telegram y, desde W1, Meta. La **transferencia internacional** (los servidores están fuera de Colombia) se declara en la política.
 - **Derechos del titular:** el export CSV ya cubre el acceso; falta **borrar la cuenta** y todo lo que cuelga de ella.
+- **Registro con Google**, junto al código por correo. La infraestructura ya está (`src/lib/auth-server.ts` hace de proxy de primera parte y fija `sameSite: 'lax'` para la vuelta de OAuth); falta el botón en `sign-in-form.tsx` y el cliente OAuth. Va en este bloque y no aparte porque la autorización se pide en **cada** camino de alta: un segundo camino añadido después nacería sin ella. Apple sigue diferido (solo es obligatorio en la App Store).
+- **Preparación en Google Cloud** (una sola sesión, un solo proyecto): cliente OAuth para el registro; API key de Gemini con la **facturación activada** y **alerta de presupuesto de US$5** (la usa L1). Las variables van a `.env.local` y a Vercel, nunca al repo.
+- **Los usuarios que ya existen** aceptan la política en su próxima entrada: su alta fue anterior a ella y la autorización no se presume.
 - *Límite honesto:* esto es el mínimo que un proyecto personal puede sostener. Antes de cobrar o abrir de verdad, lo revisa un abogado; no lo sustituye este plan.
 
 **L1 — Capa LLM agnóstica del canal.** Gemini Flash-Lite **en plan de pago**, por REST, en `infrastructure/ai/gemini.ts` (el mismo adaptador que usará F2). Dos usos, y en ninguno el modelo calcula dinero:
