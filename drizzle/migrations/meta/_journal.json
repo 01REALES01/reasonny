@@ -50,6 +50,13 @@
       "when": 1790123296808,
       "tag": "0006_abnormal_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790346047370,
+      "tag": "0007_cooing_hulk",
+      "breakpoints": true
     }
   ]
 }

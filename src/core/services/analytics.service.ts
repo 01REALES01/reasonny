@@ -55,7 +55,6 @@ export interface DashboardAccount {
   readonly name: string;
   readonly type: string;
   readonly currency: string;
-  readonly balanceMinor: bigint;
   readonly color: string;
 }
 
@@ -395,12 +394,11 @@ export async function getDashboardData(
     );
   }
 
-  const dashboardAccounts: DashboardAccount[] = accounts.map((acc, index) => ({
+  const dashboardAccounts: DashboardAccount[] = accounts.map((acc) => ({
     id: acc.id,
     name: acc.name,
     type: acc.type,
     currency: acc.currency,
-    balanceMinor: balances[index]?.balanceMinor ?? acc.initialBalanceMinor ?? 0n,
     color: acc.color,
   }));
 

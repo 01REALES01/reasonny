@@ -127,12 +127,22 @@ export const accounts = pgTable(
       .notNull()
       .default(sql`0`),
     color: varchar({ length: 20 }).notNull().default('#3B82F6'),
+    // Which bank SMS feeds this account, and the last digits it names. Both
+    // NULL for an account the user made by hand. A bank account without
+    // digits in its messages stores '' rather than NULL, so the constraint
+    // below still sees it as one account: NULLs never collide in a UNIQUE.
+    bank: varchar({ length: 30 }),
+    mask: varchar({ length: 8 }),
     isArchived: boolean('is_archived').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique('uq_accounts_name').on(t.userId, t.name),
+    // The idempotency of "the account for this card" (rule 6): two SMS from
+    // the same card arriving together both try to create it, and the
+    // constraint, not a prior SELECT, decides that only one does.
+    unique('uq_accounts_bank_mask').on(t.userId, t.bank, t.mask),
     check(
       'accounts_type_check',
       sql`${t.type} IN ('checking','credit_card','savings','cash','digital_wallet')`,

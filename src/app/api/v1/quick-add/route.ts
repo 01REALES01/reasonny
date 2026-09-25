@@ -9,7 +9,7 @@ import { notifyIfUncategorized } from '@/core/services/notification.service';
 import { recordTransaction } from '@/core/services/transaction.service';
 import { type UserId } from '@/core/types';
 import { telegramAdapter } from '@/clients/telegram/messaging-adapter';
-import { parseBankSms } from '@/infrastructure/sms-parsers';
+import { accountTypeFromSms, bankLabel, parseBankSms } from '@/infrastructure/sms-parsers';
 import { readBearer, verifyIngestToken } from '@/lib/ingest-token';
 import { DEFAULT_LOCALE, type Locale, t } from '@/lib/i18n';
 
@@ -282,6 +282,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     merchant: tx.merchant,
     transactionDate: tx.transactionDate,
     source: SOURCE,
+    bankAccount: {
+      bank: tx.bank,
+      mask: tx.accountMask,
+      label: bankLabel(tx.bank),
+      type: accountTypeFromSms(text),
+    },
     idempotencyKey: parsedBody.data.idempotencyKey ?? uuidFromSeed(`${userId}:${text.trim()}`),
     // No category from the parser - a bank SMS does not name one. The rule
     // engine inside recordTransaction gets its turn here, and when it has

@@ -28,7 +28,6 @@ export interface UserAccountItem {
   readonly name: string;
   readonly type: string;
   readonly currency: string;
-  readonly balanceMinor?: bigint | undefined;
   readonly color?: string | undefined;
 }
 
@@ -40,7 +39,6 @@ export interface FormattedWalletCard {
   readonly bankName: string;
   readonly brandBadge: string;
   readonly typeLabel: string;
-  readonly balanceMinor?: bigint | undefined;
   readonly currency: string;
 }
 
@@ -142,7 +140,6 @@ function parseAccountCard(acc: UserAccountItem): FormattedWalletCard {
     bankName,
     brandBadge,
     typeLabel,
-    balanceMinor: acc.balanceMinor,
     currency: acc.currency,
   };
 }
@@ -329,12 +326,13 @@ export function BalanceHero({
           {
             id: 'default-card',
             displayName: 'Cuenta Principal',
-            mask: '•••• 9286',
-            last4: '9286',
+            // Nothing invented: before the first capture there is no account,
+            // and a made-up card number reads as somebody else's card.
+            mask: null,
+            last4: null,
             bankName: 'Cuenta Principal',
-            brandBadge: 'VISA',
-            typeLabel: 'Saldo Total',
-            balanceMinor: totalBalanceMinor,
+            brandBadge: '',
+            typeLabel: 'Cuenta',
             currency,
           },
         ];
@@ -618,21 +616,14 @@ export function BalanceHero({
               </div>
             </div>
 
-            {/* Bottom Row: Real account name, real balance, and account cycling counter */}
+            {/* Bottom Row: account name and cycling counter. No per-card balance: the
+                hero above already shows the total, and a second figure per card
+                competed with it for the same glance. */}
             <div className="balance-card-bottom-row">
               <div className="balance-card-account-meta">
                 <span className="balance-card-acc-name">
                   {currentCard.displayName}
                 </span>
-                {currentCard.balanceMinor !== undefined && (
-                  <span className="balance-card-acc-balance">
-                    {isHidden ? (
-                      <span>$ ••••</span>
-                    ) : (
-                      <Money amountMinor={currentCard.balanceMinor} currency={currentCard.currency} />
-                    )}
-                  </span>
-                )}
               </div>
 
               {walletCards.length > 1 && (

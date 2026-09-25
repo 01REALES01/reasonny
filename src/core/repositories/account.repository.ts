@@ -89,6 +89,67 @@ export async function createAccount(
   return row;
 }
 
+export interface BankAccountInput {
+  readonly bank: string;
+  /** Last digits from the SMS; '' when the message names none. */
+  readonly mask: string;
+  readonly name: string;
+  readonly type: AccountType;
+  readonly currency: string;
+}
+
+/**
+ * The account a bank SMS belongs to, created on the first message from it.
+ *
+ * Insert-then-read, not read-then-insert: two messages from the same card can
+ * arrive in the same second, and a SELECT before the INSERT would let both
+ * create it (rule 6). ON CONFLICT DO NOTHING without a target also covers the
+ * name constraint, for the user who already made "Bancolombia *1111" by hand -
+ * that account IS this one, so it is adopted rather than duplicated.
+ */
+export async function findOrCreateBankAccount(
+  userId: UserId,
+  input: BankAccountInput,
+): Promise<AccountRow> {
+  const db = getDb();
+  await db
+    .insert(accounts)
+    .values({
+      userId,
+      name: input.name,
+      type: input.type,
+      currency: input.currency,
+      bank: input.bank,
+      mask: input.mask,
+    })
+    .onConflictDoNothing();
+
+  const [byCard] = await db
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.userId, userId),
+        eq(accounts.bank, input.bank),
+        eq(accounts.mask, input.mask),
+      ),
+    )
+    .limit(1);
+  if (byCard) {
+    return byCard;
+  }
+
+  const [byName] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), eq(accounts.name, input.name)))
+    .limit(1);
+  if (!byName) {
+    throw new Error(`Failed to resolve the ${input.bank} account for user ${userId}`);
+  }
+  return byName;
+}
+
 export async function updateAccount(
   userId: UserId,
   accountId: AccountId,

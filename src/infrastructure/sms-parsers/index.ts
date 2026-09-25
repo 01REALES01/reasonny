@@ -55,3 +55,21 @@ export function parseBankSms(text: string): SmsParseResult {
 
   return { ok: true, transaction: parsed };
 }
+
+/** How each bank is written for a person; the parser id reads as a code. */
+const BANK_LABELS: Readonly<Record<string, string>> = {
+  bancolombia: 'Bancolombia',
+  banco_bogota: 'Banco de Bogotá',
+};
+
+export function bankLabel(bank: string): string {
+  return BANK_LABELS[bank] ?? bank;
+}
+
+/**
+ * Credit only when the message says so. A debit card in Colombia draws on a
+ * savings account, and that is what every other template describes.
+ */
+export function accountTypeFromSms(text: string): 'credit_card' | 'savings' {
+  return /T\.\s*Cred|Tarjeta\s+Cr[eé]dito/i.test(text) ? 'credit_card' : 'savings';
+}

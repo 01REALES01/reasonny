@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseBankSms } from './index';
+import { accountTypeFromSms, bankLabel, parseBankSms } from './index';
 
 /**
  * The corpus.
@@ -214,6 +214,21 @@ describe('Bank SMS parsers', () => {
     it('anchors the wall clock to Bogotá, not to UTC', () => {
       expect(ok(SMS.bogotaCard).transactionDate.toISOString()).toBe(
         '2026-08-27T01:18:00.000Z',
+      );
+    });
+  });
+
+  describe('Account hints', () => {
+    it('names each bank for a person, not by its parser id', () => {
+      expect(bankLabel('bancolombia')).toBe('Bancolombia');
+      expect(bankLabel('banco_bogota')).toBe('Banco de Bogotá');
+    });
+
+    it('files a card as credit only when the message says credit', () => {
+      expect(accountTypeFromSms(SMS.bancolombiaPurchaseCard)).toBe('savings');
+      expect(accountTypeFromSms(SMS.bogotaCard)).toBe('savings');
+      expect(accountTypeFromSms('Bancolombia: Compraste $10.000,00 en X con tu T.Cred *1234')).toBe(
+        'credit_card',
       );
     });
   });

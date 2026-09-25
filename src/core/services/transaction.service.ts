@@ -1,8 +1,10 @@
 import { MAX_USABLE_ACCURACY_M } from '@/core/geo';
 import {
   createAccount,
+  findOrCreateBankAccount,
   getAccount,
   listAccounts,
+  type AccountType,
 } from '@/core/repositories/account.repository';
 import { getCategory } from '@/core/repositories/category.repository';
 import type { ProfileRow } from '@/core/repositories/profile.repository';
@@ -92,6 +94,20 @@ export interface RecordTransactionInput {
    * here - see `resolveAccount`.
    */
   readonly accountId?: string | null | undefined;
+  /**
+   * The bank and card a parsed SMS names. Routes the spend to that card's own
+   * account, created on its first message, instead of the default one - the
+   * wallet on the dashboard is only true if each bank's money sits apart.
+   */
+  readonly bankAccount?:
+    | {
+        readonly bank: string;
+        readonly mask: string | null;
+        readonly label: string;
+        readonly type: AccountType;
+      }
+    | null
+    | undefined;
   readonly categoryId?: string | null | undefined;
   readonly idempotencyKey?: string | null | undefined;
   /** Defaults to 'manual' when a category was given, null when it was not. */
@@ -186,6 +202,7 @@ async function resolveAccount(
   userId: UserId,
   profile: ProfileRow,
   requestedAccountId: string | null | undefined,
+  bankAccount?: RecordTransactionInput['bankAccount'],
 ): Promise<{ accountId: ReturnType<typeof toAccountId>; currency: string } | null> {
   if (requestedAccountId) {
     const branded = asBranded(requestedAccountId, toAccountId);
@@ -199,10 +216,25 @@ async function resolveAccount(
     return { accountId: toAccountId(account.id), currency: account.currency };
   }
 
+  if (bankAccount) {
+    const mask = bankAccount.mask ?? '';
+    const account = await findOrCreateBankAccount(userId, {
+      bank: bankAccount.bank,
+      mask,
+      name: mask ? `${bankAccount.label} *${mask}` : bankAccount.label,
+      type: bankAccount.type,
+      currency: profile.baseCurrency,
+    });
+    return { accountId: toAccountId(account.id), currency: account.currency };
+  }
+
+  // Cash before anything else. listAccounts sorts by name, so once a bank
+  // account exists "Bancolombia *1111" sorts ahead of "Efectivo", and a
+  // "12000 almuerzo" typed in Telegram would land on a card it never touched.
   const accounts = await listAccounts(userId);
-  const first = accounts[0];
-  if (first) {
-    return { accountId: toAccountId(first.id), currency: first.currency };
+  const fallback = accounts.find((a) => a.type === 'cash') ?? accounts[0];
+  if (fallback) {
+    return { accountId: toAccountId(fallback.id), currency: fallback.currency };
   }
 
   // First transaction of a new profile. Cash, because that is the account
@@ -228,7 +260,7 @@ export async function recordTransaction(
   profile: ProfileRow,
   input: RecordTransactionInput,
 ): Promise<RecordTransactionResult> {
-  const account = await resolveAccount(userId, profile, input.accountId);
+  const account = await resolveAccount(userId, profile, input.accountId, input.bankAccount);
   if (!account) {
     return { ok: false, reason: 'unknown_account' };
   }

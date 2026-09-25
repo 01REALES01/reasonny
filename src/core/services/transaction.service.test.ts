@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/core/repositories/account.repository', () => ({
   listAccounts: vi.fn(),
   createAccount: vi.fn(),
+  findOrCreateBankAccount: vi.fn(),
   getAccount: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ vi.mock('@/core/services/categorization.service', () => ({
 
 import {
   createAccount,
+  findOrCreateBankAccount,
   getAccount,
   listAccounts,
 } from '@/core/repositories/account.repository';
@@ -117,6 +119,60 @@ describe('recordTransaction', () => {
         currency: 'COP',
       });
       expect(writtenInput()?.accountId).toBe(ACCOUNT_ID);
+    });
+
+    it('prefers the cash account over one that sorts ahead of it by name', async () => {
+      // listAccounts orders by name, so "Bancolombia *1111" comes first. A
+      // spend typed in Telegram must not land on a card it never touched.
+      vi.mocked(listAccounts).mockResolvedValue([
+        { id: OTHER_ACCOUNT_ID, type: 'savings', currency: 'COP' } as never,
+        { id: ACCOUNT_ID, type: 'cash', currency: 'COP' } as never,
+      ]);
+
+      await recordTransaction(userId, profileFixture(), baseInput());
+
+      expect(writtenInput()?.accountId).toBe(ACCOUNT_ID);
+    });
+
+    it("routes a bank SMS to that card's own account", async () => {
+      vi.mocked(findOrCreateBankAccount).mockResolvedValue({
+        id: OTHER_ACCOUNT_ID,
+        currency: 'COP',
+      } as never);
+
+      await recordTransaction(userId, profileFixture(), {
+        ...baseInput(),
+        bankAccount: { bank: 'bancolombia', mask: '1111', label: 'Bancolombia', type: 'savings' },
+      });
+
+      expect(findOrCreateBankAccount).toHaveBeenCalledWith(userId, {
+        bank: 'bancolombia',
+        mask: '1111',
+        name: 'Bancolombia *1111',
+        type: 'savings',
+        currency: 'COP',
+      });
+      expect(listAccounts).not.toHaveBeenCalled();
+      expect(writtenInput()?.accountId).toBe(OTHER_ACCOUNT_ID);
+    });
+
+    it('keeps one account per bank when the message names no digits', async () => {
+      vi.mocked(findOrCreateBankAccount).mockResolvedValue({
+        id: OTHER_ACCOUNT_ID,
+        currency: 'COP',
+      } as never);
+
+      await recordTransaction(userId, profileFixture(), {
+        ...baseInput(),
+        bankAccount: { bank: 'banco_bogota', mask: null, label: 'Banco de Bogotá', type: 'savings' },
+      });
+
+      // '' and not NULL: a NULL mask would never collide in the UNIQUE, and
+      // every digitless message would open a new account.
+      expect(vi.mocked(findOrCreateBankAccount).mock.calls[0]?.[1]).toMatchObject({
+        mask: '',
+        name: 'Banco de Bogotá',
+      });
     });
 
     it('answers a malformed account id instead of throwing', async () => {
