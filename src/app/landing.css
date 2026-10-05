@@ -6609,6 +6609,61 @@ h1.landing-word-center {
   }
 }
 
+/* El iPhone de tamaño normal con las barras de Safari a la vista deja 664
+   px de alto, y cada momento vive en media altura: ahí no cabían por
+   ~28 px, el hook caía a la versión vertical y en el teléfono más común no
+   había pista ni hilo. Se recorta aire, no contenido. Los teclados siguen
+   en 44 px: son botones de verdad. El iPhone SE sigue sin caber y se queda
+   con la versión vertical, que es para lo que existe. */
+@media (max-width: 900px) and (max-height: 760px) {
+  .is-track .landing-journey-stage {
+    padding-top: max(52px, calc(env(safe-area-inset-top) + 32px), 8svh);
+    --j-pb: 86px;
+  }
+
+  .is-track .landing-journey-moment--up .landing-journey-body {
+    padding-bottom: 10px;
+  }
+
+  .is-track .landing-journey-moment--down .landing-journey-body {
+    padding-top: 10px;
+  }
+
+  .is-track .landing-journey-when {
+    margin-bottom: 4px;
+  }
+
+  .is-track .landing-journey-hour {
+    font-size: 1.5rem;
+  }
+
+  .is-track .landing-journey-title {
+    font-size: 0.94rem;
+  }
+
+  .is-track .landing-journey-artifact {
+    margin-top: 8px;
+  }
+
+  .is-track .landing-journey-bubble {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .is-track .landing-journey-keys {
+    margin-top: 6px;
+  }
+
+  .is-track .landing-journey-rules {
+    gap: 6px;
+  }
+
+  .is-track .landing-journey-rule-icon {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    LOS BANCOS — tres respuestas del mismo peso
 
