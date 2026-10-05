@@ -56,7 +56,6 @@ export interface DashboardAccount {
   readonly type: string;
   readonly currency: string;
   readonly color: string;
-  readonly balanceMinor?: bigint | undefined;
 }
 
 export interface DashboardData {
@@ -395,13 +394,12 @@ export async function getDashboardData(
     );
   }
 
-  const dashboardAccounts: DashboardAccount[] = accounts.map((acc, index) => ({
+  const dashboardAccounts: DashboardAccount[] = accounts.map((acc) => ({
     id: acc.id,
     name: acc.name,
     type: acc.type,
     currency: acc.currency,
     color: acc.color,
-    balanceMinor: balances[index]?.balanceMinor,
   }));
 
   const capitalizedMonth =

@@ -3548,14 +3548,6 @@ textarea:focus-visible {
   letter-spacing: 0.05em;
 }
 
-.balance-card-acc-balance {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--landing-champagne-gold);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-
 .balance-card-indicators-wrap {
   display: flex;
   flex-direction: column;

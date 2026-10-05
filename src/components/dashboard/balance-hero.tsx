@@ -31,7 +31,6 @@ export interface UserAccountItem {
   readonly type: string;
   readonly currency: string;
   readonly color?: string | undefined;
-  readonly balanceMinor?: bigint | undefined;
 }
 
 export interface FormattedWalletCard {
@@ -42,7 +41,6 @@ export interface FormattedWalletCard {
   readonly bankName: string;
   readonly brandBadge: string;
   readonly typeLabel: string;
-  readonly balanceMinor?: bigint | undefined;
   readonly currency: string;
 }
 
@@ -147,7 +145,6 @@ function parseAccountCard(acc: UserAccountItem): FormattedWalletCard {
     bankName,
     brandBadge,
     typeLabel,
-    balanceMinor: acc.balanceMinor,
     currency: acc.currency,
   };
 }
@@ -348,7 +345,6 @@ export function BalanceHero({
     bankName: t('wallet_general'),
     brandBadge: 'GENERAL',
     typeLabel: t('wallet_consolidated'),
-    balanceMinor: totalBalanceMinor,
     currency,
   };
 
@@ -363,25 +359,17 @@ export function BalanceHero({
 
   const currentCard = walletCards[activeCardIndex % walletCards.length] ?? generalCard;
 
+  // The hero always shows the total, whichever card is in front. Accounts
+  // start at zero until there is an initial-balance input, so a per-account
+  // figure would be the flow since capture began - usually negative - shown
+  // as that bank's balance. The card in front only narrows the recent list.
+  // The month's spend is likewise known only for all accounts together.
   const isShowingAvailable = activeView === 'available';
-  // The month's spend is only known for all accounts together, so the "spent"
-  // view keeps the general label whichever card is in front. Labelling it
-  // "Gastado · Bancolombia" put every bank's spend under one bank's name.
-  // A card whose balance did not load falls back to the total under the total's
-  // own label, never under the bank's.
-  const accountBalanceMinor =
-    currentCard.id === GENERAL_CARD_ID ? undefined : currentCard.balanceMinor;
-  const showsAccountBalance = isShowingAvailable && accountBalanceMinor !== undefined;
-  const displayedAmount = !isShowingAvailable
-    ? monthExpenseMinor
-    : (accountBalanceMinor ?? totalBalanceMinor);
-  const displayedCurrency = showsAccountBalance ? currentCard.currency : currency;
+  const displayedAmount = isShowingAvailable ? totalBalanceMinor : monthExpenseMinor;
 
-  const labelTitle = !isShowingAvailable
-    ? `Gastado en ${monthLabel.split(' ')[0] ?? 'el mes'}`
-    : showsAccountBalance
-      ? `${t('hero_account_balance')} · ${currentCard.bankName}`
-      : t('hero_balance_combined');
+  const labelTitle = isShowingAvailable
+    ? t('hero_balance_combined')
+    : `Gastado en ${monthLabel.split(' ')[0] ?? 'el mes'}`;
 
   return (
     <>
@@ -465,7 +453,7 @@ export function BalanceHero({
             {isHidden ? (
               <span className="balance-hero-masked">$ ••••••••</span>
             ) : (
-              <Money amountMinor={displayedAmount} currency={displayedCurrency} />
+              <Money amountMinor={displayedAmount} currency={currency} />
             )}
           </span>
         </div>
@@ -539,21 +527,13 @@ export function BalanceHero({
               </div>
             </div>
 
-            {/* Bottom Row: account name, individual card balance, and cycling counter */}
+            {/* Bottom Row: account name and cycling counter. No per-card balance
+                until accounts carry an initial balance; see the hero above. */}
             <div className="balance-card-bottom-row">
               <div className="balance-card-account-meta">
                 <span className="balance-card-acc-name">
                   {currentCard.displayName}
                 </span>
-                {currentCard.balanceMinor !== undefined && currentCard.id !== GENERAL_CARD_ID && (
-                  <span className="balance-card-acc-balance">
-                    {isHidden ? (
-                      <span>$ ••••</span>
-                    ) : (
-                      <Money amountMinor={currentCard.balanceMinor} currency={currentCard.currency} />
-                    )}
-                  </span>
-                )}
               </div>
 
               {walletCards.length > 1 && (
