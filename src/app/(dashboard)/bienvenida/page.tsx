@@ -22,7 +22,7 @@ export default async function OnboardingPage(): Promise<React.ReactElement> {
   const profile = await ensureProfile(toUserId(session.id), session.email);
 
   return (
-    <main className="entry-page">
+    <main className="entry-page entry-page--bienvenida">
       <OnboardingFlow
         initialName={profile.fullName ?? ''}
         baseCurrency={profile.baseCurrency}
