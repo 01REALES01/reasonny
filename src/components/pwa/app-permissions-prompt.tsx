@@ -22,7 +22,7 @@ export function AppPermissionsPrompt(): React.ReactElement | null {
     // sheets at once ask for two things before either is understood. The
     // layout survives the move to /dashboard, so the effect has to run again
     // on the new path rather than once on mount.
-    if (pathname === '/bienvenida') return;
+    if (pathname === '/bienvenida' || pathname?.startsWith('/preview')) return;
     try {
       const alreadyPrompted = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
       if (!alreadyPrompted) {
