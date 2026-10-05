@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import React, { useEffect, useState, useTransition } from 'react';
 
 import { setLocationEnabledAction } from '@/app/actions/location';
@@ -12,10 +13,16 @@ import {
 const PERMISSIONS_STORAGE_KEY = 'reasonny_permissions_prompted_v1';
 
 export function AppPermissionsPrompt(): React.ReactElement | null {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    // Not over onboarding: it is the first screen a new user sees, and two
+    // sheets at once ask for two things before either is understood. The
+    // layout survives the move to /dashboard, so the effect has to run again
+    // on the new path rather than once on mount.
+    if (pathname === '/bienvenida') return;
     try {
       const alreadyPrompted = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
       if (!alreadyPrompted) {
@@ -28,7 +35,7 @@ export function AppPermissionsPrompt(): React.ReactElement | null {
     } catch {
       // localStorage may fail in strict privacy modes; fail gracefully
     }
-  }, []);
+  }, [pathname]);
 
   function markDismissed(): void {
     try {

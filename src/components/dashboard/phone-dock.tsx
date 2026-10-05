@@ -19,8 +19,8 @@ import { t } from '@/lib/i18n';
 export function PhoneDock(): React.ReactElement | null {
   const pathname = usePathname();
 
-  // Fullscreen flows like /captura suppress the floating dock completely
-  if (pathname === '/captura') {
+  // Fullscreen flows like /captura and /bienvenida suppress the floating dock completely
+  if (pathname === '/captura' || pathname === '/bienvenida') {
     return null;
   }
 
