@@ -215,21 +215,18 @@ export default async function PreviewPage({ searchParams }: PageProps): Promise<
       name: 'Davivienda Nómina · *2222',
       type: 'savings',
       currency: 'COP',
-      balanceMinor: 845000000n, // $8.450.000 COP
     },
     {
       id: 'acc-bancolombia',
       name: 'Bancolombia Ahorros · *1111',
       type: 'savings',
       currency: 'COP',
-      balanceMinor: 420000000n, // $4.200.000 COP
     },
     {
       id: 'acc-nu',
       name: 'Nu Colombia · *3333',
       type: 'credit_card',
       currency: 'COP',
-      balanceMinor: 160000000n, // $1.600.000 COP
     },
   ];
 
