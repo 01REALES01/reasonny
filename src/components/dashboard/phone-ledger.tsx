@@ -9,7 +9,9 @@ import { formatDate, formatTime, t } from '@/lib/i18n';
 interface PhoneLedgerProps {
   readonly days: DayGroup[];
   readonly currency: string;
-  readonly timeZone?: string;
+  readonly timeZone?: string | undefined;
+  readonly activeAccountFilterName?: string | null | undefined;
+  readonly onClearAccountFilter?: (() => void) | undefined;
 }
 
 /**
@@ -20,6 +22,8 @@ export function PhoneLedger({
   days,
   currency,
   timeZone = 'America/Bogota',
+  activeAccountFilterName,
+  onClearAccountFilter,
 }: PhoneLedgerProps): React.ReactElement {
   return (
     <section className="phone-ledger">
@@ -31,12 +35,53 @@ export function PhoneLedger({
         </Link>
       </div>
 
+      {/* Active Account Filter Banner */}
+      {activeAccountFilterName && (
+        <div className="phone-ledger-filter-banner" role="status" aria-live="polite">
+          <div className="phone-ledger-filter-pill">
+            <span className="phone-ledger-filter-dot" aria-hidden="true" />
+            <span className="phone-ledger-filter-txt">
+              {t('ledger_filter_showing')} <strong>{activeAccountFilterName}</strong>
+            </span>
+          </div>
+          {onClearAccountFilter && (
+            <button
+              type="button"
+              onClick={onClearAccountFilter}
+              className="phone-ledger-clear-btn"
+              title={t('ledger_filter_clear')}
+              aria-label={t('ledger_filter_clear')}
+            >
+              <span>{t('ledger_filter_clear_short')} ✕</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {days.length === 0 ? (
         <div className="phone-ledger-empty">
-          <p>{t('dashboard_empty')}</p>
-          <Link href="/nuevo" className="phone-ledger-empty-cta">
-            {t('dashboard_empty_cta')} →
-          </Link>
+          <div className="phone-ledger-empty-icon" aria-hidden="true">
+            <CategoryIcon name="Sparkles" size={24} />
+          </div>
+          <p className="phone-ledger-empty-text">
+            {activeAccountFilterName
+              ? `${t('ledger_filter_empty')} ${activeAccountFilterName}.`
+              : t('dashboard_empty')}
+          </p>
+          {activeAccountFilterName && onClearAccountFilter ? (
+            <button
+              type="button"
+              onClick={onClearAccountFilter}
+              className="phone-ledger-empty-cta-btn"
+            >
+              {t('ledger_filter_clear')} →
+            </button>
+          ) : (
+            <Link href="/nuevo" className="phone-ledger-empty-cta">
+              <span>{t('dashboard_empty_cta')}</span>
+              <span className="phone-ledger-empty-arrow" aria-hidden="true">→</span>
+            </Link>
+          )}
         </div>
       ) : (
         <div className="phone-ledger-list">

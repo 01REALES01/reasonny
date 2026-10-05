@@ -21,6 +21,8 @@ interface BalanceHeroProps {
   readonly autoCaptureCount?: number | undefined;
   readonly timeZone?: string | undefined;
   readonly accounts?: readonly UserAccountItem[] | undefined;
+  readonly activeCardIndex?: number | undefined;
+  readonly onCardChange?: ((index: number, card: FormattedWalletCard) => void) | undefined;
 }
 
 export interface UserAccountItem {
@@ -29,6 +31,7 @@ export interface UserAccountItem {
   readonly type: string;
   readonly currency: string;
   readonly color?: string | undefined;
+  readonly balanceMinor?: bigint | undefined;
 }
 
 export interface FormattedWalletCard {
@@ -39,8 +42,12 @@ export interface FormattedWalletCard {
   readonly bankName: string;
   readonly brandBadge: string;
   readonly typeLabel: string;
+  readonly balanceMinor?: bigint | undefined;
   readonly currency: string;
 }
+
+/** The consolidated card that leads the stack. Not an account id. */
+export const GENERAL_CARD_ID = 'all-accounts-general';
 
 function parseAccountCard(acc: UserAccountItem): FormattedWalletCard {
   const name = acc.name.trim();
@@ -140,12 +147,24 @@ function parseAccountCard(acc: UserAccountItem): FormattedWalletCard {
     bankName,
     brandBadge,
     typeLabel,
+    balanceMinor: acc.balanceMinor,
     currency: acc.currency,
   };
 }
 
 function CardBrandMark({ brand }: { readonly brand: string }): React.ReactElement {
   const norm = brand.trim().toUpperCase();
+  if (norm === 'GENERAL' || norm === 'TODAS' || norm === 'CONSOLIDADO') {
+    return (
+      <span className="balance-card-brand-with-icon" aria-label={t('wallet_all_accounts')}>
+        <svg className="balance-card-bank-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg>
+        <span className="balance-card-brand-txt">{t('wallet_general').toUpperCase()}</span>
+      </span>
+    );
+  }
   if (norm === 'VISA') {
     return <span className="balance-card-logo--visa">VISA</span>;
   }
@@ -256,12 +275,16 @@ export function BalanceHero({
   autoCaptureCount,
   timeZone = 'America/Bogota',
   accounts,
+  activeCardIndex: propActiveCardIndex,
+  onCardChange,
 }: BalanceHeroProps): React.ReactElement {
   const [isHidden, setIsHidden] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [activeView, setActiveView] = useState<'available' | 'spent'>('available');
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [internalCardIndex, setInternalCardIndex] = useState(0);
+
+  const activeCardIndex = propActiveCardIndex !== undefined ? propActiveCardIndex : internalCardIndex;
 
   const name = displayName?.trim() || getGreetingName(userEmail);
   const initial = name.slice(0, 2).toUpperCase();
@@ -316,28 +339,49 @@ export function BalanceHero({
     }
   }
 
-  const isShowingAvailable = activeView === 'available';
-  const displayedAmount = isShowingAvailable ? totalBalanceMinor : monthExpenseMinor;
+  // 1. Primary card: "General (Todas las cuentas)" - default consolidated view
+  const generalCard: FormattedWalletCard = {
+    id: GENERAL_CARD_ID,
+    displayName: t('wallet_all_accounts'),
+    mask: null,
+    last4: null,
+    bankName: t('wallet_general'),
+    brandBadge: 'GENERAL',
+    typeLabel: t('wallet_consolidated'),
+    balanceMinor: totalBalanceMinor,
+    currency,
+  };
+
+  const parsedAccountCards = accounts && accounts.length > 0
+    ? accounts.map(parseAccountCard)
+    : [];
 
   const walletCards: readonly FormattedWalletCard[] =
-    accounts && accounts.length > 0
-      ? accounts.map(parseAccountCard)
-      : [
-          {
-            id: 'default-card',
-            displayName: 'Cuenta Principal',
-            // Nothing invented: before the first capture there is no account,
-            // and a made-up card number reads as somebody else's card.
-            mask: null,
-            last4: null,
-            bankName: 'Cuenta Principal',
-            brandBadge: '',
-            typeLabel: 'Cuenta',
-            currency,
-          },
-        ];
+    parsedAccountCards.length > 0
+      ? [generalCard, ...parsedAccountCards]
+      : [generalCard];
 
-  const currentCard = walletCards[activeCardIndex % walletCards.length] ?? walletCards[0]!;
+  const currentCard = walletCards[activeCardIndex % walletCards.length] ?? generalCard;
+
+  const isShowingAvailable = activeView === 'available';
+  // The month's spend is only known for all accounts together, so the "spent"
+  // view keeps the general label whichever card is in front. Labelling it
+  // "Gastado · Bancolombia" put every bank's spend under one bank's name.
+  // A card whose balance did not load falls back to the total under the total's
+  // own label, never under the bank's.
+  const accountBalanceMinor =
+    currentCard.id === GENERAL_CARD_ID ? undefined : currentCard.balanceMinor;
+  const showsAccountBalance = isShowingAvailable && accountBalanceMinor !== undefined;
+  const displayedAmount = !isShowingAvailable
+    ? monthExpenseMinor
+    : (accountBalanceMinor ?? totalBalanceMinor);
+  const displayedCurrency = showsAccountBalance ? currentCard.currency : currency;
+
+  const labelTitle = !isShowingAvailable
+    ? `Gastado en ${monthLabel.split(' ')[0] ?? 'el mes'}`
+    : showsAccountBalance
+      ? `${t('hero_account_balance')} · ${currentCard.bankName}`
+      : t('hero_balance_combined');
 
   return (
     <>
@@ -362,137 +406,12 @@ export function BalanceHero({
                 <span className="balance-hero-greeting">
                   {name}
                 </span>
-                <span className="balance-hero-caret" aria-hidden="true">
+                <span className={`balance-hero-caret${isProfileOpen ? ' balance-hero-caret--open' : ''}`} aria-hidden="true">
                   <CategoryIcon name="ChevronDown" size={12} />
                 </span>
               </div>
             </div>
           </button>
-
-          {/* Menú Desplegable de Perfil */}
-          {isProfileOpen && (
-            <>
-              <div
-                className="profile-dropdown-scrim"
-                onClick={() => setIsProfileOpen(false)}
-                aria-hidden="true"
-              />
-              <div
-                className="profile-dropdown-menu"
-                role="menu"
-                aria-label="Opciones de perfil"
-              >
-                <div className="profile-dropdown-user">
-                  <div className="profile-dropdown-avatar">
-                    <span className="profile-dropdown-initial">{initial}</span>
-                  </div>
-                  <div className="profile-dropdown-meta">
-                    <span className="profile-dropdown-name">{name}</span>
-                    <span className="profile-dropdown-email">{userEmail}</span>
-                  </div>
-                </div>
-
-                <div className="profile-dropdown-divider" />
-
-                <Link
-                  href="/captura"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="profile-dropdown-item profile-dropdown-item--highlight"
-                  role="menuitem"
-                >
-                  <span className="profile-dropdown-icon">
-                    <CategoryIcon name="Zap" size={17} />
-                  </span>
-                  <div className="profile-dropdown-text">
-                    <div className="profile-dropdown-title-row">
-                      <span className="profile-dropdown-title">Vincular la app</span>
-                      <span className="profile-dropdown-badge">Atajos SMS</span>
-                    </div>
-                    <span className="profile-dropdown-desc">
-                      Tutorial paso a paso para conectar tu banco
-                    </span>
-                  </div>
-                  <span className="profile-dropdown-arrow" aria-hidden="true">
-                    <CategoryIcon name="ChevronRight" size={14} />
-                  </span>
-                </Link>
-
-                <Link
-                  href="/perfil"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="profile-dropdown-item"
-                  role="menuitem"
-                >
-                  <span className="profile-dropdown-icon">
-                    <CategoryIcon name="User" size={17} />
-                  </span>
-                  <div className="profile-dropdown-text">
-                    <span className="profile-dropdown-title">Mi Perfil</span>
-                    <span className="profile-dropdown-desc">
-                      Datos de cuenta, moneda y ubicación
-                    </span>
-                  </div>
-                  <span className="profile-dropdown-arrow" aria-hidden="true">
-                    <CategoryIcon name="ChevronRight" size={14} />
-                  </span>
-                </Link>
-
-                <Link
-                  href="/mes"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="profile-dropdown-item"
-                  role="menuitem"
-                >
-                  <span className="profile-dropdown-icon">
-                    <CategoryIcon name="PieChart" size={17} />
-                  </span>
-                  <div className="profile-dropdown-text">
-                    <span className="profile-dropdown-title">Resumen Mensual</span>
-                    <span className="profile-dropdown-desc">
-                      Desglose por categorías y balance
-                    </span>
-                  </div>
-                  <span className="profile-dropdown-arrow" aria-hidden="true">
-                    <CategoryIcon name="ChevronRight" size={14} />
-                  </span>
-                </Link>
-
-                <a
-                  href="/api/v1/export"
-                  download
-                  onClick={() => setIsProfileOpen(false)}
-                  className="profile-dropdown-item"
-                  role="menuitem"
-                >
-                  <span className="profile-dropdown-icon">
-                    <CategoryIcon name="Download" size={17} />
-                  </span>
-                  <div className="profile-dropdown-text">
-                    <span className="profile-dropdown-title">Exportar Movimientos</span>
-                    <span className="profile-dropdown-desc">
-                      Descarga tu historial en CSV
-                    </span>
-                  </div>
-                  <span className="profile-dropdown-arrow" aria-hidden="true">
-                    <CategoryIcon name="ChevronRight" size={14} />
-                  </span>
-                </a>
-
-                <div className="profile-dropdown-divider" />
-
-                <button
-                  type="button"
-                  disabled={isSigningOut}
-                  onClick={handleSignOut}
-                  className="profile-dropdown-signout"
-                  role="menuitem"
-                >
-                  <CategoryIcon name="LogOut" size={15} />
-                  <span>{isSigningOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}</span>
-                </button>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Right: Circular Frosted Glass Action Buttons (Mask + Bell) */}
@@ -534,19 +453,19 @@ export function BalanceHero({
           className="balance-hero-label-btn"
           title="Toca para cambiar entre Saldo y Gastado"
         >
-          <span>{isShowingAvailable ? 'Balance' : `Gastado en ${monthLabel.split(' ')[0] ?? 'el mes'}`}</span>
+          <span>{labelTitle}</span>
           <span className="balance-hero-label-switch-hint">⇄</span>
         </button>
 
         <div className="balance-hero-amount">
           <span
-            key={isHidden ? 'masked' : `amount-${activeView}`}
+            key={isHidden ? 'masked' : `amount-${activeView}-${currentCard.id}`}
             className="balance-hero-amount-val"
           >
             {isHidden ? (
               <span className="balance-hero-masked">$ ••••••••</span>
             ) : (
-              <Money amountMinor={displayedAmount} currency={currency} />
+              <Money amountMinor={displayedAmount} currency={displayedCurrency} />
             )}
           </span>
         </div>
@@ -575,7 +494,11 @@ export function BalanceHero({
           type="button"
           onClick={() => {
             if (walletCards.length > 1) {
-              setActiveCardIndex((prev) => (prev + 1) % walletCards.length);
+              const nextIndex = (activeCardIndex + 1) % walletCards.length;
+              if (propActiveCardIndex === undefined) {
+                setInternalCardIndex(nextIndex);
+              }
+              onCardChange?.(nextIndex, walletCards[nextIndex]!);
             }
           }}
           className="balance-card-stack"
@@ -591,8 +514,8 @@ export function BalanceHero({
           {/* Layer 1: Mid Ridge */}
           <div className="balance-card-layer balance-card-layer--mid" aria-hidden="true" />
 
-          {/* Front Active Liquid Glass Card */}
-          <div className="balance-card-front">
+          {/* Front Active Liquid Glass Card (Key remount triggers Apple shuffle animation) */}
+          <div key={currentCard.id} className="balance-card-front balance-card-front--cycling">
             {/* Top / Mid Row: Dots, 4 digits (or name), real type (Ahorros / Crédito), and bank logo */}
             <div className="balance-card-mid-row">
               <div className="balance-card-digits-group">
@@ -616,20 +539,38 @@ export function BalanceHero({
               </div>
             </div>
 
-            {/* Bottom Row: account name and cycling counter. No per-card balance: the
-                hero above already shows the total, and a second figure per card
-                competed with it for the same glance. */}
+            {/* Bottom Row: account name, individual card balance, and cycling counter */}
             <div className="balance-card-bottom-row">
               <div className="balance-card-account-meta">
                 <span className="balance-card-acc-name">
                   {currentCard.displayName}
                 </span>
+                {currentCard.balanceMinor !== undefined && currentCard.id !== GENERAL_CARD_ID && (
+                  <span className="balance-card-acc-balance">
+                    {isHidden ? (
+                      <span>$ ••••</span>
+                    ) : (
+                      <Money amountMinor={currentCard.balanceMinor} currency={currentCard.currency} />
+                    )}
+                  </span>
+                )}
               </div>
 
               {walletCards.length > 1 && (
-                <span className="balance-card-cycle-pill">
-                  {(activeCardIndex % walletCards.length) + 1} de {walletCards.length} ⇄
-                </span>
+                <div className="balance-card-indicators-wrap">
+                  <div className="balance-card-dots" aria-hidden="true">
+                    {walletCards.map((c, i) => (
+                      <span
+                        key={c.id}
+                        className={`balance-card-dot ${i === activeCardIndex % walletCards.length ? 'balance-card-dot--active' : ''}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="balance-card-cycle-pill">
+                    {currentCard.id === GENERAL_CARD_ID ? t('wallet_general') : currentCard.bankName}{' '}
+                    ({(activeCardIndex % walletCards.length) + 1} de {walletCards.length}) ⇄
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -679,6 +620,151 @@ export function BalanceHero({
         />
       </div>
     </div>
+
+    {/* 5. Menú Desplegable de Perfil (Apple Liquid Glass Popover centrado sin recortes) */}
+    {isProfileOpen && (
+      <div
+        className="profile-overlay-root"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menú de perfil y cuenta"
+      >
+        <div
+          className="profile-dropdown-scrim"
+          onClick={() => setIsProfileOpen(false)}
+          aria-hidden="true"
+        />
+        <div
+          className="profile-dropdown-menu"
+          role="menu"
+          aria-label="Opciones de perfil"
+        >
+          {/* Header del Menú: Perfil + Botón de Cerrar */}
+          <div className="profile-dropdown-header">
+            <div className="profile-dropdown-user">
+              <div className="profile-dropdown-avatar">
+                <span className="profile-dropdown-initial">{initial}</span>
+              </div>
+              <div className="profile-dropdown-meta">
+                <span className="profile-dropdown-name">{name}</span>
+                <span className="profile-dropdown-email">{userEmail}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(false)}
+              className="profile-dropdown-close-btn"
+              aria-label={t('menu_close')}
+              title={t('menu_close')}
+            >
+              <CategoryIcon name="X" size={16} />
+            </button>
+          </div>
+
+          <div className="profile-dropdown-divider" />
+
+          {/* Opciones Principales */}
+          <div className="profile-dropdown-items-group">
+            <Link
+              href="/captura"
+              onClick={() => setIsProfileOpen(false)}
+              className="profile-dropdown-item profile-dropdown-item--highlight"
+              role="menuitem"
+            >
+              <span className="profile-dropdown-icon">
+                <CategoryIcon name="Zap" size={17} />
+              </span>
+              <div className="profile-dropdown-text">
+                <div className="profile-dropdown-title-row">
+                  <span className="profile-dropdown-title">Vincular la app</span>
+                  <span className="profile-dropdown-badge">Atajos SMS</span>
+                </div>
+                <span className="profile-dropdown-desc">
+                  Tutorial paso a paso para conectar tu banco
+                </span>
+              </div>
+              <span className="profile-dropdown-arrow" aria-hidden="true">
+                <CategoryIcon name="ChevronRight" size={14} />
+              </span>
+            </Link>
+
+            <Link
+              href="/perfil"
+              onClick={() => setIsProfileOpen(false)}
+              className="profile-dropdown-item"
+              role="menuitem"
+            >
+              <span className="profile-dropdown-icon">
+                <CategoryIcon name="User" size={17} />
+              </span>
+              <div className="profile-dropdown-text">
+                <span className="profile-dropdown-title">Mi Perfil</span>
+                <span className="profile-dropdown-desc">
+                  Datos de cuenta, moneda y ubicación
+                </span>
+              </div>
+              <span className="profile-dropdown-arrow" aria-hidden="true">
+                <CategoryIcon name="ChevronRight" size={14} />
+              </span>
+            </Link>
+
+            <Link
+              href="/mes"
+              onClick={() => setIsProfileOpen(false)}
+              className="profile-dropdown-item"
+              role="menuitem"
+            >
+              <span className="profile-dropdown-icon">
+                <CategoryIcon name="PieChart" size={17} />
+              </span>
+              <div className="profile-dropdown-text">
+                <span className="profile-dropdown-title">Resumen Mensual</span>
+                <span className="profile-dropdown-desc">
+                  Desglose por categorías y balance
+                </span>
+              </div>
+              <span className="profile-dropdown-arrow" aria-hidden="true">
+                <CategoryIcon name="ChevronRight" size={14} />
+              </span>
+            </Link>
+
+            <a
+              href="/api/v1/export"
+              download
+              onClick={() => setIsProfileOpen(false)}
+              className="profile-dropdown-item"
+              role="menuitem"
+            >
+              <span className="profile-dropdown-icon">
+                <CategoryIcon name="Download" size={17} />
+              </span>
+              <div className="profile-dropdown-text">
+                <span className="profile-dropdown-title">Exportar Movimientos</span>
+                <span className="profile-dropdown-desc">
+                  Descarga tu historial en CSV
+                </span>
+              </div>
+              <span className="profile-dropdown-arrow" aria-hidden="true">
+                <CategoryIcon name="ChevronRight" size={14} />
+              </span>
+            </a>
+          </div>
+
+          <div className="profile-dropdown-divider" />
+
+          <button
+            type="button"
+            disabled={isSigningOut}
+            onClick={handleSignOut}
+            className="profile-dropdown-signout"
+            role="menuitem"
+          >
+            <CategoryIcon name="LogOut" size={15} />
+            <span>{isSigningOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}</span>
+          </button>
+        </div>
+      </div>
+    )}
   </>
 );
 }

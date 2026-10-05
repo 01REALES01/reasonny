@@ -2,12 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
-import { BalanceHero } from '@/components/dashboard/balance-hero';
-import { CaptureCallout } from '@/components/dashboard/capture-callout';
-import { FinancialActions } from '@/components/dashboard/financial-actions';
-import { PhoneLedger } from '@/components/dashboard/phone-ledger';
-import { ReviewCallout } from '@/components/dashboard/review-callout';
-import { WeekSpendingCard } from '@/components/dashboard/week-spending';
+import { DashboardExperience } from '@/components/dashboard/dashboard-experience';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getDashboardData } from '@/core/services/analytics.service';
 import { recordMetric } from '@/core/services/telemetry.service';
@@ -58,44 +53,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
   return (
     <div className="phone-screen-container animate-entrance-1">
-      {/* 1. Authentic Luxury Velvet Balance Hero with Live Sync Heartbeat */}
-      <BalanceHero
-        totalBalanceMinor={data.totalBalanceMinor}
-        monthExpenseMinor={data.monthlyTotals.totalExpenseMinor}
-        currency={data.baseCurrency}
+      <DashboardExperience
+        data={data}
         userEmail={session.email}
         displayName={profile.fullName}
-        monthLabel={data.currentMonthLabel}
-        uncategorizedCount={data.uncategorizedCount}
-        lastCaptureAt={data.lastCaptureAt}
-        autoCaptureCount={data.autoCaptureCount}
-        timeZone={data.timezone}
-        accounts={data.accounts}
-      />
-
-      {/* Only until the pipe has actually delivered something. See the note in
-          the component for why it leaves rather than turning into a tick. The
-          count already comes with getDashboardData, so this costs no query. */}
-      {data.autoCaptureCount === 0 && <CaptureCallout />}
-
-      {/* 2. Triage Callout: Appears only when there are items to categorize (Level 2) */}
-      <ReviewCallout uncategorizedCount={data.uncategorizedCount} />
-
-      {/* 3. This week's spending, day by day, with today and the month */}
-      <WeekSpendingCard
-        week={data.week}
-        monthExpenseMinor={data.monthlyTotals.totalExpenseMinor}
-        currency={data.baseCurrency}
-      />
-
-      {/* 4. Purposeful Financial Actions (+ Registrar gasto, + Ingreso) */}
-      <FinancialActions />
-
-      {/* 5. Recent transactions with exact payment time and auto-sync badge */}
-      <PhoneLedger
-        days={data.recentDays}
-        currency={data.baseCurrency}
-        timeZone={data.timezone}
       />
     </div>
   );
