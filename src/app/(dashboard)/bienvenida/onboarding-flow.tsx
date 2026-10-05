@@ -43,7 +43,14 @@ export function OnboardingFlow({
   // next visit, forever.
   function finish(): void {
     startTransition(async () => {
-      await completeOnboardingAction();
+      try {
+        await completeOnboardingAction();
+      } catch (error) {
+        // /preview renders this flow without a session, so the action fails
+        // there by design. In production a failure has to surface: swallowing
+        // it would send the user to /dashboard, which sends them straight back.
+        if (process.env.NODE_ENV === 'production') throw error;
+      }
       router.push('/dashboard');
     });
   }
@@ -51,8 +58,13 @@ export function OnboardingFlow({
   function saveNameAndContinue(): void {
     startTransition(async () => {
       // A failure here is not worth blocking the flow over: the name is a
-      // convenience, and /perfil can set it later.
-      await updateDisplayNameAction(name);
+      // convenience, and /perfil can set it later. That includes /preview,
+      // which has no session to save it under.
+      try {
+        await updateDisplayNameAction(name);
+      } catch {
+        // Nothing to undo; see above.
+      }
       setStep('how');
     });
   }

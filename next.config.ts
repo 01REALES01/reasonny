@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // not here: the database lives in one region and spreading compute across the
   // globe only adds round trips to it. Route handlers stay on Node because the
   // Edge runtime cannot open the WebSocket that neon-serverless needs.
+  devIndicators: false,
   serverExternalPackages: ['@neondatabase/serverless'],
   images: {
     qualities: [75, 92],
