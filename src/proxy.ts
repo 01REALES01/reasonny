@@ -44,5 +44,6 @@ export const config = {
     '/perfil/:path*',
     '/revisar/:path*',
     '/telegram/:path*',
+    '/autorizacion/:path*',
   ],
 };

@@ -7,8 +7,10 @@ import { CategoryIcon } from '@/components/ui/category-icon';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getAutomaticCaptureStatus } from '@/core/repositories/transaction.repository';
 import { toUserId } from '@/core/types';
+import { t } from '@/lib/i18n';
 import { getCurrentUser } from '@/lib/session';
 
+import { DeleteAccountSection } from './delete-account-section';
 import { ProfileForm } from './profile-form';
 
 // P8: Authenticated app is strictly noindex
@@ -76,6 +78,15 @@ export default async function ProfilePage(): Promise<React.ReactElement> {
         </span>
         <CategoryIcon name="ChevronRight" size={18} />
       </Link>
+      {/* Habeas data (H1): the policy one tap away, and the right to deletion
+          in the app itself, not only by email. */}
+      <Link href="/privacidad" className="settings-link">
+        <span className="settings-link-text">
+          <span className="settings-link-title">{t('privacy_policy')}</span>
+        </span>
+        <CategoryIcon name="ChevronRight" size={18} />
+      </Link>
+      <DeleteAccountSection />
     </main>
   );
 }

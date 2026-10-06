@@ -566,3 +566,33 @@ export const telemetryEvents = pgTable(
     ),
   ],
 );
+
+// 11. Consents ───────────────────────────────────────────────────────────────
+// H1. Ley 1581 asks for more than having requested authorisation: the
+// controller must be able to PROVE it was given (Decreto 1377, art. 7). One row
+// per user per policy version is that proof - which text they accepted, when,
+// and through which door. A new version of the policy is a new row, never an
+// update: the old acceptance stays as the record of what was agreed then.
+export const consents = pgTable(
+  'consents',
+  {
+    id: primaryId(),
+    // Cascade on purpose: once an account is deleted there is nothing left
+    // whose processing this row would justify, and keeping it would keep a
+    // trace of a person who asked to be removed.
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    policyVersion: varchar('policy_version', { length: 20 }).notNull(),
+    // 'sign_in': the box ticked before the code or Google was sent.
+    // 'gate': the screen shown to anyone signed in without a current consent.
+    method: varchar({ length: 20 }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Rule 6: accepting twice (two tabs, a retried request) is one consent, and
+    // the constraint - not a SELECT first - is what decides it.
+    unique('uq_consents_user_version').on(t.userId, t.policyVersion),
+    check('consents_method_check', sql`${t.method} IN ('sign_in','gate')`),
+  ],
+);

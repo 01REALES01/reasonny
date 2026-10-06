@@ -216,6 +216,34 @@ export const DICTIONARY = {
     auth_verifying: 'Verificando…',
     auth_code_invalid: 'El código ingresado es incorrecto.',
     auth_change_email: 'Cambiar de correo',
+    auth_consent_label: 'Tengo 18 años o más y autorizo el tratamiento de mis datos según la',
+    auth_consent_link: 'Política de tratamiento de datos',
+    auth_consent_required: 'Para continuar, marca la casilla de autorización.',
+    auth_or: 'o',
+    auth_google: 'Continuar con Google',
+    auth_google_failed: 'No se pudo abrir Google. Intenta de nuevo.',
+    legal_back_home: 'Volver al inicio',
+    consent_title: 'Antes de seguir, tu autorización',
+    consent_text:
+      'Reasonny guarda tus movimientos, tu correo y, si la activas, tu ubicación, y los procesa con proveedores fuera de Colombia. La política explica qué guardamos, para qué y cómo borrarlo.',
+    consent_link: 'Leer la política completa',
+    consent_checkbox:
+      'Tengo 18 años o más y autorizo el tratamiento de mis datos personales según esta política, incluida su transferencia fuera de Colombia.',
+    consent_accept: 'Acepto y continúo',
+    consent_accepting: 'Guardando…',
+    consent_decline: 'No acepto, cerrar sesión',
+    consent_decline_note:
+      'Sin tu autorización no podemos seguir guardando tus datos. Para borrar lo que ya está guardado, escribe a',
+    consent_failed: 'No se pudo guardar tu autorización. Intenta de nuevo.',
+    privacy_policy: 'Política de privacidad',
+    account_delete_title: 'Borrar mi cuenta',
+    account_delete_text:
+      'Se borran para siempre tus movimientos, cuentas, categorías, reglas y la vinculación con Telegram. Si quieres conservarlos, descarga antes tu CSV.',
+    account_delete_confirm_prompt: 'Para confirmar, escribe',
+    account_delete_confirm_word: 'BORRAR',
+    account_delete_confirm: 'Borrar todo para siempre',
+    account_delete_deleting: 'Borrando…',
+    account_delete_failed: 'No se pudo borrar la cuenta. Intenta de nuevo.',
 
     // Bot de Telegram. Todo lo que el bot dice pasa por aquí: un cliente no
     // inventa copy, igual que no inventa lógica.
@@ -497,6 +525,34 @@ export const DICTIONARY = {
     auth_verifying: 'Verifying…',
     auth_code_invalid: 'That code is not correct.',
     auth_change_email: 'Use another email',
+    auth_consent_label: 'I am 18 or older and I authorise the processing of my data under the',
+    auth_consent_link: 'Data processing policy',
+    auth_consent_required: 'To continue, tick the authorisation box.',
+    auth_or: 'or',
+    auth_google: 'Continue with Google',
+    auth_google_failed: 'Google could not be opened. Try again.',
+    legal_back_home: 'Back to home',
+    consent_title: 'Before you continue, your authorisation',
+    consent_text:
+      'Reasonny keeps your transactions, your email and, if you turn it on, your location, and processes them with providers outside Colombia. The policy explains what we keep, why, and how to delete it.',
+    consent_link: 'Read the full policy',
+    consent_checkbox:
+      'I am 18 or older and I authorise the processing of my personal data under this policy, including its transfer outside Colombia.',
+    consent_accept: 'Accept and continue',
+    consent_accepting: 'Saving…',
+    consent_decline: 'I do not accept, sign out',
+    consent_decline_note:
+      'Without your authorisation we cannot keep storing your data. To delete what is already stored, write to',
+    consent_failed: 'Your authorisation could not be saved. Try again.',
+    privacy_policy: 'Privacy policy',
+    account_delete_title: 'Delete my account',
+    account_delete_text:
+      'Your transactions, accounts, categories, rules and Telegram link are deleted for good. If you want to keep them, download your CSV first.',
+    account_delete_confirm_prompt: 'To confirm, type',
+    account_delete_confirm_word: 'DELETE',
+    account_delete_confirm: 'Delete everything forever',
+    account_delete_deleting: 'Deleting…',
+    account_delete_failed: 'The account could not be deleted. Try again.',
 
     // Telegram bot. Everything the bot says comes through here: a client does
     // not invent copy, the same way it does not invent logic.

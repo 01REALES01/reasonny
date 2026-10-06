@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
+import { t } from '@/lib/i18n';
+
 export function LandingGrandFinaleFooter(): React.ReactElement {
   return (
     <footer id="grand-finale" className="landing-grand-finale" aria-label="Cierre y pie de página">
@@ -82,6 +84,9 @@ export function LandingGrandFinaleFooter(): React.ReactElement {
             <span className="landing-finale-nav-item">Sin venta ni cesión de datos</span>
             <span className="landing-finale-nav-item">Cifrado en reposo</span>
             <span className="landing-finale-nav-item">Acceso a tu banco de solo lectura</span>
+            <Link href="/privacidad" className="landing-finale-nav-item">
+              {t('auth_consent_link')}
+            </Link>
           </div>
 
           <div className="landing-finale-nav-col">
