@@ -7608,14 +7608,42 @@ textarea:focus-visible {
   background: rgba(228, 204, 166, 0.22);
 }
 
+/* As tall as the main button and white, Google's own convention: it is a
+   way in of equal weight, not a footnote under the code. The pill rule above
+   takes its height from the arrow circle, which this button has none of, so
+   the height is set here. */
 .auth-screen--cinematic .auth-google {
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
+  min-height: 58px;
   padding: 0 24px;
-  background: transparent;
-  color: var(--landing-warm-white);
-  border: 1.5px solid rgba(228, 204, 166, 0.4);
-  box-shadow: none;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-size: 16px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.auth-screen--cinematic .auth-google:disabled {
+  opacity: 0.6;
+}
+
+/* Google's brand colours, which their guidelines ask to keep as they are. */
+.auth-google-red {
+  fill: #ea4335;
+}
+
+.auth-google-blue {
+  fill: #4285f4;
+}
+
+.auth-google-yellow {
+  fill: #fbbc05;
+}
+
+.auth-google-green {
+  fill: #34a853;
 }
 
 .auth-google-mark {
