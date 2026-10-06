@@ -4233,6 +4233,36 @@ textarea:focus-visible {
     /* Continuous luminous imperial vinotinto ground — never decaying to muddy black */
     linear-gradient(178deg, #481026 0%, #54132d 28%, #481026 62%, #380a1c 100%);
   background-color: var(--app-ground);
+  /* Keeps the ::before below from slipping behind the container's own
+     background: z-index -1 then paints over the ground, under the content. */
+  isolation: isolate;
+}
+
+/* Below the fold the ground above stretches into one flat rose, because its
+   blooms are sized to the whole page. This layer leaves the first screen as it
+   is, then sinks the wine darker and lays patches of light down the list, so a
+   long scroll keeps changing. It starts with a fade, not an edge, and the
+   patches repeat for as long as the list runs. Painted once with the page:
+   no backdrop-filter, nothing that redraws on scroll. */
+.phone-screen-container::before {
+  content: '';
+  position: absolute;
+  inset: 700px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    /* The same luminous rose as the first screen, in patches that alternate
+       sides so the light moves while the list scrolls. */
+    radial-gradient(ellipse 64% 240px at 4% 330px, rgba(232, 70, 128, 0.55) 0%, rgba(190, 40, 96, 0.22) 45%, transparent 72%),
+    radial-gradient(ellipse 58% 220px at 98% 700px, rgba(240, 96, 150, 0.46) 0%, rgba(190, 40, 96, 0.18) 45%, transparent 72%),
+    radial-gradient(ellipse 70% 260px at 24% 1070px, rgba(226, 64, 122, 0.5) 0%, rgba(176, 34, 88, 0.2) 50%, transparent 74%),
+    /* The darker ground the patches sit on */
+    linear-gradient(to bottom, rgba(16, 3, 8, 0) 0, rgba(16, 3, 8, 0.5) 480px, rgba(16, 3, 8, 0.6) 100%);
+  background-size: 100% 1300px, 100% 1300px, 100% 1300px, 100% 100%;
+  background-repeat: repeat-y, repeat-y, repeat-y, no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 300px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 300px);
 }
 
 @media (min-width: 768px) {
@@ -4430,24 +4460,30 @@ textarea:focus-visible {
   flex-direction: column;
 }
 
-/* No outline and no fill on the row.
-   Every transaction was drawn as its own bordered box, so a list of eight was
-   eight rectangles competing with the eight coloured icon tiles inside them -
-   sixteen shapes to say eight things. The tile is already the anchor for the
-   eye; the row only needs rhythm, which is spacing.
+/* Each spend is its own solid card. Over the darker, rose-lit ground below
+   the fold, rows with no fill read as text floating on light; an opaque card,
+   lifted with a champagne top edge and a shadow, separates each spend from
+   what lies under it. Opaque on purpose: no backdrop-filter in a scrolling
+   list (CLAUDE.md), and a solid fill costs nothing to scroll.
 
-   The row is a link, so it owes the finger an answer. Background and a lift on
-   hover, a small scale on press, both transform/opacity only so the compositor
-   handles them and INP is untouched. */
+   The row is a link, so it owes the finger an answer. A lighter layer on
+   hover, a small scale on press, both transform/opacity only so the
+   compositor handles them and INP is untouched. */
 .phone-tx-row {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 12px;
-  margin: 0 -12px;
-  border-radius: 16px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  border-radius: 20px;
+  background: linear-gradient(168deg, #5c1631 0%, #45102a 55%, #3a0d23 100%);
+  border: 1px solid rgba(228, 204, 166, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 10px 24px -12px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-decoration: none;
   color: inherit;
   transition: transform var(--duration-fast) var(--ease-out);
@@ -4462,7 +4498,7 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.06);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--duration-fast) var(--ease-out);
