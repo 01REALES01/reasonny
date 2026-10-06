@@ -4585,7 +4585,12 @@ textarea:focus-visible {
   flex-shrink: 0;
 }
 
+/* White and bold, not the muted grey of the rest of the line: on the solid
+   card the category is the fact read after the merchant, and grey sank it
+   into the background. */
 .phone-tx-cat {
+  color: var(--ink-primary);
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
