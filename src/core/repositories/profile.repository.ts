@@ -205,3 +205,20 @@ export async function ensureProfile(
   }
   return upsertProfile(userId, { email });
 }
+
+/**
+ * Erases the profile and, through ON DELETE CASCADE, everything hanging from
+ * it: accounts, transactions, categories, rules, budgets, API keys, prompts,
+ * achievements, ingestion failures, telemetry and consents. One statement, so
+ * there is no half-deleted account to find later.
+ *
+ * Returns whether a row was there to delete.
+ */
+export async function deleteProfile(userId: UserId): Promise<boolean> {
+  const db = getDb();
+  const deleted = await db
+    .delete(profiles)
+    .where(eq(profiles.id, userId))
+    .returning({ id: profiles.id });
+  return deleted.length > 0;
+}

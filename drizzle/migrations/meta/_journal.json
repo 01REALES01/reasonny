@@ -64,6 +64,13 @@
       "when": 1791311463721,
       "tag": "0008_merge_bank_deposit_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791327596608,
+      "tag": "0009_consents",
+      "breakpoints": true
     }
   ]
 }

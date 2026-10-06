@@ -28,6 +28,7 @@ Si el spec y el plan se contradicen, **gana el plan** y el spec se corrige.
 | | Bloque | Por qué en este lugar |
 | :--- | :--- | :--- |
 | H1 | **Habeas data mínimo** + registro con Google | Hay datos de terceros desde ya; la autorización cubre todo camino de alta |
+| C1 | **Vista de calendario** en `/mes` | Pedida el 06-oct-2026; va después de H1 y antes de L1 (registrado en §4.5) |
 | L1 | **Capa LLM agnóstica del canal** (Gemini de pago) | La reusan Telegram, WhatsApp y el OCR |
 | W1 | **WhatsApp** como adaptador de la capa de notificación | Es el canal que los usuarios ya tienen abierto |
 | F2 | **OCR de extractos** | Completa el mes; llega con Gemini ya integrado |

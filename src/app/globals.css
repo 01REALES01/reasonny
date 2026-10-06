@@ -530,25 +530,21 @@ textarea:focus-visible {
   object-position: center 30%;
 }
 
-/* Clear at the top (video reads fully), luminous vinotinto ambient where the form sits. */
+/* Neutral, and clear for the top half: the video already carries the wine,
+   and a rose bloom laid over it tinted the whole screen and hid the film.
+   The scrim only darkens where the form sits, so the text reads and the
+   video stays the picture. */
 .auth-video-scrim {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      100% 65% at 50% 100%,
-      rgba(195, 42, 92, 0.42) 0%,
-      rgba(125, 22, 62, 0.28) 40%,
-      transparent 80%
-    ),
-    linear-gradient(
-      to bottom,
-      rgba(6, 4, 7, 0) 0%,
-      rgba(6, 4, 7, 0.12) 35%,
-      rgba(48, 10, 24, 0.6) 60%,
-      rgba(56, 10, 28, 0.88) 82%,
-      rgba(40, 8, 20, 0.98) 100%
-    );
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 4, 7, 0) 0%,
+    rgba(6, 4, 7, 0) 45%,
+    rgba(6, 4, 7, 0.5) 62%,
+    rgba(6, 4, 7, 0.84) 80%,
+    rgba(6, 4, 7, 0.96) 100%
+  );
 }
 
 .auth-screen--cinematic .auth-layout {
@@ -587,9 +583,10 @@ textarea:focus-visible {
   gap: var(--space-3);
 }
 
-/* Fields carry frosted vinotinto glass with champagne outline. */
+/* Fields are dark neutral glass with a champagne outline; wine is left to
+   the video behind them. */
 .auth-screen--cinematic .auth-field {
-  background-color: rgba(56, 12, 28, 0.78);
+  background-color: rgba(10, 6, 9, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1.5px solid rgba(228, 204, 166, 0.35);
@@ -604,7 +601,7 @@ textarea:focus-visible {
   border-color: var(--landing-champagne-gold);
   box-shadow:
     0 0 0 3px rgba(228, 204, 166, 0.25),
-    0 0 24px rgba(205, 48, 98, 0.5);
+    0 0 20px rgba(228, 204, 166, 0.18);
   outline: none;
 }
 
@@ -616,6 +613,26 @@ textarea:focus-visible {
   color: rgba(248, 230, 208, 0.8);
   text-align: left;
   align-self: flex-start;
+}
+
+/* Pinned top-left over the video, under the notch. A dark pill so it reads
+   on any frame of the film; 44px tall for the thumb. */
+.auth-back.auth-back--top {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
+  background-color: rgba(6, 4, 7, 0.55);
+  border: 1px solid rgba(228, 204, 166, 0.3);
+  color: var(--landing-warm-white);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 /* The pill: champagne gold gradient, label left, arrow in a circle at the right edge */
@@ -7553,6 +7570,222 @@ textarea:focus-visible {
   transform: scale(0.98);
   opacity: 0.7;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   HABEAS DATA (H1): consent on sign-in, the authorisation gate, the public
+   policy and account deletion
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* The box sits right under the email field: the authorisation is asked for
+   where the first datum is handed over. 44px row for the finger. */
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-consent-box {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--landing-champagne-gold);
+  cursor: pointer;
+}
+
+.auth-consent-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(248, 230, 208, 0.82);
+}
+
+.auth-consent-link,
+.consent-policy-link {
+  color: var(--landing-champagne-gold);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(248, 230, 208, 0.55);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(228, 204, 166, 0.22);
+}
+
+/* As tall as the main button and white, Google's own convention: it is a
+   way in of equal weight, not a footnote under the code. The pill rule above
+   takes its height from the arrow circle, which this button has none of, so
+   the height is set here. */
+.auth-screen--cinematic .auth-google {
+  justify-content: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 24px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-size: 16px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.auth-screen--cinematic .auth-google:disabled {
+  opacity: 0.6;
+}
+
+/* Google's brand colours, which their guidelines ask to keep as they are. */
+.auth-google-red {
+  fill: #ea4335;
+}
+
+.auth-google-blue {
+  fill: #4285f4;
+}
+
+.auth-google-yellow {
+  fill: #fbbc05;
+}
+
+.auth-google-green {
+  fill: #34a853;
+}
+
+.auth-google-mark {
+  flex-shrink: 0;
+}
+
+.consent-check {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(48, 11, 24, 0.45);
+  border: 1px solid rgba(228, 204, 166, 0.16);
+}
+
+.consent-note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(248, 230, 208, 0.65);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* The policy page: a document, set for reading - one column, a measure of
+   about 68 characters, generous line height. */
+.legal-page {
+  min-height: 100svh;
+  padding: calc(var(--space-6) + env(safe-area-inset-top)) var(--space-4)
+    calc(var(--space-8) + env(safe-area-inset-bottom));
+  background-color: var(--app-ground);
+  color: var(--landing-warm-white);
+}
+
+.legal-doc {
+  max-width: 68ch;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.legal-back {
+  align-self: flex-start;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--landing-champagne-gold);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.legal-title {
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.legal-effective {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--landing-champagne-gold);
+}
+
+.legal-intro,
+.legal-text,
+.legal-list {
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(248, 230, 208, 0.88);
+}
+
+.legal-intro {
+  margin-top: 12px;
+}
+
+.legal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-margin-top: 24px;
+}
+
+.legal-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--landing-warm-white);
+}
+
+.legal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+.legal-list li::marker {
+  color: var(--landing-champagne-gold);
+}
+
+.account-delete {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border-radius: 20px;
+  border: 1px solid rgba(229, 72, 77, 0.3);
+  background: rgba(48, 11, 24, 0.45);
+}
+
+.account-delete-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--landing-warm-white);
+}
+
+.account-delete-text,
+.account-delete-prompt {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(248, 230, 208, 0.8);
+}
+
 
 
 
