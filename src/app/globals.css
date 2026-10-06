@@ -615,6 +615,26 @@ textarea:focus-visible {
   align-self: flex-start;
 }
 
+/* Pinned top-left over the video, under the notch. A dark pill so it reads
+   on any frame of the film; 44px tall for the thumb. */
+.auth-back.auth-back--top {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
+  background-color: rgba(6, 4, 7, 0.55);
+  border: 1px solid rgba(228, 204, 166, 0.3);
+  color: var(--landing-warm-white);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* The pill: champagne gold gradient, label left, arrow in a circle at the right edge */
 .auth-screen--cinematic .auth-pill {
   padding: 8px 8px 8px 26px;

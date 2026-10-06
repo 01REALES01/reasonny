@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   CONSENT_INTENT_COOKIE,
@@ -127,7 +128,28 @@ export function SignInForm(): React.ReactElement {
    */
   const isCodeStep = step === 'code';
 
+  // Top-left, where a back button is looked for. Portalled to <body> because
+  // the entrance and step animations leave a transform on every ancestor, and
+  // a transformed ancestor turns position: fixed into position: absolute.
+  // Steps 2 and 3 only exist after a tap, so `document` is always there.
+  const backButton = createPortal(
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        setStep(isCodeStep ? 'email' : 'intro');
+        setError(undefined);
+      }}
+      className="auth-back auth-back--top"
+    >
+      ← {isCodeStep ? t('auth_change_email') : t('back')}
+    </button>,
+    document.body,
+  );
+
   return (
+    <>
+    {backButton}
     <form
       key={isCodeStep ? 'step-code' : 'step-email'}
       className="step-slide auth-step"
@@ -245,17 +267,7 @@ export function SignInForm(): React.ReactElement {
         </>
       )}
 
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          setStep(isCodeStep ? 'email' : 'intro');
-          setError(undefined);
-        }}
-        className="auth-back"
-      >
-        ← {isCodeStep ? t('auth_change_email') : t('back')}
-      </button>
     </form>
+    </>
   );
 }
