@@ -57,6 +57,13 @@
       "when": 1790346047370,
       "tag": "0007_cooing_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791311463721,
+      "tag": "0008_merge_bank_deposit_accounts",
+      "breakpoints": true
     }
   ]
 }

@@ -73,3 +73,43 @@ export function bankLabel(bank: string): string {
 export function accountTypeFromSms(text: string): 'credit_card' | 'savings' {
   return /T\.\s*Cred|Tarjeta\s+Cr[eé]dito/i.test(text) ? 'credit_card' : 'savings';
 }
+
+/** Stands in for the digits of a credit card whose message names none. */
+const CREDIT_WITHOUT_DIGITS = 'TC';
+
+export interface SmsBankAccount {
+  readonly bank: string;
+  /** '' for the bank's deposit account; the card's digits for a credit card. */
+  readonly mask: string;
+  /** The account's name as the person reads it: "Bancolombia", "Bancolombia Crédito *1234". */
+  readonly label: string;
+  readonly type: 'credit_card' | 'savings';
+}
+
+/**
+ * Which account a bank message belongs to.
+ *
+ * One deposit account per bank, whatever digits the message carries. The same
+ * savings account shows up under several numbers: purchases name the debit
+ * card ("T.Deb *1111"), and a second card or a virtual one has its own digits;
+ * transfers and QR payments name the account ("cuenta *9999"); some incoming
+ * payments name none. Keying on those digits split one account into three.
+ * A message cannot say which card draws on which account, so a person with two
+ * savings accounts at one bank sees them together - the lesser error.
+ *
+ * A credit card is different money, with its own limit and statement, so each
+ * one keeps its own account by its digits.
+ */
+export function bankAccountFromSms(parsed: ParsedSms, text: string): SmsBankAccount {
+  const label = bankLabel(parsed.bank);
+  if (accountTypeFromSms(text) === 'credit_card') {
+    return {
+      bank: parsed.bank,
+      // Never '': that key belongs to the deposit account.
+      mask: parsed.accountMask ?? CREDIT_WITHOUT_DIGITS,
+      label: parsed.accountMask ? `${label} Crédito *${parsed.accountMask}` : `${label} Crédito`,
+      type: 'credit_card',
+    };
+  }
+  return { bank: parsed.bank, mask: '', label, type: 'savings' };
+}

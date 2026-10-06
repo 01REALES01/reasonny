@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { accountTypeFromSms, bankLabel, parseBankSms } from './index';
+import { accountTypeFromSms, bankAccountFromSms, bankLabel, parseBankSms } from './index';
 
 /**
  * The corpus.
@@ -282,3 +282,36 @@ describe('Bank SMS parsers', () => {
     });
   });
 });
+
+describe('bankAccountFromSms', () => {
+  const accountOf = (text: string) => {
+    const result = parseBankSms(text);
+    if (!result.ok) throw new Error('fixture did not parse');
+    return bankAccountFromSms(result.transaction, text);
+  };
+
+  it('puts every debit card, transfer and digitless message of a bank in one account', () => {
+    const keys = [
+      SMS.bancolombiaPurchaseCard, // T.Deb *1111
+      SMS.bancolombiaPurchaseApp, // T.Deb *2222, a second card on the same account
+      SMS.bancolombiaTransferOut, // cuenta *9999
+      SMS.bancolombiaIncomingPayment, // no digits at all
+    ].map(accountOf);
+
+    for (const key of keys) {
+      expect(key).toEqual({ bank: 'bancolombia', mask: '', label: 'Bancolombia', type: 'savings' });
+    }
+  });
+
+  it('keeps each credit card apart, named by its digits', () => {
+    const text =
+      'Bancolombia: Compraste $20.000,00 en TIENDA GENERICA con tu T.Cred *4444, el 17/09/2026 a las 10:00.';
+    expect(accountOf(text)).toEqual({
+      bank: 'bancolombia',
+      mask: '4444',
+      label: 'Bancolombia Crédito *4444',
+      type: 'credit_card',
+    });
+  });
+});
+

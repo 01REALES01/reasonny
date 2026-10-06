@@ -134,7 +134,7 @@ describe('recordTransaction', () => {
       expect(writtenInput()?.accountId).toBe(ACCOUNT_ID);
     });
 
-    it("routes a bank SMS to that card's own account", async () => {
+    it('routes a bank SMS to the account the caller names', async () => {
       vi.mocked(findOrCreateBankAccount).mockResolvedValue({
         id: OTHER_ACCOUNT_ID,
         currency: 'COP',
@@ -142,14 +142,19 @@ describe('recordTransaction', () => {
 
       await recordTransaction(userId, profileFixture(), {
         ...baseInput(),
-        bankAccount: { bank: 'bancolombia', mask: '1111', label: 'Bancolombia', type: 'savings' },
+        bankAccount: {
+          bank: 'bancolombia',
+          mask: '1111',
+          label: 'Bancolombia Crédito *1111',
+          type: 'credit_card',
+        },
       });
 
       expect(findOrCreateBankAccount).toHaveBeenCalledWith(userId, {
         bank: 'bancolombia',
         mask: '1111',
-        name: 'Bancolombia *1111',
-        type: 'savings',
+        name: 'Bancolombia Crédito *1111',
+        type: 'credit_card',
         currency: 'COP',
       });
       expect(listAccounts).not.toHaveBeenCalled();

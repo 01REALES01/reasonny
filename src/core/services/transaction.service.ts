@@ -103,6 +103,7 @@ export interface RecordTransactionInput {
     | {
         readonly bank: string;
         readonly mask: string | null;
+        /** The account's full name, used when the message creates it. */
         readonly label: string;
         readonly type: AccountType;
       }
@@ -217,11 +218,12 @@ async function resolveAccount(
   }
 
   if (bankAccount) {
-    const mask = bankAccount.mask ?? '';
     const account = await findOrCreateBankAccount(userId, {
       bank: bankAccount.bank,
-      mask,
-      name: mask ? `${bankAccount.label} *${mask}` : bankAccount.label,
+      mask: bankAccount.mask ?? '',
+      // The caller names it: which digits belong in the name depends on
+      // whether they identify the account or only one card that draws on it.
+      name: bankAccount.label,
       type: bankAccount.type,
       currency: profile.baseCurrency,
     });
