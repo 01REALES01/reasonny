@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { CategoryBreakdownPanel } from '@/components/dashboard/category-breakdown-panel';
-import { PhoneLedger } from '@/components/dashboard/phone-ledger';
+import { MonthCalendar } from '@/components/dashboard/month-calendar';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { Money } from '@/components/ui/money';
+import { isDayKey, monthOffsetForDay } from '@/core/calendar';
 import { ensureProfile } from '@/core/repositories/profile.repository';
 import { getMonthViewData } from '@/core/services/analytics.service';
 import { toUserId } from '@/core/types';
@@ -19,23 +20,33 @@ export const metadata: Metadata = {
 };
 
 export default async function MonthPage(props: {
-  searchParams: Promise<{ offset?: string }>;
+  searchParams: Promise<{ offset?: string; dia?: string }>;
 }): Promise<React.ReactElement> {
   const session = await getCurrentUser();
   if (!session) {
     redirect('/sign-in');
   }
 
-  const [{ offset: rawOffset }, userId] = [
+  const [{ offset: rawOffset, dia }, userId] = [
     await props.searchParams,
     toUserId(session.id),
   ];
-  await ensureProfile(userId, session.email);
+  const profile = await ensureProfile(userId, session.email);
 
   // Number() on an absent or malformed param yields NaN, which would propagate
   // into the month arithmetic as an Invalid Date; 0 is the sane fallback.
   const parsed = Number(rawOffset);
-  const offset = Number.isFinite(parsed) ? parsed : 0;
+  // ?dia= comes from the week card on the home screen and wins over ?offset=:
+  // it names the month by naming a day in it. 'en-CA' formats as YYYY-MM-DD.
+  const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: profile.timezone }).format(
+    new Date(),
+  );
+  const selectedDay = isDayKey(dia) ? dia : null;
+  const offset = selectedDay
+    ? monthOffsetForDay(selectedDay, todayKey)
+    : Number.isFinite(parsed)
+      ? parsed
+      : 0;
 
   const data = await getMonthViewData(userId, offset);
 
@@ -98,13 +109,20 @@ export default async function MonthPage(props: {
           </div>
         </div>
 
+        <MonthCalendar
+          days={data.days}
+          monthKey={data.monthKey}
+          todayKey={data.todayKey}
+          currency={data.baseCurrency}
+          timeZone={data.timezone}
+          initialDay={selectedDay}
+        />
+
         <CategoryBreakdownPanel
           breakdown={data.categoryBreakdown}
           totalExpenseMinor={data.monthlyTotals.totalExpenseMinor}
           currency={data.baseCurrency}
         />
-
-        <PhoneLedger days={data.days} currency={data.baseCurrency} />
       </div>
     </main>
   );

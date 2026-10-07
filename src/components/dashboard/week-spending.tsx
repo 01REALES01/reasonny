@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 import { CategoryIcon } from '@/components/ui/category-icon';
@@ -204,6 +205,13 @@ export function WeekSpendingCard({
               )}
             </div>
           </div>
+          {/* The day in full, with every spend: the calendar on /mes opens
+              with it selected. Not for a day still ahead. */}
+          {!isFutureSelected && (
+            <Link href={`/mes?dia=${selectedDay.day}`} className="week-inspector-calendar-link">
+              {t('calendar_open')} →
+            </Link>
+          )}
         </div>
       ) : (
         /* Default Summary Foot */

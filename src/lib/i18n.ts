@@ -223,6 +223,11 @@ export const DICTIONARY = {
     auth_google: 'Continuar con Google',
     auth_google_failed: 'No se pudo abrir Google. Intenta de nuevo.',
     legal_back_home: 'Volver al inicio',
+    calendar_title: 'Calendario',
+    calendar_show_month: 'Ver todo el mes',
+    calendar_day_empty: 'Sin gastos este día.',
+    calendar_spends: 'gastos',
+    calendar_open: 'Ver en el calendario',
     consent_title: 'Antes de seguir, tu autorización',
     consent_text:
       'Reasonny guarda tus movimientos, tu correo y, si la activas, tu ubicación, y los procesa con proveedores fuera de Colombia. La política explica qué guardamos, para qué y cómo borrarlo.',
@@ -532,6 +537,11 @@ export const DICTIONARY = {
     auth_google: 'Continue with Google',
     auth_google_failed: 'Google could not be opened. Try again.',
     legal_back_home: 'Back to home',
+    calendar_title: 'Calendar',
+    calendar_show_month: 'Show the whole month',
+    calendar_day_empty: 'No spending this day.',
+    calendar_spends: 'spends',
+    calendar_open: 'See it in the calendar',
     consent_title: 'Before you continue, your authorisation',
     consent_text:
       'Reasonny keeps your transactions, your email and, if you turn it on, your location, and processes them with providers outside Colombia. The policy explains what we keep, why, and how to delete it.',

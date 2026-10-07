@@ -7791,6 +7791,170 @@ textarea:focus-visible {
   color: rgba(248, 230, 208, 0.8);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   MONTH CALENDAR (/mes)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Same panel as the week card, but opaque and with no backdrop-filter: it
+   sits in a scrolling page. */
+.month-calendar {
+  margin: 4px 0 6px;
+  padding: 16px 10px 12px;
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(205, 48, 98, 0.32) 0%, transparent 70%),
+    linear-gradient(168deg, #5e1734 0%, #431029 100%);
+  border: 1.2px solid rgba(228, 204, 166, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.6);
+}
+
+.month-calendar-weekdays,
+.month-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.month-calendar-weekdays {
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(228, 204, 166, 0.7);
+}
+
+.month-calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 58px tall, the whole cell is the target: well past the 44px minimum. */
+.month-calendar-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 5px 2px 4px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--landing-warm-white);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.month-calendar-cell:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.month-calendar-cell:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* A day with spending gets a faint tile, so the month's rhythm reads at a
+   glance before any number does. */
+.month-calendar-cell--spent {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.month-calendar-cell--today {
+  border-color: rgba(228, 204, 166, 0.65);
+}
+
+.month-calendar-cell--selected {
+  background: rgba(228, 204, 166, 0.2);
+  border-color: var(--landing-champagne-gold);
+}
+
+.month-calendar-number {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-calendar-cell--today .month-calendar-number {
+  color: var(--landing-champagne-gold);
+}
+
+.month-calendar-icons {
+  display: flex;
+  justify-content: center;
+  min-height: 18px;
+}
+
+.month-calendar-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tx-icon-ink, var(--landing-champagne-gold));
+  background-color: color-mix(
+    in srgb,
+    var(--tx-icon-ink, var(--landing-champagne-gold)) 22%,
+    #2a0815
+  );
+}
+
+.month-calendar-icon + .month-calendar-icon {
+  margin-left: -4px;
+}
+
+.month-calendar-amount {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: rgba(248, 230, 208, 0.9);
+}
+
+.month-calendar-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 2px 0;
+}
+
+.month-calendar-selection-date {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--landing-champagne-gold);
+}
+
+.month-calendar-selection-date::first-letter {
+  text-transform: uppercase;
+}
+
+.month-calendar-empty {
+  margin: 18px 2px;
+  font-size: 14px;
+  color: rgba(248, 230, 208, 0.75);
+}
+
+/* From the week card's day detail to that day in the month calendar. */
+.week-inspector-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--landing-champagne-gold);
+  text-decoration: none;
+}
+
+
+
 
 
 

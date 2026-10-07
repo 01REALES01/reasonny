@@ -211,6 +211,10 @@ export interface MonthViewData {
   /** 0 is the current month, -1 the previous one. Never positive. */
   readonly offset: number;
   readonly isCurrentMonth: boolean;
+  /** 'YYYY-MM' of the month shown, in the profile's zone. Drives the calendar grid. */
+  readonly monthKey: string;
+  /** 'YYYY-MM-DD' of today in the profile's zone, to mark it and dim the days after it. */
+  readonly todayKey: string;
 }
 
 /**
@@ -286,16 +290,19 @@ export async function getMonthViewData(
 
   const capitalizedMonth =
     bounds.monthName.charAt(0).toUpperCase() + bounds.monthName.slice(1);
+  const todayKey = dayKeyReader(timezone)(referenceDate);
 
   return {
     baseCurrency,
     timezone,
     monthlyTotals,
     categoryBreakdown,
-    days: groupByDay(transactions, timezone, dayKeyReader(timezone)(referenceDate), dailyTotals),
+    days: groupByDay(transactions, timezone, todayKey, dailyTotals),
     monthLabel: `${capitalizedMonth} ${bounds.year}`,
     offset: safeOffset,
     isCurrentMonth: safeOffset === 0,
+    monthKey: bounds.startOfMonthIso.slice(0, 7),
+    todayKey,
   };
 }
 
