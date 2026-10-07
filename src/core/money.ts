@@ -213,6 +213,41 @@ export function toDecimalString(minor: bigint): Intl.StringNumericLiteral {
 export interface FormatOptions {
   /** Overrides the currency's display digits. COP defaults to 0, others to 2. */
   readonly fractionDigits?: number;
+  /**
+   * "$18,5 K" instead of "$ 18.500", for places with room for a glance and
+   * not a figure: a calendar cell is ~50px wide. Three significant digits keep
+   * $104.800 as "$105 K" rather than rounding it to "$100 K".
+   */
+  readonly compact?: boolean;
+}
+
+const THOUSAND = 1_000n;
+const MILLION = 1_000_000n;
+
+/**
+ * "$ 18,5k" / "$ 1,25M". Not Intl's notation: 'compact': its abbreviations
+ * come from CLDR data that differs between ICU builds - Node renders "K" where
+ * Chrome renders "k" - and a server and client that disagree on a string break
+ * hydration. Intl still formats the number and the symbol, which are stable;
+ * only the suffix is ours. The scaled value is built in bigint thousandths, so
+ * nothing passes through a float.
+ */
+function formatCompact(amount: Money, locale: string): string {
+  const units = amount.minor < 0n ? -amount.minor : amount.minor;
+  const [divisor, suffix] =
+    units >= MILLION * SCALE ? [MILLION, 'M'] : units >= THOUSAND * SCALE ? [THOUSAND, 'k'] : [1n, ''];
+  const thousandths = (amount.minor * 1000n) / (SCALE * divisor);
+  const sign = thousandths < 0n ? '-' : '';
+  const abs = thousandths < 0n ? -thousandths : thousandths;
+  const decimal = `${sign}${abs / 1000n}.${String(abs % 1000n).padStart(3, '0')}` as Intl.StringNumericLiteral;
+
+  return (
+    new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: amount.currency,
+      maximumSignificantDigits: 3,
+    }).format(decimal) + suffix
+  );
 }
 
 /**
@@ -221,6 +256,10 @@ export interface FormatOptions {
  * explicit that the locale decides how money reads.
  */
 export function formatMoney(amount: Money, locale: string, options: FormatOptions = {}): string {
+  if (options.compact) {
+    return formatCompact(amount, locale);
+  }
+
   const digits =
     options.fractionDigits ?? DISPLAY_FRACTION_DIGITS[amount.currency] ?? DEFAULT_FRACTION_DIGITS;
 

@@ -126,6 +126,9 @@ describe('Analytics Service & Timezone Boundaries', () => {
         '2026-03-01 00:00:00',
       );
       expect(data.isCurrentMonth).toBe(false);
+      // The calendar draws February, while "today" stays in March.
+      expect(data.monthKey).toBe('2026-02');
+      expect(data.todayKey).toBe('2026-03-31');
     });
 
     it('steps back across the January boundary into the previous year', async () => {

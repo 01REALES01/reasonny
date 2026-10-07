@@ -199,6 +199,19 @@ describe('toDecimalString - the plain decimal, no locale', () => {
 });
 
 describe('formatMoney', () => {
+  it('abbreviates for a glance when asked, keeping three significant digits', () => {
+    // Whitespace-insensitive: ICU puts a non-breaking space after "$".
+    const compact = (minor: bigint) =>
+      formatMoney(money(minor, 'COP'), 'es-CO', { compact: true }).replace(/\s/g, ' ');
+
+    expect(compact(1_850_000n)).toBe('$ 18,5k');
+    expect(compact(10_480_000n)).toBe('$ 105k');
+    expect(compact(125_000_000n)).toBe('$ 1,25M');
+    // Under a thousand there is nothing to abbreviate.
+    expect(compact(85_000n)).toBe('$ 850');
+    expect(compact(-1_850_000n)).toBe('-$ 18,5k');
+  });
+
   // COP does not use cents in practice, so the default drops them - even though
   // CLDR declares two fraction digits for it.
   it('renders COP without cents', () => {

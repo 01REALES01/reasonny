@@ -8,6 +8,8 @@ interface MoneyProps {
   readonly currency?: string;
   readonly locale?: Locale;
   readonly showFractionDeEmphasis?: boolean;
+  /** "$18,5 K": for cells with room for a glance, not a figure. See formatMoney. */
+  readonly compact?: boolean;
 }
 
 /**
@@ -42,9 +44,14 @@ export function Money({
   currency = 'COP',
   locale = DEFAULT_LOCALE,
   showFractionDeEmphasis = true,
+  compact = false,
 }: MoneyProps): React.ReactElement {
   const localeTag = locale === 'es' ? 'es-CO' : 'en-US';
-  const formatted = formatMoney({ minor: amountMinor, currency }, localeTag);
+  const formatted = formatMoney({ minor: amountMinor, currency }, localeTag, { compact });
+
+  if (compact) {
+    return <span className="money money--compact">{formatted}</span>;
+  }
 
   const { integerPart, fractionPart } = showFractionDeEmphasis
     ? splitMoneyParts(formatted)
